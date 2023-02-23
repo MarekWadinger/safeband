@@ -12,14 +12,57 @@ from paho.mqtt.client import MQTTMessage
 import pandas as pd
 from river import utils, proba, anomaly
 from scipy.stats import norm
-from streamz import Stream
+from streamz import Stream, Sink
 
 # CONSTANTS
 THRESHOLD = 0.99735
 GRACE_PERIOD=60*24
 WINDOW = dt.timedelta(hours=24*7)
 
-# DEFINITIONS  
+
+# DEFINITIONS
+@Stream.register_api()
+class to_mqtt(Sink):
+    """
+    Send data to MQTT broker
+
+    See also ``sources.from_mqtt``.
+
+    Requires ``paho.mqtt``
+
+    :param host: str
+    :param port: int
+    :param topic: str
+    :param keepalive: int
+        See mqtt docs - to keep the channel alive
+    :param client_kwargs:
+        Passed to the client's ``connect()`` method
+    """
+    def __init__(self, upstream, host, port, topic, keepalive=60, client_kwargs=None, publish_kwargs=None,
+                 **kwargs):
+        self.host = host
+        self.port = port
+        self.c_kw = client_kwargs or {}
+        self.p_kw = publish_kwargs or {}
+        self.client = None
+        self.topic = topic
+        self.keepalive = keepalive
+        super().__init__(upstream, ensure_io_loop=True, **kwargs)
+
+    def update(self, x, who=None, metadata=None):
+        import paho.mqtt.client as mqtt
+        if self.client is None:
+            self.client = mqtt.Client(clean_session=True)
+            self.client.connect(self.host, self.port, self.keepalive, **self.c_kw)
+        # TODO: wait on successful delivery
+        self.client.publish(self.topic, x, **self.p_kw)
+
+    def destroy(self):
+        self.client.disconnect()
+        self.client = None
+        super().destroy()
+
+
 class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
     def __init__(self, 
                  threshold=THRESHOLD, 
@@ -163,7 +206,7 @@ def process_limits_streaming(
         
     with open("dynamic_limits.json", 'a') as f:
         if isinstance(data, str):
-            detector.map(lambda x: json.dumps(x)).to_mqtt(data, port, f"{topic.rsplit('/', 1)[0]}/dynamic_limits")
+            detector.map(lambda x: json.dumps(x)).to_mqtt(data, port, f"{topic.rsplit('/', 1)[0]}/dynamic_limits", publish_kwargs={"retain":True})
         elif isinstance(data, pd.DataFrame):
             detector.sink(dump_to_file, f)
         source.start()
