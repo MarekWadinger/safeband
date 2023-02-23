@@ -172,18 +172,20 @@ def print_summary(df):
     print(text) 
 
 
-def signal_handler(sig, frame, source, f):
+def signal_handler(sig, frame, source, data):
     os.write(sys.stdout.fileno(), b"\nSignal received to stop the app...\n")
     source.stop()
-    f.close()
     
     time.sleep(1)
     # Print summary
-    d = pd.read_json("data.json", lines=True)
-    if not d.empty:
-        print_summary(d)
+    if isinstance(data, pd.DataFrame):
+        d = pd.read_json("dynamic_limits.json", lines=True)
+        if not d.empty:
+            print_summary(d)
+        else:
+            print("No data retrieved")
     else:
-        print("No data retrieved")
+        print(type(data))
     
     exit(0)
     
@@ -209,9 +211,10 @@ def process_limits_streaming(
             detector.map(lambda x: json.dumps(x)).to_mqtt(data, port, f"{topic.rsplit('/', 1)[0]}/dynamic_limits", publish_kwargs={"retain":True})
         elif isinstance(data, pd.DataFrame):
             detector.sink(dump_to_file, f)
+        
         source.start()
         
-        signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, source, f))
+        signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, source, data))
                       
         while True:
             time.sleep(2)
