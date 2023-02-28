@@ -1,5 +1,6 @@
 # IMPORTS
-import argparse
+from argparse import ArgumentParser, FileType
+from configparser import ConfigParser
 import datetime as dt
 import json
 import os
@@ -172,74 +173,75 @@ def print_summary(df):
     print(text) 
 
 
-def signal_handler(sig, frame, source, data):
+def signal_handler(sig, frame, source, config):
     os.write(sys.stdout.fileno(), b"\nSignal received to stop the app...\n")
     source.stop()
     
     time.sleep(1)
     # Print summary
-    if isinstance(data, pd.DataFrame):
+    if config.get("path"):
         d = pd.read_json("dynamic_limits.json", lines=True)
         if not d.empty:
             print_summary(d)
         else:
             print("No data retrieved")
-    else:
-        print(type(data))
     
     exit(0)
     
     
 def process_limits_streaming(
-        topic: str,
-        data: pd.DataFrame):
-    port = 1883
+        config: dict):
     model = GaussianScorer()
     model_inv = GaussianScorer()
     
-    if isinstance(data, str):
-        source = Stream.from_mqtt(data, port, topic)
-    elif isinstance(data, pd.DataFrame):
+    if config.get("path"):
+        data = pd.read_csv(config['path'], index_col=0)
+        data.index = pd.to_datetime(data.index)
         source = Stream.from_iterable(data.iterrows())
+    elif config.get("host"):
+        source = Stream.from_mqtt(**config)
     else:
         raise(RuntimeError("Wrong data format."))
     
-    detector = source.map(preprocess, topic).map(fit_transform, model, model_inv)
+    detector = source.map(preprocess, config["topic"]).map(fit_transform, model, model_inv)
         
     with open("dynamic_limits.json", 'a') as f:
-        if isinstance(data, str):
-            detector.map(lambda x: json.dumps(x)).to_mqtt(data, port, f"{topic.rsplit('/', 1)[0]}/dynamic_limits", publish_kwargs={"retain":True})
-        elif isinstance(data, pd.DataFrame):
+        if config.get("path"):
             detector.sink(dump_to_file, f)
+        elif config.get("mqtt"):
+            config["topic"] = f"{config['topic'].rsplit('/', 1)[0]}/dynamic_limits"
+            detector.map(lambda x: json.dumps(x)).to_mqtt(**config, publish_kwargs={"retain":True})
         
         source.start()
         
-        signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, source, data))
+        signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, source, config))
                       
         while True:
             time.sleep(2)
 
     
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--file", help="File to read. If none MQTT is used.", default=None)
-    parser.add_argument("-u", "--url", help="MQTT broker URL.", default="mqtt.cloud.uiam.sk")
+    parser = ArgumentParser()
+    parser.add_argument('config_file', type=FileType('r'))
     #"shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
     #"Average Cell Temperature"
-    parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power")
+    parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="Average Cell Temperature")
     args = parser.parse_args()
     
-    if args.file and args.url:
-        #raise(ValueError("Specify either -f or -u"))
-        data = pd.read_csv(args.file, index_col=0)
-        data.index = pd.to_datetime(data.index)
-    elif args.file:
-        data = pd.read_csv(args.file, index_col=0)
-        data.index = pd.to_datetime(data.index)
-    elif args.url:
-        data = args.url
-    else:
-        raise(ValueError("Specify either -f or -u."))
-    topic = args.topic
+    config_parser = ConfigParser()
+    config_parser.read_file(args.config_file)
     
-    process_limits_streaming(topic, data)
+    if (config_parser.has_option('file', 'path') and 
+        config_parser.get('file', 'path')):
+        config = dict(config_parser['file'])
+    elif (config_parser.has_section('mqtt') and 
+          config_parser.get('mqtt', 'host') and 
+          config_parser.get('mqtt', 'port')):
+        config = dict(config_parser['mqtt'])
+        config['port'] = int(config['port'])
+    else:
+        raise ValueError("Missing configuration.")
+        
+    config.update({'topic': args.topic})
+    
+    process_limits_streaming(config)
