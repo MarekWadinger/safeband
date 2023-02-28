@@ -141,6 +141,10 @@ def preprocess(
         return {"time": dt.datetime.fromtimestamp(x.timestamp).replace(microsecond=0),
                 "data": {x.topic.split("/")[-1]: float(x.payload)}
         }
+    elif isinstance(x, bytes):
+        return {"time": dt.datetime.now().replace(microsecond=0),
+                "data": {col: float(x.decode("utf-8"))}
+        }
 
 
 def fit_transform(
@@ -185,12 +189,15 @@ def signal_handler(sig, frame, source, config):
             print_summary(d)
         else:
             print("No data retrieved")
+    if config.get("bootstrap.servers"):
+        source.flush()
     
     exit(0)
     
     
 def process_limits_streaming(
-        config: dict):
+        config: dict,
+        topic: str | list):
     model = GaussianScorer()
     model_inv = GaussianScorer()
     
@@ -199,18 +206,24 @@ def process_limits_streaming(
         data.index = pd.to_datetime(data.index)
         source = Stream.from_iterable(data.iterrows())
     elif config.get("host"):
-        source = Stream.from_mqtt(**config)
+        source = Stream.from_mqtt(**config, topi=topic)
+    elif config.get("bootstrap.servers"):
+        config["group_id"] = "detection_service"
+        source = Stream.from_kafka(list(topic), config)
     else:
         raise(RuntimeError("Wrong data format."))
     
-    detector = source.map(preprocess, config["topic"]).map(fit_transform, model, model_inv)
+    detector = source.map(preprocess, topic).map(fit_transform, model, model_inv)
         
     with open("dynamic_limits.json", 'a') as f:
         if config.get("path"):
             detector.sink(dump_to_file, f)
-        elif config.get("mqtt"):
-            config["topic"] = f"{config['topic'].rsplit('/', 1)[0]}/dynamic_limits"
+        elif config.get("host"):
+            topic = f"{config['topic'].rsplit('/', 1)[0]}/dynamic_limits"
             detector.map(lambda x: json.dumps(x)).to_mqtt(**config, publish_kwargs={"retain":True})
+        elif config.get("bootstrap.servers"):
+            config.pop("group_id")
+            detector = source.map(lambda x: (bytes(str(x), 'utf-8'), bytes(str(x), 'utf-8'))).to_kafka(topic, config)
         
         source.start()
         
@@ -231,6 +244,7 @@ if __name__ == '__main__':
     config_parser = ConfigParser()
     config_parser.read_file(args.config_file)
     
+    # TODO: Handle possible errorous scenarios
     if (config_parser.has_option('file', 'path') and 
         config_parser.get('file', 'path')):
         config = dict(config_parser['file'])
@@ -239,6 +253,9 @@ if __name__ == '__main__':
           config_parser.get('mqtt', 'port')):
         config = dict(config_parser['mqtt'])
         config['port'] = int(config['port'])
+    elif (config_parser.has_section('kafka') and 
+          config_parser.get('kafka', 'bootstrap.servers')):
+        config = dict(config_parser['kafka'])
     else:
         raise ValueError("Missing configuration.")
         
