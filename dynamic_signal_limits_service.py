@@ -126,12 +126,13 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
 def preprocess(
         x,
         col):
-    col = [col] if not isinstance(col, list) else col
-    if isinstance(x, (pd.Series)):    
+    if isinstance(x, pd.Series):
+        col = [col] if not isinstance(col, list) else col
         return {"time": x.name.tz_localize(None),
                 "data": x[col].to_dict()
         }
     elif isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
+        col = [col] if not isinstance(col, list) else col
         return {"time": x[0].tz_localize(None),
                 "data": x[1][col].to_dict()
         }
@@ -189,15 +190,16 @@ def signal_handler(sig, frame, detector, config):
             print_summary(d)
         else:
             print("No data retrieved")
-    if config.get("bootstrap.servers"):
-        detector.flush()
+    # TODO: Find out how to flush kafka            
+    #if config.get("bootstrap.servers"):
+    #    detector.flush()
     
     exit(0)
     
     
 def process_limits_streaming(
         config: dict,
-        topic: str | list):
+        topic: str):
     model = GaussianScorer()
     model_inv = GaussianScorer()
     
@@ -213,15 +215,17 @@ def process_limits_streaming(
         raise(RuntimeError("Wrong data format."))
     
     detector = source.map(preprocess, topic).map(fit_transform, model, model_inv)
-        
+
     with open("dynamic_limits.json", 'a') as f:
         if config.get("path"):
             detector.sink(dump_to_file, f)
         elif config.get("host"):
-            topic = f"{config['topic'].rsplit('/', 1)[0]}/dynamic_limits"
-            detector.map(lambda x: json.dumps(x)).to_mqtt(**config, publish_kwargs={"retain":True})
+            topic = f"{topic.rsplit('/', 1)[0]}/dynamic_limits"
+            detector.map(lambda x: json.dumps(x)).to_mqtt(**config, topic=topic, publish_kwargs={"retain":True})
         elif config.get("bootstrap.servers"):
-            detector = source.map(lambda x: (str(x), 'dynamic_limits')).to_kafka(topic, config)
+            topic = "dynamic_limits"
+            detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(topic, config)
+
         source.start()
         
         signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, detector, config))
@@ -232,25 +236,28 @@ def process_limits_streaming(
     
 if __name__ == '__main__':
     parser = ArgumentParser()
-    #parser.add_argument('config_file', type=FileType('r'))
+    parser.add_argument('config_file', type=FileType('r'))
     #"shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
     #"Average Cell Temperature"
     parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="signal")
     args = parser.parse_args()
     
     config_parser = ConfigParser()
-    config_parser.read_file(open('config.ini', 'r'))#args.config_file) #
+    config_parser.read_file(args.config_file)
     
     # TODO: Handle possible errorous scenarios
     if (config_parser.has_option('file', 'path') and 
         config_parser.get('file', 'path')):
         config = dict(config_parser['file'])
-    elif (config_parser.has_section('mqtt') and 
+    elif (config_parser.has_section('mqtt') and
+          config_parser.has_option('mqtt', 'host') and
+          config_parser.has_option('mqtt', 'port') and
           config_parser.get('mqtt', 'host') and 
           config_parser.get('mqtt', 'port')):
         config = dict(config_parser['mqtt'])
         config['port'] = int(config['port'])
-    elif (config_parser.has_section('kafka') and 
+    elif (config_parser.has_section('kafka') and
+          config_parser.has_option('kafka', 'bootstrap.servers') and
           config_parser.get('kafka', 'bootstrap.servers')):
         config = dict(config_parser['kafka'])
     else:
