@@ -177,9 +177,9 @@ def print_summary(df):
     print(text) 
 
 
-def signal_handler(sig, frame, source, config):
+def signal_handler(sig, frame, detector, config):
     os.write(sys.stdout.fileno(), b"\nSignal received to stop the app...\n")
-    source.stop()
+    detector.stop()
     
     time.sleep(1)
     # Print summary
@@ -190,7 +190,7 @@ def signal_handler(sig, frame, source, config):
         else:
             print("No data retrieved")
     if config.get("bootstrap.servers"):
-        source.flush()
+        detector.flush()
     
     exit(0)
     
@@ -206,10 +206,9 @@ def process_limits_streaming(
         data.index = pd.to_datetime(data.index)
         source = Stream.from_iterable(data.iterrows())
     elif config.get("host"):
-        source = Stream.from_mqtt(**config, topi=topic)
+        source = Stream.from_mqtt(**config, topic=topic)
     elif config.get("bootstrap.servers"):
-        config["group_id"] = "detection_service"
-        source = Stream.from_kafka(list(topic), config)
+        source = Stream.from_kafka([topic], {**config, 'group.id': 'detection_service'})
     else:
         raise(RuntimeError("Wrong data format."))
     
@@ -222,12 +221,10 @@ def process_limits_streaming(
             topic = f"{config['topic'].rsplit('/', 1)[0]}/dynamic_limits"
             detector.map(lambda x: json.dumps(x)).to_mqtt(**config, publish_kwargs={"retain":True})
         elif config.get("bootstrap.servers"):
-            config.pop("group_id")
-            detector = source.map(lambda x: (bytes(str(x), 'utf-8'), bytes(str(x), 'utf-8'))).to_kafka(topic, config)
-        
+            detector = source.map(lambda x: (str(x), 'dynamic_limits')).to_kafka(topic, config)
         source.start()
         
-        signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, source, config))
+        signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, detector, config))
                       
         while True:
             time.sleep(2)
@@ -235,14 +232,14 @@ def process_limits_streaming(
     
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('config_file', type=FileType('r'))
+    #parser.add_argument('config_file', type=FileType('r'))
     #"shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
     #"Average Cell Temperature"
-    parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="Average Cell Temperature")
+    parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="signal")
     args = parser.parse_args()
     
     config_parser = ConfigParser()
-    config_parser.read_file(args.config_file)
+    config_parser.read_file(open('config.ini', 'r'))#args.config_file) #
     
     # TODO: Handle possible errorous scenarios
     if (config_parser.has_option('file', 'path') and 
@@ -258,7 +255,5 @@ if __name__ == '__main__':
         config = dict(config_parser['kafka'])
     else:
         raise ValueError("Missing configuration.")
-        
-    config.update({'topic': args.topic})
-    
-    process_limits_streaming(config)
+
+    process_limits_streaming(config, args.topic)
