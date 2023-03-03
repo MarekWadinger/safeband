@@ -236,7 +236,7 @@ def process_limits_streaming(
     
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('config_file', type=FileType('r'))
+    parser.add_argument('-f', '--config_file', type=FileType('r'))
     #"shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
     #"Average Cell Temperature"
     parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="signal")

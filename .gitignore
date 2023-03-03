@@ -31,5 +31,6 @@ venv.bak/
 paho*
 
 # Plots
+plots/
 *.pdf
 *.html
