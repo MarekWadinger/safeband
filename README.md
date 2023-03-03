@@ -17,28 +17,42 @@ aging
 > ![Inverter_Temperature_168_hours_sliding_thresh](https://user-images.githubusercontent.com/50716630/220299639-b3f25288-dac6-428d-9270-6e8125915970.png)
 ## ⚡️ Quickstart
 
-Quick way to get your hand on the algorithm is to use this [notebook](https://github.com/MarekWadinger/online_outlier_detection/blob/main/online_outlier_detection.ipynb) to play around with example data.
+Get your hand on the algorithm using this [notebook](https://github.com/MarekWadinger/online_outlier_detection/blob/main/online_outlier_detection.ipynb) to play around with example data.
 
-As a quick example, we will run the online service in the terminal and use query the latest dynamic limits for our process
+As a quick example, we will run the online service in the terminal and use query the latest dynamic limits for our process.
+
 To start the service, run following line of code in your terminal:
+
 ```bash
-python3 dynamic_signal_limits_service.py
+python3 dynamic_signal_limits_service.py config.ini -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
 ```
-Note: You can modify the input data stream using attributes:
-* `[-f | --file]` with path to csv file.  This makes the service publish data to the JSON file dynamic_limits.json
-* `[-u | --url]` with MQTT host url. This makes the service publish data to the topics parent level + "/dynamic_limits"
+
+Note: You can modify the source data stream using attributes:
+
+* `[-f | --config_file]` with path to `config.ini`
 * `[-t | --topic]` to define topic to subscribe to or column in csv file
 
-If you want to stream example datasets use
+If you want to stream example dataset use
+
 ```bash
-python3 dynamic_signal_limits_service.py -f "average_temperature.csv" -t "Average Cell Temperature"
+python3 dynamic_signal_limits_service.py -f config.ini -t "Average Cell Temperature"
+```
+
+where your `config.ini` shall contain
+
+```ini
+[file]
+path=data/average_temperature.csv
 ```
 
 Now, let's query the latest limits from dynamic_limits.json
+
 ```bash
 python3 query_signal_limits.py
 ```
-The response is in the format
+
+The response is the latest date in `data.json`
+
 ```python
 {'time': datetime.datetime(1970, 1, 1, 14, 52, 42), 
  'anomaly': 0, 
@@ -46,18 +60,24 @@ The response is in the format
  'level_low': 1151.15}
 ```
 
+Note: You can modify the attributes to retrieve any date:
+
+* `[-d | --date]` date as 'Y-m-d H:M:S'
+
+
 ## 🛠 Installation
+
 ```bash
 python3 -m venv .env
 source .env/bin/activate
 pip install -r requirements.txt
 ```
 
- ## 👐 Contributing
+## 👐 Contributing
 
 Feel free to contribute in any way you like, we're always open to new ideas and approaches.
 
-- Feel welcome to [open an issue](https://github.com/MarekWadinger/online_outlier_detection/issues/new/choose) if you think you've spotted a bug or a performance issue.
+* Feel welcome to [open an issue](https://github.com/MarekWadinger/online_outlier_detection/issues/new/choose) if you think you've spotted a bug or a performance issue.
 
 <!-- 
 ## 🤝 Affiliations
