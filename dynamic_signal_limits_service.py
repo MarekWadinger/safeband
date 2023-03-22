@@ -19,6 +19,7 @@ from streamz import Stream, Sink
 THRESHOLD = 0.99735
 GRACE_PERIOD=60*24
 WINDOW = dt.timedelta(hours=24*7)
+VAR_SMOOTHING = 1e-9
 
 
 # DEFINITIONS
@@ -111,7 +112,8 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
                 
     def process_one(self, x, t=None):
         if self.gaussian.n_samples == 0:
-                self.gaussian._var.mean._mean = x
+                self.gaussian.obj = self.gaussian._from_state(0, x, 
+                                                              VAR_SMOOTHING, 1)
         
         is_anomaly = self.predict_one(x)
         
@@ -199,14 +201,18 @@ def signal_handler(sig, frame, detector, config):
     
 def process_limits_streaming(
         config: dict,
-        topic: str):
+        topic: str,
+        debug: bool = False):
     model = GaussianScorer()
     model_inv = GaussianScorer()
     
     if config.get("path"):
         data = pd.read_csv(config['path'], index_col=0)
-        data.index = pd.to_datetime(data.index)
-        source = Stream.from_iterable(data.iterrows())
+        data.index = pd.to_datetime(data.index, utc=True)
+        if debug:
+            source = Stream()
+        else:
+            source = Stream.from_iterable(data.iterrows())
     elif config.get("host"):
         source = Stream.from_mqtt(**config, topic=topic)
     elif config.get("bootstrap.servers"):
@@ -226,26 +232,21 @@ def process_limits_streaming(
             topic = "dynamic_limits"
             detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(topic, config)
 
-        source.start()
-        
-        signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, detector, config))
-                      
-        while True:
-            time.sleep(2)
+        if debug:
+            print("=== Debugging started... ===")
+            for row in data.iterrows():
+                source.emit(row)
+            print("=== Debugging finished with success... ===")
+        else:
+            source.start()
+            
+            signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, detector, config))
+                        
+            while True:
+                time.sleep(2)
 
     
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('-f', '--config_file', type=FileType('r'))
-    #"shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
-    #"Average Cell Temperature"
-    parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="signal")
-    args = parser.parse_args()
-    
-    config_parser = ConfigParser()
-    config_parser.read_file(args.config_file)
-    
-    # TODO: Handle possible errorous scenarios
+def get_config(config_parser):
     if (config_parser.has_option('file', 'path') and 
         config_parser.get('file', 'path')):
         config = dict(config_parser['file'])
@@ -262,5 +263,22 @@ if __name__ == '__main__':
         config = dict(config_parser['kafka'])
     else:
         raise ValueError("Missing configuration.")
+    return config
 
-    process_limits_streaming(config, args.topic)
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('-f', '--config_file', type=FileType('r'), default='config.ini')
+    #"shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
+    #"Average Cell Temperature"
+    parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="Average Cell Temperature")
+    parser.add_argument("-d", "--debug", help="Debug the file using loop as source", default=False, type=bool)
+    args = parser.parse_args()
+    
+    config_parser = ConfigParser()
+    config_parser.read_file(args.config_file)
+    
+    # TODO: Handle possible errorous scenarios
+    config = get_config(config_parser)
+
+    process_limits_streaming(config, args.topic, args.debug)
