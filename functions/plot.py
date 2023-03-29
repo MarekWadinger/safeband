@@ -76,7 +76,7 @@ def plot_limits(
     ))
 
     if save:
-        fig.write_image(f"{file_name}_signal.pdf")
+        fig.write_image(f"plot/{file_name}_signal.pdf")
     
     if kwargs.keys() == {"ser_mean", "ser_pos", "ser_neg"}:
         fig.add_trace(go.Scatter(
@@ -98,7 +98,7 @@ def plot_limits(
         ))
 
         if save:
-            fig.write_image(f"{file_name}_mean.pdf")
+            fig.write_image(f"plot/{file_name}_mean.pdf")
         for trace, visibility in zip([-1, -2],
                                     [False, False]):
             fig.data[trace].visible = visibility
@@ -108,7 +108,7 @@ def plot_limits(
                     opacity=0.25, layer="below")
         
     if save:
-        fig.write_image(f"{file_name}_anomalies.pdf")
+        fig.write_image(f"plot/{file_name}_anomalies.pdf")
 
     if (ser_high is not None) and (ser_low is not None):
         fig.add_trace(go.Scatter(
@@ -136,7 +136,7 @@ def plot_limits(
         ))
 
         if save:
-            fig.write_image(f"{file_name}_thresh.pdf")
+            fig.write_image(f"plot/{file_name}_thresh.pdf")
 
     if window:
         text = (f"Sliding window: {window}\n"
@@ -154,7 +154,7 @@ def plot_limits(
         width=120*10,
     )
     if save:
-        fig.write_html(f"{file_name}_all.html")
+        fig.write_html(f"plot/{file_name}_all.html")
 
     fig.show()
     
@@ -330,7 +330,7 @@ def plot_compare_anomalies(
         fig.update_yaxes(title_text=f"{ser.name}<br>{anomaly}", title_standoff=0, row=row, col=1)
     
     if save:
-        fig.write_image(f"{file_name}_compare_anomalies.pdf")
+        fig.write_image(f"plot/{file_name}_compare_anomalies.pdf")
         
     fig.update_layout(
         height=90*10,
@@ -338,7 +338,7 @@ def plot_compare_anomalies(
     )
     
     if save:
-        fig.write_html(f"{file_name}_compare_anomalies.html")
+        fig.write_html(f"plot/{file_name}_compare_anomalies.html")
     
     fig.show()
     
