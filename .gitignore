@@ -36,7 +36,7 @@ plots/
 *.html
 
 # Data
-data/
+data/*
 !data/input/
 
 # Misc
