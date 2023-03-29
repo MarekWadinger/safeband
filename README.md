@@ -43,7 +43,7 @@ where your `config.ini` shall contain
 
 ```ini
 [file]
-path=data/data/input/average_temperature.csv
+path=data/input/average_temperature.csv
 ```
 
 Now, let's query the latest limits from data/output/dynamic_limits.json
