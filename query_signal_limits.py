@@ -10,7 +10,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Load the JSON file as a list of dictionaries
-    with open("dynamic_limits.json", 'r') as f:
+    with open("data/output/dynamic_limits.json", 'r') as f:
         data = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects

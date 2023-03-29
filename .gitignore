@@ -34,3 +34,10 @@ paho*
 plots/
 *.pdf
 *.html
+
+# Data
+data/
+
+# Misc
+legacy/
+tests/

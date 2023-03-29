@@ -187,7 +187,7 @@ def signal_handler(sig, frame, detector, config):
     time.sleep(1)
     # Print summary
     if config.get("path"):
-        d = pd.read_json("dynamic_limits.json", lines=True)
+        d = pd.read_json("data/output/dynamic_limits.json", lines=True)
         if not d.empty:
             print_summary(d)
         else:
@@ -222,7 +222,7 @@ def process_limits_streaming(
     
     detector = source.map(preprocess, topic).map(fit_transform, model, model_inv)
 
-    with open("dynamic_limits.json", 'a') as f:
+    with open("data/output/dynamic_limits.json", 'a') as f:
         if config.get("path"):
             detector.sink(dump_to_file, f)
         elif config.get("host"):
