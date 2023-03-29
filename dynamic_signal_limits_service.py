@@ -7,6 +7,7 @@ import os
 import signal
 import sys
 import time
+import typing
 import warnings
 
 from paho.mqtt.client import MQTTMessage
@@ -15,11 +16,11 @@ from river import utils, proba, anomaly
 from scipy.stats import norm
 from streamz import Stream, Sink
 
+from functions.anomaly import GaussianScorer
+
 # CONSTANTS
-THRESHOLD = 0.99735
 GRACE_PERIOD=60*24
 WINDOW = dt.timedelta(hours=24*7)
-VAR_SMOOTHING = 1e-9
 
 
 # DEFINITIONS
@@ -65,65 +66,6 @@ class to_mqtt(Sink):
         super().destroy()
 
 
-class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
-    def __init__(self, 
-                 threshold=THRESHOLD, 
-                 window_size=None, 
-                 period=WINDOW, 
-                 grace_period=GRACE_PERIOD):
-        self.window_size = window_size
-        self.period = period
-        if window_size:
-            self.gaussian = utils.Rolling(proba.Gaussian(), 
-                                          window_size=self.window_size)
-        elif period:
-            self.gaussian = utils.TimeRolling(proba.Gaussian(), 
-                                          period=self.period)
-        else:
-            self.gaussian = proba.Gaussian()
-        self.grace_period = grace_period
-        self.threshold = threshold
-        
-    def learn_one(self, x, **kwargs):
-        self.gaussian.update(x, **kwargs)
-        return self
-    
-    def score_one(self, x, t=None):
-        if self.gaussian.n_samples < self.grace_period:
-            return 0
-        return 2 * abs(self.gaussian.cdf(x) - 0.5)
-    
-    def predict_one(self, x, t=None):
-        score = self.score_one(x)
-        if self.gaussian.obj.n_samples > self.grace_period:
-            return 1 if score > self.threshold else 0
-        else:
-            return 0
-        
-    def limit_one(self):
-        kwargs = {"loc": self.gaussian.mu, 
-                "scale": self.gaussian.sigma}
-        # TODO: consider strict process boundaries
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=RuntimeWarning)
-            real_thresh = norm.ppf((self.threshold/2 + 0.5), **kwargs)
-        return real_thresh
-
-                
-    def process_one(self, x, t=None):
-        if self.gaussian.n_samples == 0:
-                self.gaussian.obj = self.gaussian._from_state(0, x, 
-                                                              VAR_SMOOTHING, 1)
-        
-        is_anomaly = self.predict_one(x)
-        
-        real_thresh = self.limit_one()
-        
-        if not is_anomaly:
-            self = self.learn_one(x, **{"t": t})
-        
-        return is_anomaly, real_thresh
-
 # FUNCTIONS
 def preprocess(
         x,
@@ -152,8 +94,8 @@ def preprocess(
 
 def fit_transform(
         x, 
-        model, 
-        model_inv
+        model: GaussianScorer, 
+        model_inv: GaussianScorer
         ):
     # TODO: replace x_ for multidimensional implementation
     x_ = next(iter(x["data"].values()))
@@ -203,8 +145,12 @@ def process_limits_streaming(
         config: dict,
         topic: str,
         debug: bool = False):
-    model = GaussianScorer()
-    model_inv = GaussianScorer()
+    model = GaussianScorer(
+        utils.TimeRolling(proba.Gaussian(), period=WINDOW),
+        grace_period=GRACE_PERIOD)
+    model_inv = GaussianScorer(
+        utils.TimeRolling(proba.Gaussian(), period=WINDOW),
+        grace_period=GRACE_PERIOD)
     
     if config.get("path"):
         data = pd.read_csv(config['path'], index_col=0)
