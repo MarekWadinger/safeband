@@ -37,6 +37,7 @@ plots/
 
 # Data
 data/
+!data/input/
 
 # Misc
 legacy/
