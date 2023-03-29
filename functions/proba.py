@@ -23,7 +23,8 @@ class MultivariateGaussian(base.ContinuousDistribution):
     >>> import pandas as pd
 
     >>> np.random.seed(42)
-    >>> X = pd.DataFrame(np.random.random((8, 3)), columns=["red", "green", "blue"])
+    >>> X = pd.DataFrame(np.random.random((8, 3)),\
+                         columns=["red", "green", "blue"])
     >>> X
             red     green      blue
     0  0.374540  0.950714  0.731994
@@ -49,7 +50,7 @@ class MultivariateGaussian(base.ContinuousDistribution):
     σ^2=([0.076 0.020 -0.010]
      [0.020 0.113 -0.053]
      [-0.010 -0.053 0.079]))
-    
+
     >>> from river import utils
     >>> p = utils.Rolling(MultivariateGaussian(), window_size=5)
     >>> for x in X.to_dict(orient="records"):
@@ -59,7 +60,7 @@ class MultivariateGaussian(base.ContinuousDistribution):
      blue    0.087   -0.023    0.008  
     green   -0.023    0.014   -0.025  
       red    0.008   -0.025    0.095  
-    
+
     >>> from datetime import datetime as dt, timedelta as td
     >>> X.index = [dt(2023, 3, 28, 0, 0, 0) + td(seconds=x) for x in range(8)]
     >>> p = utils.TimeRolling(MultivariateGaussian(), period=td(seconds=5))
@@ -70,7 +71,7 @@ class MultivariateGaussian(base.ContinuousDistribution):
      blue    0.087   -0.023    0.008  
     green   -0.023    0.014   -0.025  
       red    0.008   -0.025    0.095  
-      
+
     >>> from river.proba import Gaussian
     >>> p = MultivariateGaussian()
     >>> p_ = Gaussian()
@@ -79,9 +80,9 @@ class MultivariateGaussian(base.ContinuousDistribution):
     ...     p_ = p_.update(x['blue'])
     >>> p.sigma[0][0] == p_.sigma
     True
-    
 
-    """
+    """  # noqa: W291
+
     def __init__(self, seed=None):
         super().__init__(seed)
         self._var = covariance.EmpiricalCovariance(ddof=1)
@@ -100,14 +101,14 @@ class MultivariateGaussian(base.ContinuousDistribution):
 
     @property
     def mu(self):
-        return list({key1: values.mean.get() 
-            for (key1, key2), values in self._var.matrix.items()
-            if key1 == key2}.values())
+        return list({key1: values.mean.get()
+                     for (key1, key2), values in self._var.matrix.items()
+                     if key1 == key2}.values())
 
     @property
     def var(self):
-        variables = sorted(list({var 
-                                for cov in self._var.matrix.keys() 
+        variables = sorted(list({var
+                                for cov in self._var.matrix.keys()
                                 for var in cov}))
         # Initialize the covariance matrix array
         cov_array = np.zeros((len(variables), len(variables)))
@@ -117,17 +118,16 @@ class MultivariateGaussian(base.ContinuousDistribution):
             for j in range(i, len(variables)):
                 if i == j:
                     # Fill in the diagonal with variances
-                    cov_array[i, j] = self._var[(variables[i], 
+                    cov_array[i, j] = self._var[(variables[i],
                                                  variables[j])].get()
                 else:
                     # Fill in the off-diagonal with covariances
-                    cov_array[i, j] = self._var[(variables[i], 
+                    cov_array[i, j] = self._var[(variables[i],
                                                  variables[j])].get()
-                    cov_array[j, i] = self._var[(variables[i], 
+                    cov_array[j, i] = self._var[(variables[i],
                                                  variables[j])].get()
         return cov_array
-        
-        
+
     @property
     def sigma(self):
         cov_array = self.var
@@ -135,7 +135,8 @@ class MultivariateGaussian(base.ContinuousDistribution):
 
     def __repr__(self):
         mu_str = ', '.join(f'{m:.3f}' for m in self.mu)
-        var_str = '\n '.join('[' + ' '.join(f'{s:.3f}' for s in row) + ']' for row in self.var)
+        var_str = '\n '.join('[' + ' '.join(f'{s:.3f}' for s in row) + ']'
+                             for row in self.var)
         return f"𝒩(μ=({mu_str}),\nσ^2=({var_str}))"
 
     def update(self, x, w=1.0):
@@ -151,7 +152,7 @@ class MultivariateGaussian(base.ContinuousDistribution):
         return self
 
     def __call__(self, x):
-        x = list(x.values()) 
+        x = list(x.values())
         var = self.var
         if var is not None:
             try:
