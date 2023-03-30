@@ -44,13 +44,15 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
 
     def score_one(self, x, t=None):
         if self.gaussian.n_samples < self.grace_period:
-            return 0
-        return 2 * abs(self.gaussian.cdf(x) - 0.5)
+            return 0.5
+        # return 2 * abs(self.gaussian.cdf(x) - 0.5)
+        return self.gaussian.cdf(x)
 
     def predict_one(self, x, t=None):
         score = self.score_one(x)
         if self.gaussian.obj.n_samples > self.grace_period:
-            return 1 if score > self.threshold else 0
+            return 1 if ((1-self.threshold > score) or
+                         (score > self.threshold)) else 0
         else:
             return 0
 
@@ -60,8 +62,11 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
         # TODO: consider strict process boundaries
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning)
-            real_thresh = norm.ppf((self.threshold/2 + 0.5), **kwargs)
-        return real_thresh
+            # real_thresh = norm.ppf((self.threshold/2 + 0.5), **kwargs)
+            # TODO: following code changes the limits given by former
+            thresh_high = norm.ppf(self.threshold, **kwargs)
+            thresh_low = norm.ppf(1-self.threshold, **kwargs)
+        return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
         if self.gaussian.n_samples == 0:
@@ -70,9 +75,9 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
 
         is_anomaly = self.predict_one(x)
 
-        real_thresh = self.limit_one()
+        thresh_high, thresh_low = self.limit_one()
 
         if not is_anomaly:
             self = self.learn_one(x, **{"t": t})
 
-        return is_anomaly, real_thresh
+        return is_anomaly, thresh_high, thresh_low
