@@ -1,7 +1,7 @@
 This section introduces the main concepts which are building pillars of the developed approach. Subsection \ref{AA:Welford} will discuss a one-pass algorithm that allows for online adaptation. The following Subsection \ref{AA:InvWelford} proposes the ability to invert the solution in a two-pass implementation. The mathematical background of distribution modeling in Subsection \ref{AA:Distribution} provides a basis for the Gaussian anomaly detection model conceptualized in the last Subsection \ref{AA:Anomaly} of Preliminaries.
 
 \subsection{Welford's Method}\label{AA:Welford}
-Streaming data analytics, restrict the unbounded buffer or storage of the data, i.e., limits the uncontrolled growth of memory usage with the increasing amount o input data. In such cases, it is desired to keep the data only for the period of time required to perform computations. For the given purpose serve one-pass algorithms. This category of methods allows processing on-the-fly without the need to store the entire data stream. 
+Streaming data analytics restricts the uncontrolled growth of memory usage by keeping only the data required for computations. One-pass algorithms allow processing on-the-fly without storing the entire data stream.
 \newtheorem{definition}{Definition}[section]
 \begin{definition}[One-pass algorithm]
 The algorithm with a single access to the data items in the order of their occurrence, i.e., \(x_1,x_2,x_3,...\) is called one-pass algorithm \cite{Schw09}
@@ -28,7 +28,7 @@ s^2_n = \frac{S_{n}}{n-1}\text{.}\label{eq:runvar}
 As we can see in \eqref{eq:upsumsquares}, we do access only current data sample \(x_n\) and previous value of \(\bar x_{n-1}\) which is updated in \eqref{eq:runmean} using the same data sample and the size of seen population \(n\).
 
 \subsection{Inverse Welford's Method}\label{AA:InvWelford}
-Let the incoming stream of data be subject to the concept drift. Such alternation in statistical properties has a negative influence on prediction accuracy. Therefore, an adaptation of any machine learning model is crucial for successful long-term operation. 
+Let the incoming stream of data be subject to the concept drift. Such alternation in statistical properties has a negative influence on prediction accuracy. An adaptation of any machine learning model is crucial for successful long-term operation. 
 
 \begin{definition}[Concept drift]
 Concept drift is a change in the statistical properties that occur in a sub-region of the feature space.
@@ -53,36 +53,26 @@ s^2_{n-1} = \frac{S_{n-1}}{n-2}\text{.}\label{eq:revvar}
 \end{equation}
 
 \subsection{Modeling Distribution}\label{AA:Distribution}
-Statistical distribution can be used to create a generalized model of a normal system behavior based on observed measurement. Specifically, in cases where a change point is not anticipated within a given subset of samples, we make the assumption that the data conforms to a Gaussian normal distribution. Parameters of the normal distribution are used to compute  standard score \eqref{eq:zscore} for each new observation. 
+Statistical distribution can be used to create a generalized model of a normal system behavior based on observed measurement. Specifically, in cases where a change point is not anticipated within a given subset of samples, we make the assumption that the data conforms to a Gaussian normal distribution. Parameters of the normal distribution are used to compute  standard score for each new observation. Standard score $z_i$ specifies the number of sample standard deviations \(s^2_n\) by which \(x_i\) deviates from mean \(\bar x_n\) of normal distribution
 
-\begin{definition}[Standard Score]
-Standard score or \(Z\)-score is a number that specifies the number of sample standard deviations \(s^2_n\) by which observation \(x_i\) deviates from the sample mean \(\bar x_n\) of normal distribution
 \begin{equation}
 z_i = \frac{x_i - \bar x_n}{s^2_n}\text{.}\label{eq:zscore}
 \end{equation}
-\end{definition}
 
-In order to define the general probability of \(z\)-score belonging to anomaly we use probability computed using Cumulative Distribution Function (CDF). However, the \(z\)-score must be bounded using an error function into the interval from 0 to 1.
 
-\begin{definition}[Approximate Error Function]
-The approximate error function represents the approximate probability that the observation \(x_i\) drawn from random variable \(X\) lies in the range of \([\,-z_i,z_i]\,\) denoted as
+To compute the general probability of $z_i$ belonging to anomaly using Cumulative Distribution Function (CDF), it is bounded using an error function into the interval from 0 to 1. The error function represents the approximate probability that the observation \(x_i\) drawn from random variable \(X\) lies in the range of \([\,-z_i,z_i]\,\) denoted as
 \begin{equation}
 E_A (z_i) = z_i\frac{e^{-z^2_i}}{\sqrt{\pi}}( \,2/1 + 4/3x^2_i + 8/15 x^4_i + ...) \,\text{.}\label{eq:erf}
 \end{equation}
-\end{definition}
 
-\begin{definition}[Cumulative Distribution Function (CDF)]
 CDF represents the probability that the random variable \(X\) takes a value less than or equal to \(x_i\). \(F_X\colon \mathbb{R} \to [0,1]\). For generic normal distribution with sample mean \(\bar x_n\) and sample deviation \(s_n\) the cumulative distribution function \(F_X(x)\) equals to
 \begin{equation}
 F_X(x_i)_n = \frac{1}{2}( \,1+E_A(\,\frac{z_i}{\sqrt{2}})\,) \text{.}\label{eq:cdf}
 \end{equation}
-\end{definition}
 
-Given the probability, we can also derive the value of \(x\) to which it belongs using a percent point function to compute inverse CDF (ICDF) denoted also as $F_X(x_i)^{-1}_n$.
+Given the probability, we can also derive the value of \(x\) to which it belongs using a percent point function (PPF) for numerical approximation of inverse CDF (ICDF) denoted also as $F_X(x_i)^{-1}_n$.
 
-\begin{definition}[Percent-Point Function (PPF)]
-PPF returns the threshold value for random variable \(X\) under which it takes a value less than or equal to the value, for which \(F_X(x)\) takes probability lower than selected quantile \(q\). \(Q_X\colon [0, 1] \to \mathbb{R}\). An algorithm that calculates the value of the PPF is reported below as Algorithm \ref{alg:ppf}.
-\end{definition}
+PPF returns the threshold value for random variable \(X\) under which it takes a value less than or equal to the value, for which \(F_X(x)\) takes probability lower than selected quantile \(q\). \(F_X^{-1}\colon [0, 1] \to \mathbb{R}\). An algorithm that calculates the value of the PPF is reported below as Algorithm \ref{alg:ppf}.
 
 \begin{algorithm}[H]
 \caption{{Percent-Point Function for Normal Distribution}} \label{alg:ppf}
@@ -142,10 +132,10 @@ y_i \in [P\{|x_i-\mu_n|<3\sigma_n\},1]\text{,}\label{eq:score_anomaly}
 \end{subequations}
  for anomalies.
 
-Using pure statistics to model normal behavior lets us ask the question about the threshold value \(x\) which corresponds to the area under the curve of CDF equal to the given probability. A such query can be answered using inversion of \eqref{eq:score}. However, inversion of \eqref{eq:score} would fail the horizontal line test. Therefore, we restrict the applicability of the inverse only to \(F_X(x)_i \in [0.5, 1]\)
+Using pure statistics to model normal behavior lets us ask the question about the threshold value \(x\) which corresponds to the area under the curve of CDF equal to the given probability. A such query can be answered using inversion of \eqref{eq:score}. However, inversion of \eqref{eq:score} would fail the horizontal line test. Therefore, we restrict the applicability of the inverse only to \(F_X(x)_i \in [0.5, 1]\) and define upper threshold as follows
 
 \begin{equation}
-x_i = F_X\left(\frac{y_i}{2}+\frac{1}{2}\right)^{-1}_n\label{realthresh}
+x_i = F_X\left(\frac{y_i}{2}+\frac{1}{2}\right)^{-1}_n\text{.}\label{realthresh}
 \end{equation}
 
 In order to derive a lower threshold, the Gaussian distribution is fitted to the negative value of the streamed data and evaluated accordingly using the previously defined equations.

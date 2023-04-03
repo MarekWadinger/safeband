@@ -5,35 +5,23 @@ The case studies were realized using Python 3.10.1 on a MAC with an M1 CPU and 8
 \subsection{Battery Energy Storage System (BESS)}\label{AA:Case1}
 First, we verify our proposed method on BESS. Tight control of the battery cell temperature is needed for the optimal performance and maximum lifespan of the battery. Identifying anomalous events and removal of corrupted data might yield significant improvement on the process control level. 
 
-The sampling rate of the signal measurement is 1 minute. However, network communication is prone to packet dropout, which results in non-uniform sampling. To protect the sensitive business value of the data, we normalize all signals to the range $[0, 1$]. The goal was to mark anomalous events in the data and provide adaptive process limits from the online self-learning model. 
+The sampling rate of the signal measurement is 1 minute. However, network communication is prone to packet dropout, which results in non-uniform sampling. To protect the sensitive business value of the data, we normalize all signals to the range $[0, 1$]. The goal is to mark anomalous events in the data and provide adaptive process limits from the self-learning model. 
+
+Fig. \ref{fig:threshold} renders measurement of average battery cell temperature from 21\textsuperscript{st} February until 26\textsuperscript{th} March. We can observe multiple anomalies of various sources given this span, for instance, packet dropout, suspicious events, intermittent sensor failure, and change point in data distribution. Dates of observation given the listed events will be provided later in the paper. 
 
 \begin{figure}[htbp]
-\centerline{\includegraphics{figures/Average_Cell_Temperature_168_hours_sliding_signal.pdf}}
-\caption{Time Series of Average Battery Cell Temperature measurement (green line). Non-uniform ticks on the x-axis mark days of interest (NOTE: some marks are hidden due to the readability). The y-axis renders the normalized temperature.}
-\label{fig:signal}
+    \centerline{\includegraphics{figures/Average_Cell_Temperature_168_hours_sliding_thresh.pdf}}
+    \caption{Time Series of Average Battery Cell Temperature measurement (green line) and predicted anomalous events (red vertical rectangles). The reddish fill bonded by the red line represents an area of anomalous behavior as given by the anomaly detector.}
+    \label{fig:threshold}
 \end{figure}
 
-Fig. \ref{fig:signal} renders measurement of average battery cell temperature from 21\textsuperscript{st} February until 26\textsuperscript{th} March. We can observe multiple anomalies of various sources given this span, for instance, packet dropout, suspicious events, intermittent sensor failure, and change point in data distribution. Dates of observation given the listed events will be provided later in the paper. 
+The user-defined parameters, were set to 7 days for the expiration period and 5 hours for the time constant. Anomalies found during the first day of the service are ignored due to the initialization of the detector. In this case study, the anomaly detection problem was approached by the online model fitting based on Subsection \ref{train}
 
-The initial conditions of the model states are set based on Subsection \ref{init}. The user-defined parameters, were set to 7 days for the expiration period and 5 hours for the time constant. Anomalies found during the first day of the service are ignored due to the initialization of the detector. In this case study, the anomaly detection problem was approached by the online model fitting based on Subsection \ref{train}
+Using the online prediction described in Subsection \ref{predict} we tag the sample as the anomaly or normal data point. Fig. \ref{fig:threshold} renders red vertical rectangles over the regions from the start until the end of the predicted anomalous event. 
 
-Using the online prediction described in Subsection \ref{predict} we tag the sample as the anomaly or normal data point. Fig. \ref{fig:anomalies} renders vertical rectangles over the regions from the start until the end of the predicted anomalous event. 
+The results on Average Cell Temperature in Fig. \ref{fig:threshold} show that the model could capture anomalous patterns of various sources. Despite self-learning without supervision, the model-classified anomalies were also confirmed by the data provider after inspection. For instance, a rare event of manipulation with BESS on 3\textsuperscript{rd}, followed by peak on 4\textsuperscript{th} March. BESS relocation on 7\textsuperscript{th}, led to a change point which was alerted and the system adapted completely over the course of 1 day. Calibration resulted in peak values through 10\textsuperscript{th} to 15\textsuperscript{th} March, and faulty measurements on the 12\textsuperscript{th} March followed by a packet loss on 21\textsuperscript{st} March were alerted too. The system tagged the next two tests of temperature control switch-offs. 
 
-The results on Average Cell Temperature in Fig. \ref{fig:anomalies} show that the model could capture anomalous patterns of various sources. Despite self-learning without supervision, the model-classified anomalies were also confirmed by the data provider after inspection. For instance, a rare event of manipulation with BESS on 3\textsuperscript{rd}, followed by peak on 4\textsuperscript{th} March. BESS relocation on 7\textsuperscript{th}, led to a change point which was alerted and the system adapted completely over the course of 1 day. Test events resulted in peak values through 10\textsuperscript{th} to 15\textsuperscript{th} March, and faulty measurements on the 12\textsuperscript{th} March followed by a packet loss on 21\textsuperscript{st} March were alerted too. The system tagged the next two tests of temperature control switch-offs. 
-
-\begin{figure}[htbp]
-\centerline{\includegraphics{figures/Average_Cell_Temperature_168_hours_sliding_anomalies.pdf}}
-\caption{Time Series of Average Battery Cell Temperature measurement (green line) and predicted anomalous events (red vertical rectangles).}
-\label{fig:anomalies}
-\end{figure}
-
-Findings that favor the model's ability to discriminate anomalous behavior are important for the meaningful realization of the dynamic process thresholding. The real-valued threshold mechanism, defined in Subsection \ref{constrait}, provided up-to-date upper and lower bounds for the signal. As for the validity of the dynamic process limits, each breakout of the signal value from within the range was also marked by the anomaly detection system. Fig. \ref{fig:threshold} points to the capability to adapt to change point on 7\textsuperscript{th} March and mitigate the influence of intermittent effects of anomalies on distribution. The speed of the change point adaptation as well as the mitigation of the effect of anomalies on the tightness of limits are governed by the user-defined expiration period and time constant of the system.
-
-\begin{figure}[htbp]
-\centerline{\includegraphics{figures/Average_Cell_Temperature_168_hours_sliding_thresh.pdf}}
-\caption{Time Series of Average Battery Cell Temperature measurement (green line) and predicted anomalous events (red vertical rectangles). The reddish fill bonded by the red line represents an area of anomalous behavior as given by the anomaly detector.}
-\label{fig:threshold}
-\end{figure}
+Findings that favor the model's ability to discriminate anomalous behavior are important for the meaningful realization of the dynamic process thresholding. The real-valued threshold mechanism, defined in Subsection \ref{constrait}, provided up-to-date upper and lower bounds for the signal. As for the validity of the dynamic process limits, each breakout of the signal value from within the range was also marked by the anomaly detection system. Fig. \ref{fig:threshold} points to the capability to adapt to change point on 7\textsuperscript{th} March and mitigate the influence of intermittent effects of anomalies on distribution. The speed of the change point adaptation as well as the mitigation of the effect of anomalies on the tightness of limits are governed by the user-defined parameters $t_e$ and $t_c$.
 
 \subsection{Power Inverter}\label{AA:Case2}
 A second case study demonstrates the  proposed method's applicability to the temperature of the power inverter. During high load periods, inverters can heat up swiftly. Technical documentation of every inverter provides details on continuous output rating as a function of temperature that implies static process limits. Normally, for high temperatures, the rating drops rapidly. Nevertheless, the impact of aging and ambient conditions may render conservative limits impractical. Thus the alerting mechanism for the detection of abnormal heating shall be developed. Providing a real-valued anomaly threshold tightens the theoretical operating conditions and gives the ability to track the performance and deviations. 
