@@ -1,11 +1,12 @@
 import typing
-import warnings
 
+import numpy as np
 from river import anomaly
 from scipy.stats import norm
 
 
 # CONSTANTS
+LOG_THRESHOLD = -25
 THRESHOLD = 0.99735
 VAR_SMOOTHING = 1e-9
 
@@ -30,13 +31,15 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
     def __init__(self,
                  obj: Distribution,
                  grace_period: int,
-                 threshold=THRESHOLD,
+                 threshold: float = THRESHOLD,
+                 log_threshold: float = LOG_THRESHOLD
                  ):
         if not isinstance(obj, Distribution):
             raise ValueError(f"{obj} does not satisfy the necessary protocol")
         self.gaussian = obj
         self.grace_period = grace_period
         self.threshold = threshold
+        self.log_threshold = log_threshold
 
     def learn_one(self, x, **kwargs):
         self.gaussian.update(x, **kwargs)
@@ -48,11 +51,25 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
         # return 2 * abs(self.gaussian.cdf(x) - 0.5)
         return self.gaussian.cdf(x)
 
+    def score_log_one(self, x, t=None):
+        if self.gaussian.n_samples < self.grace_period:
+            return 0.5
+        # return 2 * abs(self.gaussian.cdf(x) - 0.5)
+        cdf_ = self.gaussian.cdf(x)
+        return -np.inf if cdf_ <= 0 else np.log(cdf_)
+
     def predict_one(self, x, t=None):
         score = self.score_one(x)
-        if self.gaussian.obj.n_samples > self.grace_period:
+        if self.gaussian.n_samples > self.grace_period:
             return 1 if ((1-self.threshold > score) or
                          (score > self.threshold)) else 0
+        else:
+            return 0
+
+    def predict_log_one(self, x, t=None):
+        score = self.score_log_one(x)
+        if self.gaussian.n_samples > self.grace_period:
+            return 1 if score < self.log_threshold else 0
         else:
             return 0
 
@@ -60,12 +77,10 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
         kwargs = {"loc": self.gaussian.mu,
                   "scale": self.gaussian.sigma}
         # TODO: consider strict process boundaries
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=RuntimeWarning)
-            # real_thresh = norm.ppf((self.threshold/2 + 0.5), **kwargs)
-            # TODO: following code changes the limits given by former
-            thresh_high = norm.ppf(self.threshold, **kwargs)
-            thresh_low = norm.ppf(1-self.threshold, **kwargs)
+        # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
+        # TODO: following code changes the limits given by former
+        thresh_high = norm.ppf(self.threshold, **kwargs)
+        thresh_low = norm.ppf(1-self.threshold, **kwargs)
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
