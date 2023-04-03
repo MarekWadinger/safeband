@@ -131,7 +131,8 @@ class MultivariateGaussian(base.ContinuousDistribution):
     @property
     def sigma(self):
         cov_array = self.var
-        return [[x ** 0.5 for x in row] for row in cov_array]
+        return [[x ** 0.5 if x > 0 else float('nan') for x in row]
+                for row in cov_array]
 
     def __repr__(self):
         mu_str = ', '.join(f'{m:.3f}' for m in self.mu)
@@ -167,7 +168,8 @@ class MultivariateGaussian(base.ContinuousDistribution):
         x = list(x.values())
         var = self.var
         try:
-            return multivariate_normal(self.mu, var).cdf(x)
+            return multivariate_normal(self.mu, var,
+                                       allow_singular=True).cdf(x)
         except ZeroDivisionError:
             return 0.0
 
