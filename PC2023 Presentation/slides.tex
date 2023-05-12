@@ -1,0 +1,99 @@
+\documentclass{beamer}
+\usepackage{hyperref}
+% \usepackage[T1]{fontenc}
+% other packages
+% \usepackage{latexsym,xcolor,multicol,booktabs}
+% \usepackage{amssymb,amsfonts,amsmath,amsthm,mathptmx}
+\usepackage{listings}  % graphicx, pstricks
+\usefonttheme[onlymath]{serif}
+
+\renewcommand{\today}{\number\year -\number\month -\number\day}
+\renewcommand{\alert}[1]{\textbf{\color{stuba}#1}}
+
+% The text inside the square brackets [] in the commands specifies their respective short versions that will appear in the header or footer of each slide in a Beamer presentation.
+\author[M. Wadinger ]{Marek Wadinger\inst{1} }
+\title[Reliability Analysis in ESS]{Reliability Analysis in Energy Storage Systems}
+\subtitle{Thesis for dissertation examination}
+\institute[STU]
+{
+\inst{1} 
+Institute of Information Engineering, Automation, and Mathematics \\
+\textit{marek.wadinger@stuba.sk}
+}
+\date{\today}
+\usepackage{STU}
+
+
+% defs
+\def\cmd#1{\texttt{\color[RGB]{0, 0, 139}\footnotesize $\backslash$#1}}
+\def\env#1{\texttt{\color[RGB]{0, 0, 139}\footnotesize #1}}
+
+
+\lstset{
+    language=[LaTeX]TeX,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\bfseries\color[RGB]{0, 0, 139},
+    stringstyle=\color[RGB]{50, 50, 50},
+    numbers=left,
+    numberstyle=\small\color{gray},
+    rulesepcolor=\color{red!20!green!20!blue!20},
+    frame=shadowbox,
+}
+
+\begin{document}
+
+
+\begin{frame}
+    \titlepage
+    \begin{figure}[htpb]
+        \begin{center}
+            \raisebox{-0.5\height}{\includegraphics[width=0.1\linewidth]{figures/logos/logo_black_blue_transparent.pdf}}
+            \raisebox{-0.5\height}{\includegraphics[width=0.5\linewidth]{figures/logos/STU-anfh.pdf}}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \tableofcontents[sectionstyle=show,subsectionstyle=show/shaded/hide,subsubsectionstyle=show/shaded/hide]
+\end{frame}
+
+
+\section{Motivation}
+
+\begin{frame}{Common Ground}
+\end{frame}
+
+\begin{frame}{Coming Problem}
+\end{frame}
+
+\begin{frame}{Emotional Win}
+\end{frame}
+
+
+\section{Existing Solutions}
+
+\begin{frame}{False Hope}
+\end{frame}
+
+\begin{frame}{Audacious Reality}
+\end{frame}
+
+
+\section{Proposed Approach}
+
+\begin{frame}{We Can Do This}
+\end{frame}
+
+
+\section{Results}
+
+\begin{frame}{Call to Action}
+\end{frame}
+
+\begin{frame}{Early Benefits}
+\end{frame}
+
+\begin{frame}{The Long Win}
+\end{frame}
+
+\end{document}
