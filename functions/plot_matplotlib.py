@@ -67,9 +67,9 @@ def set_size(width=307.28987, fraction=1.4, subplots=(1, 1)):
     return (fig_width_in, fig_height_in)
 
 
-def set_axis_style(ax, ser, name):
-    ax.set_xlabel('Date')
-    ax.set_ylabel(f"{name}")
+def set_axis_style(ax, ser, xlabel='', ylabel=''):
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(f"{ylabel}")
     ax.set_xlim([ser.index.min(), ser.index.max()])
     ax.set_ylim(ser.min(), ser.max())
     ax.xaxis.set_major_locator(locator)
@@ -113,7 +113,7 @@ def plot_limits_(
     fig, ax = plt.subplots(figsize=set_size())
 
     ax.plot(ser.index, ser, linewidth=0.7)
-    set_axis_style(ax, ser, f"{ser.name} [-]")
+    set_axis_style(ax, ser, "Date", f"{ser.name} [-]")
     ax.set_xticks(b[b > 0].index.map(str))
 
     plot_anomalies(ax, a)
@@ -158,7 +158,7 @@ def plot_compare_anomalies_(
         b = a[a == 1].resample('1d').sum()
 
         axs[row].plot(ser.index, ser, linewidth=0.7)
-        set_axis_style(axs[row], ser, f'{chr(97+row)}) {anomaly}')
+        set_axis_style(axs[row], ser, "Date", f'{chr(97+row)}) {anomaly}')
         axs[row].set_xticks(b[b > 0].index.map(str))
 
         plot_anomalies(axs[row], a)
@@ -170,5 +170,82 @@ def plot_compare_anomalies_(
 
     if save:
         plt.savefig(f"{file_name}_compare_anomalies.pdf")
+
+    plt.show()
+
+
+def plot_limits_grid_(
+        df: pd.DataFrame,
+        anomalies: pd.Series,
+        ser_high: pd.Series | None = None,
+        ser_low: pd.Series | None = None,
+        file_name: str | None = None,
+        save: bool = True,
+        changepoints: pd.Series | None = None,
+        samplings: pd.Series | None = None,
+        **kwargs):
+
+    # file_name = make_name(ser.name, window, file_name)
+
+    a = anomalies.astype(int).diff()
+    b = a[a == 1].resample('1d').sum()
+
+    n_rows = len(df.columns)
+    fig, axs = plt.subplots(nrows=n_rows, ncols=1,
+                            figsize=set_size(subplots=(1, 1)),
+                            sharex=True)
+    fig.subplots_adjust(hspace=0.05)
+    # y_labels = [r"$T_{\downarrow}$", r"$T_{-}$", r"$T_{\uparrow}$",
+    #  r"$e_P$"]
+    for i, col_name in enumerate(df.columns):
+        ser = df[col_name]
+        ser_high_ = ser_high.apply(
+            lambda x: x[i][i]) if ser_high is not None else None
+        ser_low_ = ser_low.apply(
+            lambda x: x[i][i]) if ser_low is not None else None
+
+        ax = axs[i]
+        ax.plot(ser.index, ser, color=(0, 0.5, 0.5),
+                linewidth=0.7, label='Signal')
+        set_axis_style(ax, ser, ylabel=f"{ser.name} [-]")
+        ax.scatter(ser[anomalies == 1].index, ser[anomalies == 1],
+                   color=(0.5, 0, 0), s=3, label='System Anomalies')
+
+        if changepoints is not None:
+            ax.scatter(ser[samplings == 1].index, ser[samplings == 1],
+                       color=(0, 0, 0.5), s=2, label='Sampling Anomalies')
+
+            a = samplings.astype(int).diff()
+            for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
+                ax.axvspan(x0, x1, color='blue', alpha=1)
+
+        if changepoints is not None:
+            c = changepoints.astype(int).diff()
+            ax.scatter(ser[c == 1].index, ser[c == 1],
+                       color=(1, 1, 0), s=2, label='Changepoint')
+
+            for x0 in c[c == 1].index:
+                x1 = c.index[c.index.get_loc(x0) + 1]
+                ax.axvspan(x0, x1, color='yellow', alpha=1)
+
+        if ser_high_ is not None and ser_low_ is not None:
+            ax.plot(ser_high_.index, ser_high_, color=(
+                1, 0, 0, 0.25), linewidth=0.7, label=r'Threshold')
+            ax.plot(ser_low_.index, ser_low_, color=(1, 0, 0, 0.25),
+                    linewidth=0.7, label=r'Threshold')
+
+            ax.fill_between(ser_high_.index, ser_high_, ser.max(),
+                            color=(1, 0, 0, 0.1), alpha=0.1)
+            ax.fill_between(ser_low_.index, ser_low_, ser.min(),
+                            color=(1, 0, 0, 0.1), alpha=0.1)
+
+        ax.tick_params(axis='both', which='major', labelsize=9)
+
+    ax.set_xticks(b[b > 0].index.map(str))
+
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
+
+    if save:
+        plt.savefig(f"plots/{file_name}_thresh.pdf")
 
     plt.show()
