@@ -1,19 +1,30 @@
 \documentclass{beamer}
 \usepackage{hyperref}
 % \usepackage[T1]{fontenc}
+
 % other packages
 % \usepackage{latexsym,xcolor,multicol,booktabs}
 % \usepackage{amssymb,amsfonts,amsmath,amsthm,mathptmx}
 \usepackage{listings}  % graphicx, pstricks
 \usefonttheme[onlymath]{serif}
+% algorithms
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{amsmath}
+% draw
+\usepackage{tikz}
+\usepackage{cases}
 
 \renewcommand{\today}{\number\year -\number\month -\number\day}
 \renewcommand{\alert}[1]{\textbf{\color{stuba}#1}}
+\newcommand{\ui}[2]{#1 _{\mathrm{#2}}}
+% upright sub-index with variable
+\newcommand{\uis}[3]{#1 _{\mathrm{#2}, #3}}
 
 % The text inside the square brackets [] in the commands specifies their respective short versions that will appear in the header or footer of each slide in a Beamer presentation.
-\author[M. Wadinger ]{Marek Wadinger\inst{1} }
-\title[Reliability Analysis in ESS]{Reliability Analysis in Energy Storage Systems}
-\subtitle{Thesis for dissertation examination}
+\author[M. Wadinger]{Marek Wadinger\inst{1}, Michal Kvasnica\inst{1} }
+\title[Dynamic ICDF-based Outlier Detection]{Real-Time Outlier Detection with Dynamic Process Limits}
+\subtitle{PC 2023}
 \institute[STU]
 {
 \inst{1} 
@@ -48,7 +59,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \begin{figure}[htpb]
         \begin{center}
             \raisebox{-0.5\height}{\includegraphics[width=0.1\linewidth]{figures/logos/logo_black_blue_transparent.pdf}}
-            \raisebox{-0.5\height}{\includegraphics[width=0.5\linewidth]{figures/logos/STU-anfh.pdf}}
+            \raisebox{-0.5\height}{\includegraphics[width=0.5\linewidth]{figures/logos/STU-FCHPT-anfh.pdf}}
         \end{center}
     \end{figure}
 \end{frame}
@@ -60,40 +71,291 @@ Institute of Information Engineering, Automation, and Mathematics \\
 
 \section{Motivation}
 
-\begin{frame}{Common Ground}
+\begin{frame}{Control Engineering meets Artificial Intelligence}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/simulation.pdf}
+        \end{center}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{Coming Problem}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/real.pdf}
+        \end{center}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{Emotional Win}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/imagined.pdf}
+        \end{center}
+    \end{figure}
 \end{frame}
 
 
 \section{Existing Solutions}
 
-\begin{frame}{False Hope}
+\begin{frame}{Drawbacks of Existing Solutions}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/un_supervised.pdf}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Drawbacks of Existing Solutions}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/online.pdf}
+        \end{center}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{Audacious Reality}
+    We need to make detector that:
+    \begin{itemize}
+        \item Does not require huge amount of data
+        \item Adapts to unseen operation
+        \item Offers credible interpretation
+        \item Does not alter operation of existing systems
+        \item Improves maintenance scheduling
+    \end{itemize}
 \end{frame}
 
 
 \section{Proposed Approach}
 
-\begin{frame}{We Can Do This}
+\subsection{Proposed Solution}
+
+\begin{frame}{Proposed Solution}
+    Combine:
+    \begin{itemize}
+        \item Incremental Learning
+        \item Anomaly Detection
+        \item Interpretable Probabilistic Model
+    \end{itemize}
 \end{frame}
 
+\subsection{Methodology}
+
+
+\begin{frame}{Welford Algorithm}
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford.pdf}
+        \end{center}
+    \end{figure}
+    \begin{table}
+        \centering
+        \begin{tabular}{c|c}
+            {\color{green}{$+$}} One-Pass Algorithm & {\color{red}{$-$}} Adaptation Slows Down \\
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+\begin{frame}{Inverse Welford Algorithm}
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_compare.pdf}
+        \end{center}
+    \end{figure}
+    \begin{table}
+        \centering
+        \begin{tabular}{c|c}
+            {\color{green}{$+$}} Constant Adaptation & {\color{red}{$-$}} Memorizes Data Window \\
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+\begin{frame}{Deviation-based Detection}
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/sigmas.pdf}
+        \end{center}
+    \end{figure}
+    \begin{subnumcases}{y_i =}
+        0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)\text{,}$ \label{case:normal}
+        \\
+        1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)\text{.}$ \label{case:anomaly}
+    \end{subnumcases}
+
+\end{frame}
+
+\begin{frame}{Inversion of CDF}
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/cdf_ppf.pdf}
+        \end{center}
+    \end{figure}
+    \begin{align*}
+        \ui{x}{l} & = F_{X}(1 - q; \bar x_n, s_n)^{-1}\text{,}\nonumber \\
+        \ui{x}{u} & = F_{X}(q; \bar x_n, s_n)^{-1}\text{.}\nonumber
+    \end{align*}
+\end{frame}
+
+\begin{frame}{Online Anomaly Detection Workflow}
+
+    \begin{algorithmic}[1]
+        \scriptsize
+        \algsetup{linenosize=\scriptsize}
+        \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+        \renewcommand{\algorithmicensure}{\textbf{Output:}}
+        \REQUIRE expiration period $\ui{t}{e}$, time constant $\ui{t}{c}$
+        % sample mean $\bar x_0$, sample variance $s^2_0$, 
+        \ENSURE  score $y_i$, threshold $\uis{x}{q}{i}$
+        \\ \textit{Initialisation} :
+        \STATE $i \leftarrow 1;~ n \leftarrow 1;~ q \leftarrow 0.9973;~ \bar x  \leftarrow x_0;~  s^2 \leftarrow 1$;
+        \STATE compute $F_X(x_0)$ ;
+        \\ \textit{LOOP Process}
+        \LOOP
+        \STATE {$x_i \leftarrow$ RECEIVE()};
+        \STATE $y_i \leftarrow$ PREDICT($x_i$) ;
+        \STATE $\uis{x}{q}{i} \leftarrow$ GET($q, \bar x, s^2$);
+        \IF {\eqref{case:normal} \OR ${\sum_{y\in Y}y}/{n(Y)} > q$}
+        \STATE {$\bar x$, $s^2 \leftarrow$ UPDATE($x_i, \bar x, s^2, n$)};
+        \STATE $n \leftarrow n + 1$;
+        \FOR {$x_{i-\ui{t}{e}}$}
+        \STATE {$\bar x$, $s^2 \leftarrow$ REVERT($x_{i-\ui{t}{e}}, \bar x, s^2, n$)};
+        \STATE $n \leftarrow n - 1$;
+        \ENDFOR
+        \ENDIF
+        \STATE $i \leftarrow i + 1$;
+        \ENDLOOP
+    \end{algorithmic}
+
+\end{frame}
 
 \section{Results}
 
-\begin{frame}{Call to Action}
+\begin{frame}{ICDF-based Outlier Detection - BESS}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{figures/Average_Cell_Temperature_sliding_compare_anomalies.pdf}
+        \end{center}
+    \end{figure}
 \end{frame}
 
-\begin{frame}{Early Benefits}
+\begin{frame}{ICDF-based Outlier Detection - Inverter}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{figures/Inverter_Temperature_sliding_compare_anomalies.pdf}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Dynamic Process Limits}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{figures/Average_Cell_Temperature_sliding_thresh_.pdf}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Dynamic Process Limits}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=\linewidth]{figures/Inverter_Temperature_sliding_thresh.pdf}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Utilize Existing Infrastructure}
+    \begin{figure}
+        \centering
+        \begin{tikzpicture}
+            % Draw big circle in the center
+            \node[circle,draw, minimum size=1.5cm] (MQTT) at  (3, -2) {MQTT};
+
+            % Draw small circles on the left
+            \def\labels{{"T", "SOC"}}
+            \xdefinecolor{subscribe}{RGB}{44, 160, 44}
+            \xdefinecolor{signal}{RGB}{31, 119, 180}
+            % Draw small circles on the left and add labels
+            \foreach \y [count=\i] in {0, -2} {
+                    \def\label{\pgfmathparse{\labels[\i-1]}\pgfmathresult}
+                    %\draw (0, \y) circle [radius=0.5cm] node {\label};
+                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {$\label$};
+                    \draw[-latex, signal] (\labels[\i-1]) -- (MQTT);
+                }
+
+            \node[circle,draw, minimum size=1.5cm] (V) at (0, -4) {$V$};
+            % Connect middle circle to the circle on the right
+            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, -2) {$G_C$};
+            \draw[-latex, signal] (MQTT) -- (G_C);
+
+
+            % Add subscribe lines
+            \draw[-latex, subscribe] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](G_C-b) (G_C)
+            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](G_C-t) (G_C)
+            (MQTT-t) -- (G_C-t) node [pos=0.5,above=0.2cm] {S: {\color{black}{$T, SOC, V$}}};
+            \draw[-latex] (G_C-b) -- (MQTT-b) node [pos=0.5,below=0.2cm] {$u$};
+
+            \draw[latex-, signal] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](V-b) (V)
+            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](V-t) (V)
+            (MQTT-t) -- (V-t);
+            \draw[latex-, subscribe] (V-b) -- (MQTT-b) node [pos=0.4,above=0.2cm] {S: {\color{black}{$u$}}};
+
+        \end{tikzpicture}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Utilize Existing Infrastructure}
+    \begin{figure}
+        \centering
+        \begin{tikzpicture}
+            % Draw big circle in the center
+            \node[circle,draw, minimum size=1.5cm] (MQTT) at  (3, -2) {MQTT};
+
+            % Draw small circles on the left
+            \def\labels{{"T", "SOC"}}
+            \xdefinecolor{subscribe}{RGB}{44, 160, 44}
+            \xdefinecolor{signal}{RGB}{31, 119, 180}
+
+            % Draw small circles on the left and add labels
+            \foreach \y [count=\i] in {0, -2} {
+                    \def\label{\pgfmathparse{\labels[\i-1]}\pgfmathresult}
+                    %\draw (0, \y) circle [radius=0.5cm] node {\label};
+                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {$\label$};
+                    \draw[-latex, signal] (\labels[\i-1]) -- (MQTT);
+                }
+
+            \node[circle,draw, minimum size=1.5cm] (V) at (0, -4) {$V$};
+            % Connect middle circle to the circle on the right
+            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, 0) {$G_C$};
+            \draw[-latex, signal] (MQTT) -- (G_C);
+
+            % Add subscribe lines
+            \draw[-latex, subscribe] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](G_C-b) (G_C)
+            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](G_C-t) (G_C)
+            (MQTT-t) -- (G_C-t) node [pos=0.3,above=0.7cm] {S: {\color{black}{$T, SOC, V, \color{red}{A}$}}};
+            \draw[-latex] (G_C-b) -- (MQTT-b) node [pos=0.5,below=0.2cm] {$u^{\color{red}{*}}$};
+
+            \draw[latex-, signal] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](V-b) (V)
+            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](V-t) (V)
+            (MQTT-t) -- (V-t);
+            \draw[latex-, subscribe] (V-b) -- (MQTT-b) node [pos=0.4,above=0.1cm] {S: {\color{black}{$u^{\color{red}{*}}$}}};
+
+            % Connect middle circle to the circle on the right
+            \node[circle,draw, minimum size=1.5cm] (ICDF) at  (6, -4) {ICDF};
+            \draw[-latex, signal] (MQTT) -- (ICDF);
+
+            % Add subscribe lines
+            \draw[latex-, red] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](ICDF-b) (ICDF)
+            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](ICDF-t) (ICDF)
+            (MQTT-t) -- (ICDF-t) node [pos=0.5,above=0.2cm] {\color{red}{$A$}};
+            \draw[latex-, subscribe] (ICDF-b) -- (MQTT-b) node [pos=0.7,below=0.7cm] {S: {\color{black}{$T, SOC, V$}}};
+
+            % Add text 
+
+        \end{tikzpicture}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{The Long Win}
+    \footnote{CDC}
 \end{frame}
 
 \end{document}
