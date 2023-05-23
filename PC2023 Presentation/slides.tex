@@ -16,7 +16,7 @@
 \usepackage{tikz}
 \usepackage{cases}
 
-\renewcommand{\today}{\number\year -\number\month -\number\day}
+\renewcommand{\today}{\number\year -\ifnum\month<10 0\fi\number\month -\ifnum\day<10 0\fi\number\day}
 \renewcommand{\alert}[1]{\textbf{\color{stuba}#1}}
 \newcommand{\ui}[2]{#1 _{\mathrm{#2}}}
 % upright sub-index with variable
@@ -24,7 +24,7 @@
 
 % The text inside the square brackets [] in the commands specifies their respective short versions that will appear in the header or footer of each slide in a Beamer presentation.
 \author[M. Wadinger]{Marek Wadinger\inst{1}, Michal Kvasnica\inst{1} }
-\title[Dynamic ICDF-based Outlier Detection]{Real-Time Outlier Detection with Dynamic Process Limits}
+\title[Real-Time Outlier Detection]{Real-Time Outlier Detection with Dynamic Process Limits}
 \subtitle{PC 2023}
 \institute[STU]
 {
@@ -72,7 +72,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 
 \section{Motivation}
 
-\begin{frame}{Control Engineering meets Artificial Intelligence}
+\begin{frame}{Simulation Results}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/simulation.pdf}
@@ -80,7 +80,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
-\begin{frame}{Coming Problem}
+\begin{frame}{Practical Scenario}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/real.pdf}
@@ -88,7 +88,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
-\begin{frame}{Emotional Win}
+\begin{frame}{Control Engineering meets Artificial Intelligence}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/imagined.pdf}
@@ -97,9 +97,9 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \end{frame}
 
 
-\section{Existing Solutions}
+\section{Gaps in Existing Solutions}
 
-\begin{frame}{Drawbacks of Existing Solutions}
+\begin{frame}{Lack of Labels}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/un_supervised.pdf}
@@ -107,10 +107,10 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
-\begin{frame}{Drawbacks of Existing Solutions}
+\begin{frame}{Changes in Distribution}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/online.pdf}
+            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/online_freeze.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -120,7 +120,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \begin{itemize}
         \item Does not require huge amount of data
         \item Adapts to unseen operation
-        \item Offers credible interpretation
+        \item Offers less conservative limits
         \item Does not alter operation of existing systems
         \item Improves maintenance scheduling
     \end{itemize}
@@ -129,14 +129,14 @@ Institute of Information Engineering, Automation, and Mathematics \\
 
 \section{Proposed Approach}
 
-\subsection{Proposed Solution}
-
 \begin{frame}{Proposed Solution}
-    Combine:
+    Real-Time Outlier Detection with Dynamic Process Limits
+    combining:
     \begin{itemize}
-        \item Incremental Learning
-        \item Anomaly Detection
-        \item Interpretable Probabilistic Model
+        \item Online Learning
+        \item Outlier Detection
+        \item Self-supervised Learning
+        \item Invertible Probabilistic Model
     \end{itemize}
 \end{frame}
 
@@ -171,18 +171,28 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{table}
 \end{frame}
 
-\begin{frame}{Deviation-based Detection}
+\begin{frame}{Distance-based Outlier Detection}
     \begin{figure}
         \begin{center}
             \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/sigmas.pdf}
         \end{center}
     \end{figure}
     \begin{subnumcases}{y_i =}
-        0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)\text{,}$ \label{case:normal}
+        0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)$ \label{case:normal}
         \\
-        1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)\text{.}$ \label{case:anomaly}
+        1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)$ \label{case:anomaly}
     \end{subnumcases}
+\end{frame}
 
+\begin{frame}{Self-Supervised Learning}
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_compare_prot.pdf}
+        \end{center}
+    \end{figure}
+    \begin{equation}
+        {\frac{\sum_{y\in Y}y}{n(Y)}} > q\text{} \label{eq:update}
+    \end{equation}
 \end{frame}
 
 \begin{frame}{Inversion of CDF}
@@ -192,41 +202,9 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \end{center}
     \end{figure}
     \begin{align*}
-        \ui{x}{l} & = F_{X}(1 - q; \bar x_n, s_n)^{-1}\text{,}\nonumber \\
-        \ui{x}{u} & = F_{X}(q; \bar x_n, s_n)^{-1}\text{.}\nonumber
+        \ui{x}{l} & = F_{X}(1 - q; \bar x_n, s_n)^{-1} \\
+        \ui{x}{u} & = F_{X}(q; \bar x_n, s_n)^{-1}
     \end{align*}
-\end{frame}
-
-\begin{frame}{Online Anomaly Detection Workflow}
-
-    \begin{algorithmic}[1]
-        \scriptsize
-        \algsetup{linenosize=\scriptsize}
-        \renewcommand{\algorithmicrequire}{\textbf{Input:}}
-        \renewcommand{\algorithmicensure}{\textbf{Output:}}
-        \REQUIRE expiration period $\ui{t}{e}$, time constant $\ui{t}{c}$
-        % sample mean $\bar x_0$, sample variance $s^2_0$, 
-        \ENSURE  score $y_i$, threshold $\uis{x}{q}{i}$
-        \\ \textit{Initialisation} :
-        \STATE $i \leftarrow 1;~ n \leftarrow 1;~ q \leftarrow 0.9973;~ \bar x  \leftarrow x_0;~  s^2 \leftarrow 1$;
-        \STATE compute $F_X(x_0)$ ;
-        \\ \textit{LOOP Process}
-        \LOOP
-        \STATE {$x_i \leftarrow$ RECEIVE()};
-        \STATE $y_i \leftarrow$ PREDICT($x_i$) ;
-        \STATE $\uis{x}{q}{i} \leftarrow$ GET($q, \bar x, s^2$);
-        \IF {\eqref{case:normal} \OR ${\sum_{y\in Y}y}/{n(Y)} > q$}
-        \STATE {$\bar x$, $s^2 \leftarrow$ UPDATE($x_i, \bar x, s^2, n$)};
-        \STATE $n \leftarrow n + 1$;
-        \FOR {$x_{i-\ui{t}{e}}$}
-        \STATE {$\bar x$, $s^2 \leftarrow$ REVERT($x_{i-\ui{t}{e}}, \bar x, s^2, n$)};
-        \STATE $n \leftarrow n - 1$;
-        \ENDFOR
-        \ENDIF
-        \STATE $i \leftarrow i + 1$;
-        \ENDLOOP
-    \end{algorithmic}
-
 \end{frame}
 
 \section{Results}
@@ -271,27 +249,29 @@ Institute of Information Engineering, Automation, and Mathematics \\
             \node[circle,draw, minimum size=1.5cm] (MQTT) at  (3, -2) {MQTT};
 
             % Draw small circles on the left
-            \def\labels{{"T", "SOC"}}
+            \def\labels{{"T", "SoC", "V"}}
             \xdefinecolor{subscribe}{RGB}{44, 160, 44}
             \xdefinecolor{signal}{RGB}{31, 119, 180}
             % Draw small circles on the left and add labels
-            \foreach \y [count=\i] in {0, -2} {
+            \foreach \y [count=\i] in {0, -2, -4} {
                     \def\label{\pgfmathparse{\labels[\i-1]}\pgfmathresult}
                     %\draw (0, \y) circle [radius=0.5cm] node {\label};
-                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {$\label$};
-                    \draw[-latex, signal] (\labels[\i-1]) -- (MQTT);
+                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {\ifnumcomp{\i}{=}{2}{$\mathrm{\label}$}{$\label$}};
+                    \ifnumless{\i}{3}
+                    {\draw[-latex, signal] (\labels[\i-1]) -- (MQTT);}
+                    {}
                 }
 
             \node[circle,draw, minimum size=1.5cm] (V) at (0, -4) {$V$};
             % Connect middle circle to the circle on the right
-            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, -2) {$G_C$};
+            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, -2) {$\ui{G}{C}$};
             \draw[-latex, signal] (MQTT) -- (G_C);
 
 
             % Add subscribe lines
             \draw[-latex, subscribe] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](G_C-b) (G_C)
             edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](G_C-t) (G_C)
-            (MQTT-t) -- (G_C-t) node [pos=0.5,above=0.2cm] {S: {\color{black}{$T, SOC, V$}}};
+            (MQTT-t) -- (G_C-t) node [pos=0.5,above=0.2cm] {S: {\color{black}{$T, \mathrm{SoC}, V$}}};
             \draw[-latex] (G_C-b) -- (MQTT-b) node [pos=0.5,below=0.2cm] {$u$};
 
             \draw[latex-, signal] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](V-b) (V)
@@ -309,29 +289,28 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \begin{tikzpicture}
             % Draw big circle in the center
             \node[circle,draw, minimum size=1.5cm] (MQTT) at  (3, -2) {MQTT};
-
             % Draw small circles on the left
-            \def\labels{{"T", "SOC"}}
+            \def\labels{{"T", "SoC", "V"}}
             \xdefinecolor{subscribe}{RGB}{44, 160, 44}
             \xdefinecolor{signal}{RGB}{31, 119, 180}
 
             % Draw small circles on the left and add labels
-            \foreach \y [count=\i] in {0, -2} {
+            \foreach \y [count=\i] in {0, -2, -4} {
                     \def\label{\pgfmathparse{\labels[\i-1]}\pgfmathresult}
                     %\draw (0, \y) circle [radius=0.5cm] node {\label};
-                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {$\label$};
-                    \draw[-latex, signal] (\labels[\i-1]) -- (MQTT);
+                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {\ifnumcomp{\i}{=}{2}{$\mathrm{\label}$}{$\label$}};
+                    \ifnumless{\i}{3}
+                    {\draw[-latex, signal] (\labels[\i-1]) -- (MQTT);}
+                    {}
                 }
-
-            \node[circle,draw, minimum size=1.5cm] (V) at (0, -4) {$V$};
             % Connect middle circle to the circle on the right
-            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, 0) {$G_C$};
+            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, 0) {$\ui{G}{C}$};
             \draw[-latex, signal] (MQTT) -- (G_C);
 
             % Add subscribe lines
             \draw[-latex, subscribe] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](G_C-b) (G_C)
             edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](G_C-t) (G_C)
-            (MQTT-t) -- (G_C-t) node [pos=0.3,above=0.7cm] {S: {\color{black}{$T, SOC, V, \color{red}{A}$}}};
+            (MQTT-t) -- (G_C-t) node [pos=0.3,above=0.7cm] {S: {\color{black}{$T, \mathrm{SoC}, V, \color{red}{A}$}}};
             \draw[-latex] (G_C-b) -- (MQTT-b) node [pos=0.5,below=0.2cm] {$u^{\color{red}{*}}$};
 
             \draw[latex-, signal] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](V-b) (V)
@@ -347,30 +326,60 @@ Institute of Information Engineering, Automation, and Mathematics \\
             \draw[latex-, red] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](ICDF-b) (ICDF)
             edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](ICDF-t) (ICDF)
             (MQTT-t) -- (ICDF-t) node [pos=0.5,above=0.2cm] {\color{red}{$A$}};
-            \draw[latex-, subscribe] (ICDF-b) -- (MQTT-b) node [pos=0.7,below=0.7cm] {S: {\color{black}{$T, SOC, V$}}};
-
+            \draw[latex-, subscribe] (ICDF-b) -- (MQTT-b) node [pos=0.7,below=0.7cm] {S: {\color{black}{$T, \mathrm{SoC}, V$}}};
             % Add text 
 
         \end{tikzpicture}
     \end{figure}
 \end{frame}
 
-\begin{frame}{The Long Win}
+\begin{frame}{Follow-up research}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/PC2023 Presentation/figures/cdc.pdf}
             \footnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. In Proceedings of the 62nd IEEE CDC, Singapore, 2023. under review.}
         \end{center}
     \end{figure}
-    
 \end{frame}
 
-\begin{frame}{The Long Win}
-    \begin{center}
-        {\Huge Thank you for Your Attention!}
-    \end{center}
+\begin{frame}{Summary}
+    \begin{itemize}
+        \item Automates alerting for signals with no a priori knowledge of process limits
+        \item Assesses changing environmental conditions and device aging
+        \item Uses self-learning approach on streamed data
+        \item Automates alerting thresholds setup for a high number of signals
+        \item Keeps existing IT infrastructure, saving costs, and does not require operator retraining
+    \end{itemize}
 \end{frame}
 
+\begin{frame}{Online Anomaly Detection Workflow}
+    \begin{algorithmic}[1]
+        \scriptsize
+        \algsetup{linenosize=\scriptsize}
+        \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+        \renewcommand{\algorithmicensure}{\textbf{Output:}}
+        \REQUIRE expiration period $\ui{t}{e}$, time constant $\ui{t}{c}$
+        % sample mean $\bar x_0$, sample variance $s^2_0$, 
+        \ENSURE  score $y_i$, threshold $\uis{x}{q}{i}$
+        \\ \textit{Initialisation} :
+        \STATE $i \leftarrow 1;~ n \leftarrow 1;~ q \leftarrow 0.9973;~ \bar x  \leftarrow x_0;~  s^2 \leftarrow 1$;
+        \STATE compute $F_X(x_0)$ ;
+        \\ \textit{LOOP Process}
+        \LOOP
+        \STATE {$x_i \leftarrow$ RECEIVE()};
+        \STATE $y_i \leftarrow$ PREDICT($x_i$) ;
+        \STATE $\uis{x}{q}{i} \leftarrow$ GET($q, \bar x, s^2$);
+        \IF {\eqref{case:normal} \OR \eqref{eq:update}}
+        \STATE {$\bar x$, $s^2 \leftarrow$ UPDATE($x_i, \bar x, s^2, n$)};
+        \STATE $n \leftarrow n + 1$;
+        \FOR {$x_{i-\ui{t}{e}}$}
+        \STATE {$\bar x$, $s^2 \leftarrow$ REVERT($x_{i-\ui{t}{e}}, \bar x, s^2, n$)};
+        \STATE $n \leftarrow n - 1$;
+        \ENDFOR
+        \ENDIF
+        \STATE $i \leftarrow i + 1$;
+        \ENDLOOP
+    \end{algorithmic}
+\end{frame}
 
-    
 \end{document}
