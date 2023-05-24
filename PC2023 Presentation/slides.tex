@@ -54,6 +54,8 @@ Institute of Information Engineering, Automation, and Mathematics \\
 
 \begin{document}
 
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{}
 
 \begin{frame}
     \titlepage
@@ -64,6 +66,9 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \end{center}
     \end{figure}
 \end{frame}
+
+\setbeamertemplate{headline}[smoothbars theme]
+\setbeamertemplate{footline}[footline body]
 
 \begin{frame}
     \tableofcontents[sectionstyle=show,subsectionstyle=show/shaded/hide,subsubsectionstyle=show/shaded/hide]
@@ -115,14 +120,14 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
-\begin{frame}{Audacious Reality}
+\begin{frame}{Goals}
     We need to make detector that:
     \begin{itemize}
         \item Does not require huge amount of data
         \item Adapts to unseen operation
-        \item Offers less conservative limits
+        \item Offers credible decision boudary
         \item Does not alter operation of existing systems
-        \item Improves maintenance scheduling
+        % \item Improves maintenance scheduling
     \end{itemize}
 \end{frame}
 
@@ -136,6 +141,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \item Online Learning
         \item Outlier Detection
         \item Self-supervised Learning
+        \item Soft Real-Time System
         \item Invertible Probabilistic Model
     \end{itemize}
 \end{frame}
@@ -181,6 +187,19 @@ Institute of Information Engineering, Automation, and Mathematics \\
         0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)$ \label{case:normal}
         \\
         1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)$ \label{case:anomaly}
+    \end{subnumcases}
+\end{frame}
+
+\begin{frame}{Self-Supervised Learning}
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_unstable.pdf}
+        \end{center}
+    \end{figure}
+    \begin{subnumcases}{y_i =}
+        0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)$ \label{}\tag{\ref{case:normal}}
+        \\
+        1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)$ \label{}\tag{\ref{case:anomaly}}
     \end{subnumcases}
 \end{frame}
 
@@ -333,15 +352,6 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
-\begin{frame}{Follow-up research}
-    \begin{figure}[htpb]
-        \begin{center}
-            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/PC2023 Presentation/figures/cdc.pdf}
-            \footnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. In Proceedings of the 62nd IEEE CDC, Singapore, 2023. under review.}
-        \end{center}
-    \end{figure}
-\end{frame}
-
 \begin{frame}{Summary}
     \begin{itemize}
         \item Automated alerting without prior knowledge of process limits
@@ -350,6 +360,15 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \item Automated alerting threshold setup for multiple signals
         \item Seamless integration with existing IT infrastructure
     \end{itemize}
+\end{frame}
+
+\begin{frame}{Follow-up research}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/PC2023 Presentation/figures/cdc.pdf}
+            \footnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. In Proceedings of the 62nd IEEE CDC, Singapore, 2023. under review.}
+        \end{center}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{Online Anomaly Detection Workflow}

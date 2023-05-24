@@ -32,8 +32,9 @@
 %   }
 % \makeatother
 
-\setbeamertemplate{footline}{%
-  \leavevmode%
+
+\defbeamertemplate*{footline}{footline body}{%
+\leavevmode%
   \hbox{\begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.5ex,dp=1.125ex,center]{author in head/foot}%
     \usebeamerfont{author in head/foot}\insertshortauthor (\insertshortinstitute)
   \end{beamercolorbox}%
