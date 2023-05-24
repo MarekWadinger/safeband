@@ -1,4 +1,4 @@
-\documentclass{beamer}
+\documentclass[aspectratio=169]{beamer}
 \usepackage{hyperref}
 % \usepackage[T1]{fontenc}
 
@@ -25,7 +25,7 @@
 % The text inside the square brackets [] in the commands specifies their respective short versions that will appear in the header or footer of each slide in a Beamer presentation.
 \author[M. Wadinger]{Marek Wadinger\inst{1}, Michal Kvasnica\inst{1} }
 \title[Real-Time Outlier Detection]{Real-Time Outlier Detection with Dynamic Process Limits}
-\subtitle{PC 2023}
+\subtitle{Process Control 2023}
 \institute[STU]
 {
 \inst{1} 
@@ -80,7 +80,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Simulation Results}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/simulation.pdf}
+            \includegraphics[width=0.75\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/simulation.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -88,7 +88,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Practical Scenario}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/real.pdf}
+            \includegraphics[width=0.75\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/real.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -96,7 +96,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Control Engineering meets Artificial Intelligence}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/imagined.pdf}
+            \includegraphics[width=0.75\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/imagined.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -107,7 +107,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Lack of Labels}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/un_supervised.pdf}
+            \includegraphics[width=0.75\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/un_supervised.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -115,7 +115,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Changes in Distribution}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/online_freeze.pdf}
+            \includegraphics[width=0.75\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/online_freeze.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -152,7 +152,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Welford Algorithm}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford.pdf}
+            \includegraphics[width=0.62\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford.pdf}
         \end{center}
     \end{figure}
     \begin{table}
@@ -166,7 +166,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Inverse Welford Algorithm}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_compare.pdf}
+            \includegraphics[width=0.62\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_compare.pdf}
         \end{center}
     \end{figure}
     \begin{table}
@@ -180,7 +180,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Distance-based Outlier Detection}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/sigmas.pdf}
+            \includegraphics[width=0.62\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/sigmas.pdf}
         \end{center}
     \end{figure}
     \begin{subnumcases}{y_i =}
@@ -193,20 +193,20 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Self-Supervised Learning}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_unstable.pdf}
+            \includegraphics[width=0.62\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_unstable.pdf}
         \end{center}
     \end{figure}
     \begin{subnumcases}{y_i =}
-        0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)$ \label{}\tag{\ref{case:normal}}
+        0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)$ \nonumber\label{case:normal1}\tag{\ref{case:normal}}
         \\
-        1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)$ \label{}\tag{\ref{case:anomaly}}
+        1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)$ \nonumber\label{case:anomaly1}\tag{\ref{case:anomaly}}
     \end{subnumcases}
 \end{frame}
 
 \begin{frame}{Self-Supervised Learning}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_compare_prot.pdf}
+            \includegraphics[width=0.62\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/welford_compare_prot.pdf}
         \end{center}
     \end{figure}
     \begin{equation}
@@ -217,7 +217,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Inversion of CDF}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/cdf_ppf.pdf}
+            \includegraphics[width=0.62\linewidth]{/Users/marekwadinger/PyProjects/river/ilustrate/cdf_ppf.pdf}
         \end{center}
     \end{figure}
     \begin{align*}
@@ -231,7 +231,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{ICDF-based Outlier Detection - BESS}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{figures/Average_Cell_Temperature_sliding_compare_anomalies.pdf}
+            \includegraphics[width=0.78\linewidth]{figures/Average_Cell_Temperature_sliding_compare_anomalies.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -239,7 +239,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{ICDF-based Outlier Detection - Inverter}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{figures/Inverter_Temperature_sliding_compare_anomalies.pdf}
+            \includegraphics[width=0.78\linewidth]{figures/Inverter_Temperature_sliding_compare_anomalies.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -247,7 +247,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Dynamic Process Limits}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{figures/Average_Cell_Temperature_sliding_thresh_.pdf}
+            \includegraphics[width=0.78\linewidth]{figures/Average_Cell_Temperature_sliding_thresh_.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -255,7 +255,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Dynamic Process Limits}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=\linewidth]{figures/Inverter_Temperature_sliding_thresh.pdf}
+            \includegraphics[width=0.78\linewidth]{figures/Inverter_Temperature_sliding_thresh.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -360,12 +360,13 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \item Automated alerting threshold setup for multiple signals
         \item Seamless integration with existing IT infrastructure
     \end{itemize}
+    % \let\thefootnote\relax\footnote{\tiny some text}
 \end{frame}
 
 \begin{frame}{Follow-up research}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.87\linewidth]{/Users/marekwadinger/PyProjects/river/PC2023 Presentation/figures/cdc.pdf}
+            \includegraphics[width=0.65\linewidth]{/Users/marekwadinger/PyProjects/river/PC2023 Presentation/figures/cdc.pdf}
             \footnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. In Proceedings of the 62nd IEEE CDC, Singapore, 2023. under review.}
         \end{center}
     \end{figure}
