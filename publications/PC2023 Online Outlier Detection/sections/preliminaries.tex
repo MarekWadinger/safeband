@@ -1,0 +1,141 @@
+This section introduces the main concepts which are building pillars of the developed approach. Subsection \ref{AA:Welford} will discuss a one-pass algorithm that allows for online adaptation. The following Subsection \ref{AA:InvWelford} proposes the ability to invert the solution in a two-pass implementation. The mathematical background of distribution modeling in Subsection \ref{AA:Distribution} provides a basis for the Gaussian anomaly detection model conceptualized in the last Subsection \ref{AA:Anomaly} of Preliminaries.
+
+\subsection{Welford's Method}\label{AA:Welford}
+Streaming data analytics restricts the uncontrolled growth of memory usage by keeping only the data required for computations. One-pass algorithms allow processing on-the-fly without storing the entire data stream.
+\newtheorem{definition}{Definition}[section]
+\begin{definition}[One-pass algorithm]
+The algorithm with a single access to the data items in the order of their occurrence, i.e., \(x_1,x_2,x_3,...\) is called one-pass algorithm \cite{Schw09}
+\end{definition}
+
+Welford's method represents a numerically stable one-pass solution for the online computation of mean and variance \cite{Wel62}. 
+Given \(x_i\) where \(i=1,...,n\) is the sample index in given population  \(n\), the corrected sum of squares is defined as
+\begin{equation}
+S_n = \sum_{i=1}^n (x_i - \bar x_n)^2\text{,}\label{eq:sumsquares}
+\end{equation}
+where the running mean \(\bar x_n\) is
+\begin{equation}
+\bar x_n = \frac{n-1}{n} \bar x_{n-1} + \frac{1}{n}x_n = \bar x_{n-1} + \frac{x_n - \bar x_{n-1}}{n}\text{.}\label{eq:runmean}
+\end{equation}
+The following identities to update the corrected sum of squares hold true
+\begin{equation}
+S_n = S_{n-1} + (x_n - \bar x_{n-1})(x_n - \bar x_n)\text{,}\label{eq:upsumsquares}
+\end{equation}
+and the corresponding variance is
+\begin{equation}
+s^2_n = \frac{S_{n}}{n-1}\text{.}\label{eq:runvar}
+\end{equation}
+
+As we can see in \eqref{eq:upsumsquares}, we do access only current data sample \(x_n\) and previous value of \(\bar x_{n-1}\) which is updated in \eqref{eq:runmean} using the same data sample and the size of seen population \(n\).
+
+\subsection{Inverse Welford's Method}\label{AA:InvWelford}
+Let the incoming stream of data be subject to the concept drift. Such alternation in statistical properties has a negative influence on prediction accuracy. An adaptation of any machine learning model is crucial for successful long-term operation. 
+
+\begin{definition}[Concept drift]
+Concept drift is a change in the statistical properties that occur in a sub-region of the feature space.
+\end{definition}
+
+The previous Subsection \ref{AA:Welford} defined the main concept of online statistical computation that allows reacting to such changes. However, the further in time the shift occurs, the slower the adjustment of the running mean is, resulting from a negative relationship in \eqref{eq:runmean} between population size \(n\) and influence of the last sample in population \(x_n\) on the updated value of \(\bar x_{n}\). For this reason, we define the expiration period \(t_e\), over which the running statistics are computed. After the expiration period, the data items are forgotten. Such reversal results in a need to store all the data in the window in order to revert their effect. Given \(t_e=n-1\) we can revert the influence of the first data sample on the running mean as
+
+\begin{equation}
+\bar x_{n-1} = \frac{n}{n-1} \bar x_{n} - \frac{1}{n-1}x_{n-t_e} = \bar x_{n} - \frac{x_{n-t_e} - \bar x_{n}}{n-1}\text{,}\label{eq:revmean}
+\end{equation}
+
+then reverting the sum of squares follows as
+
+\begin{equation}
+S_{n-1} = S_n - (x_{n-t_e} - \bar x_{n-1})(x_{n-t_e} - \bar x_n)\text{,}\label{eq:revrunmean}
+\end{equation}
+
+which allows the computation of variance 
+
+\begin{equation}
+s^2_{n-1} = \frac{S_{n-1}}{n-2}\text{.}\label{eq:revvar}
+\end{equation}
+
+\subsection{Modeling Distribution}\label{AA:Distribution}
+Statistical distribution can be used to create a generalized model of a normal system behavior based on observed measurement. Specifically, in cases where a change point is not anticipated within a given subset of samples, we make the assumption that the data conforms to a Gaussian normal distribution. Parameters of the normal distribution are used to compute  standard score for each new observation. Standard score $z_i$ specifies the number of sample standard deviations \(s^2_n\) by which \(x_i\) deviates from mean \(\bar x_n\) of normal distribution
+
+\begin{equation}
+z_i = \frac{x_i - \bar x_n}{s^2_n}\text{.}\label{eq:zscore}
+\end{equation}
+
+
+To compute the general probability of $z_i$ belonging to anomaly using Cumulative Distribution Function (CDF), it is bounded using an error function into the interval from 0 to 1. The error function represents the approximate probability that the observation \(x_i\) drawn from random variable \(X\) lies in the range of \([\,-z_i,z_i]\,\) denoted as
+\begin{equation}
+E_A (z_i) = z_i\frac{e^{-z^2_i}}{\sqrt{\pi}}( \,2/1 + 4/3x^2_i + 8/15 x^4_i + ...) \,\text{.}\label{eq:erf}
+\end{equation}
+
+CDF represents the probability that the random variable \(X\) takes a value less than or equal to \(x_i\). \(F_X\colon \mathbb{R} \to [0,1]\). For generic normal distribution with sample mean \(\bar x_n\) and sample deviation \(s_n\) the cumulative distribution function \(F_X(x)\) equals to
+\begin{equation}
+F_X(x_i)_n = \frac{1}{2}( \,1+E_A(\,\frac{z_i}{\sqrt{2}})\,) \text{.}\label{eq:cdf}
+\end{equation}
+
+Given the probability, we can also derive the value of \(x\) to which it belongs using a percent point function (PPF) for numerical approximation of inverse CDF (ICDF) denoted also as $F_X(x_i)^{-1}_n$.
+
+PPF returns the threshold value for random variable \(X\) under which it takes a value less than or equal to the value, for which \(F_X(x)\) takes probability lower than selected quantile \(q\). \(F_X^{-1}\colon [0, 1] \to \mathbb{R}\). An algorithm that calculates the value of the PPF is reported below as Algorithm \ref{alg:ppf}.
+
+\begin{algorithm}[H]
+\caption{{Percent-Point Function for Normal Distribution}} \label{alg:ppf}
+ \begin{algorithmic}[1]
+ \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+ \renewcommand{\algorithmicensure}{\textbf{Output:}}
+ \REQUIRE quantile $q$, sample mean $\bar x_n$ \eqref{eq:runmean}, sample variance $s^2_n$ \eqref{eq:runvar}
+ \ENSURE  threshold value $x_{n,q}$
+ \\ \textit{Initialisation} : 
+  \STATE $f \leftarrow 10$; $l \leftarrow -f $; $r \leftarrow f;$
+ \\ \textit{LOOP Process}
+  \WHILE {$F_X(l)-q > 0$}
+  \STATE $r \leftarrow l $;
+  \STATE $l \leftarrow lf $;
+  \ENDWHILE
+  \WHILE {$F_X(r)-q < 0$}
+    \STATE $l \leftarrow r $;
+    \STATE $r \leftarrow rf $;
+  \ENDWHILE
+  \STATE {$\tilde{x}_{n,q} = \text{arg} \min_z \| F_X(z) - q \| ~ \text{s.t.} ~ l \le z \le r$}
+ \RETURN $\tilde{x}_{n,q}  \sqrt{s^2_n} + \bar x_n $
+ \end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Gaussian Anomaly Detection}\label{AA:Anomaly}
+Anomalies come in various kinds and flavors. Commonly denoted types are point (spatial), contextual, and collective (temporal) anomalies \cite{Chandola2009}.
+Spatial anomalies take on a value that particularly deviates from the sample mean \(\bar x_n\). From a statistical viewpoint, spatial anomalies can be considered values \(x\) that significantly differ from the data distribution. 
+
+In empirical fields, such as machine learning, the three-sigma rule defines a region of distribution where normal values are expected to occur with near certainty. This assumption makes approximately 0.27\% of values in the given distribution considered anomalous. 
+
+\begin{definition}[Three-Sigma Rule of Thumb (3\(\sigma\) rule)]
+3\(\sigma\) rule represents a probability, that any value \(x_i\) of random variable \(X\) will lie within a region of values of normal distribution at the distance from the sample mean \(\mu_n\) of at most 3 sample standard deviations \(\sigma_n\).
+\begin{equation}
+P\{|x_i-\mu_n|<3\sigma_n\}=0.99730
+\end{equation}
+\end{definition}
+
+Anomalous values occur on both tails of the distribution. In order to discriminate the anomalies using the three-sigma rule on both tails of the distribution, we define the anomaly score as follows
+
+\begin{equation}
+y_i = 2 \left|{F_X(x_i)_n - \frac{1}{2}}\right|\text{,}\label{eq:score}
+\end{equation}
+
+where 
+\begin{subequations}
+
+\begin{align}
+y_i \in [0,P\{|x_i-\mu_n|<3\sigma_n\})\text{,}\label{eq:score_norm}
+\end{align}
+
+applies for normal observations and 
+
+\begin{align}
+y_i \in [P\{|x_i-\mu_n|<3\sigma_n\},1]\text{,}\label{eq:score_anomaly}
+\end{align}
+\end{subequations}
+ for anomalies.
+
+Using pure statistics to model normal behavior lets us ask the question about the threshold value \(x\) which corresponds to the area under the curve of CDF equal to the given probability. A such query can be answered using inversion of \eqref{eq:score}. However, inversion of \eqref{eq:score} would fail the horizontal line test. Therefore, we restrict the applicability of the inverse only to \(F_X(x)_i \in [0.5, 1]\) and define upper threshold as follows
+
+\begin{equation}
+x_i = F_X\left(\frac{y_i}{2}+\frac{1}{2}\right)^{-1}_n\text{.}\label{realthresh}
+\end{equation}
+
+In order to derive a lower threshold, the Gaussian distribution is fitted to the negative value of the streamed data and evaluated accordingly using the previously defined equations.
