@@ -45,3 +45,4 @@ tests/
 
 # Allow gitignore
 !*.gitignore
+!*.github
