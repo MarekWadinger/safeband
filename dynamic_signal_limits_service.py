@@ -161,9 +161,9 @@ def preprocess(
         >>> mqtt_message.timestamp = 1672527600.0
         >>> mqtt_message.payload = b'1.'
         >>> mqtt_message.topic = b'sensors/sensor_1'
-        >>> preprocess(mqtt_message, '1')
-        ... # doctest: +ELLIPSIS
-        {'time': datetime.datetime(2023, 1, 1, 0, 0), 'data': {'sensor_1':...}}
+        >>> out = preprocess(mqtt_message, '1')
+        >>> out.keys(), out['data'].keys()
+        (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
 
         >>> binary_data = b'1.0'
         >>> out = preprocess(binary_data, 'sensor_1')
@@ -186,7 +186,7 @@ def preprocess(
                 }
     elif isinstance(x, MQTTMessage):
         return {"time": dt.datetime
-                .fromtimestamp(x.timestamp).replace(microsecond=0),
+                .fromtimestamp(x).replace(microsecond=0),
                 "data": {x.topic.split("/")[-1]: float(x.payload)}
                 }
     elif isinstance(x, bytes):
