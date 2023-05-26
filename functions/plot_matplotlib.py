@@ -3,8 +3,8 @@ from datetime import timedelta
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import matplotlib as mpl
-mpl.use('macOsX')
+# import matplotlib as mpl
+# mpl.use('macOsX')
 
 plt.rcParams.update({
     "text.usetex": True,
@@ -17,7 +17,7 @@ plt.rcParams.update({
     "ytick.labelsize": 8,
 })
 plt.rcParams["figure.figsize"] = plt.rcParamsDefault["figure.figsize"]
-plt.rcParams["backend"] = "macOsX"
+# plt.rcParams["backend"] = "macOsX"
 
 
 locator = mdates.AutoDateLocator()
