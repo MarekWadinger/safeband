@@ -5,3 +5,5 @@ river==0.12.0
 scipy==1.10.0
 streamz==0.6.4
 confluent-kafka==2.0.2
+matplotlib==3.7.0
+plotly==5.13.0
