@@ -186,7 +186,7 @@ def preprocess(
                 }
     elif isinstance(x, MQTTMessage):
         return {"time": dt.datetime
-                .fromtimestamp(x).replace(microsecond=0),
+                .fromtimestamp(x.timestamp).replace(microsecond=0),
                 "data": {x.topic.split("/")[-1]: float(x.payload)}
                 }
     elif isinstance(x, bytes):
