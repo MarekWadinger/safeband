@@ -6,7 +6,8 @@ from datetime import datetime
 if __name__ == '__main__':
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--date", help="date as 'Y-m-d H:M:S'", default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    parser.add_argument("-d", "--date", help="date as 'Y-m-d H:M:S'",
+                        default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     args = parser.parse_args()
 
     # Load the JSON file as a list of dictionaries

@@ -17,7 +17,7 @@ from streamz import Stream, Sink
 
 # CONSTANTS
 THRESHOLD = 0.99735
-GRACE_PERIOD=60*24
+GRACE_PERIOD = 60*24
 WINDOW = dt.timedelta(hours=24*7)
 VAR_SMOOTHING = 1e-9
 
@@ -40,7 +40,9 @@ class to_mqtt(Sink):
     :param client_kwargs:
         Passed to the client's ``connect()`` method
     """
-    def __init__(self, upstream, host, port, topic, keepalive=60, client_kwargs=None, publish_kwargs=None,
+
+    def __init__(self, upstream, host, port, topic, keepalive=60,
+                 client_kwargs=None, publish_kwargs=None,
                  **kwargs):
         self.host = host
         self.port = port
@@ -55,7 +57,8 @@ class to_mqtt(Sink):
         import paho.mqtt.client as mqtt
         if self.client is None:
             self.client = mqtt.Client(clean_session=True)
-            self.client.connect(self.host, self.port, self.keepalive, **self.c_kw)
+            self.client.connect(self.host, self.port, self.keepalive,
+                                **self.c_kw)
         # TODO: wait on successful delivery
         self.client.publish(self.topic, x, **self.p_kw)
 
@@ -66,65 +69,66 @@ class to_mqtt(Sink):
 
 
 class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
-    def __init__(self, 
-                 threshold=THRESHOLD, 
-                 window_size=None, 
-                 period=WINDOW, 
+    def __init__(self,
+                 threshold=THRESHOLD,
+                 window_size=None,
+                 period=WINDOW,
                  grace_period=GRACE_PERIOD):
         self.window_size = window_size
         self.period = period
         if window_size:
-            self.gaussian = utils.Rolling(proba.Gaussian(), 
+            self.gaussian = utils.Rolling(proba.Gaussian(),
                                           window_size=self.window_size)
         elif period:
-            self.gaussian = utils.TimeRolling(proba.Gaussian(), 
-                                          period=self.period)
+            self.gaussian = utils.TimeRolling(proba.Gaussian(),
+                                              period=self.period)
         else:
             self.gaussian = proba.Gaussian()
         self.grace_period = grace_period
         self.threshold = threshold
-        
+
     def learn_one(self, x, **kwargs):
         self.gaussian.update(x, **kwargs)
         return self
-    
+
     def score_one(self, x, t=None):
         if self.gaussian.n_samples < self.grace_period:
             return 0
         return 2 * abs(self.gaussian.cdf(x) - 0.5)
-    
+
     def predict_one(self, x, t=None):
         score = self.score_one(x)
         if self.gaussian.obj.n_samples > self.grace_period:
             return 1 if score > self.threshold else 0
         else:
             return 0
-        
+
     def limit_one(self):
-        kwargs = {"loc": self.gaussian.mu, 
-                "scale": self.gaussian.sigma}
+        kwargs = {"loc": self.gaussian.mu,
+                  "scale": self.gaussian.sigma}
         # TODO: consider strict process boundaries
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning)
             real_thresh = norm.ppf((self.threshold/2 + 0.5), **kwargs)
         return real_thresh
 
-                
     def process_one(self, x, t=None):
         if self.gaussian.n_samples == 0:
-                self.gaussian.obj = self.gaussian._from_state(0, x, 
-                                                              VAR_SMOOTHING, 1)
-        
+            self.gaussian.obj = self.gaussian._from_state(0, x,
+                                                          VAR_SMOOTHING, 1)
+
         is_anomaly = self.predict_one(x)
-        
+
         real_thresh = self.limit_one()
-        
+
         if not is_anomaly:
             self = self.learn_one(x, **{"t": t})
-        
+
         return is_anomaly, real_thresh
 
 # FUNCTIONS
+
+
 def preprocess(
         x,
         col):
@@ -132,38 +136,39 @@ def preprocess(
         col = [col] if not isinstance(col, list) else col
         return {"time": x.name.tz_localize(None),
                 "data": x[col].to_dict()
-        }
+                }
     elif isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
         col = [col] if not isinstance(col, list) else col
         return {"time": x[0].tz_localize(None),
                 "data": x[1][col].to_dict()
-        }
+                }
     elif isinstance(x, dict):
-        return  {k: v for k, v in x.items() if k in col} 
+        return {k: v for k, v in x.items() if k in col}
     elif isinstance(x, MQTTMessage):
-        return {"time": dt.datetime.fromtimestamp(x.timestamp).replace(microsecond=0),
+        return {"time": dt.datetime
+                .fromtimestamp(x.timestamp).replace(microsecond=0),
                 "data": {x.topic.split("/")[-1]: float(x.payload)}
-        }
+                }
     elif isinstance(x, bytes):
         return {"time": dt.datetime.now().replace(microsecond=0),
                 "data": {col: float(x.decode("utf-8"))}
-        }
+                }
 
 
 def fit_transform(
-        x, 
-        model, 
+        x,
+        model,
         model_inv
-        ):
+):
     # TODO: replace x_ for multidimensional implementation
     x_ = next(iter(x["data"].values()))
     is_anomaly, real_thresh = model.process_one(x_, x["time"])
     _, real_thresh_ = model_inv.process_one(-x_, x["time"])
     return {"time": str(x["time"]),
-            #**x["data"], # Comment out to lessen the size of payload
-            "anomaly":is_anomaly,
-            "level_high":real_thresh, 
-            "level_low":-real_thresh_
+            # **x["data"], # Comment out to lessen the size of payload
+            "anomaly": is_anomaly,
+            "level_high": real_thresh,
+            "level_low": -real_thresh_
             }
 
 
@@ -173,17 +178,17 @@ def dump_to_file(x, f):
 
 def print_summary(df):
     text = (
-            f"Proportion of anomalous samples: "
-            f"{sum(df['anomaly'])/len(df['anomaly'])*100:.02f}%\n"
-            f"Total number of anomalous events: "
-            f"{sum(pd.Series(df['anomaly']).diff().dropna() == 1)}")
-    print(text) 
+        f"Proportion of anomalous samples: "
+        f"{sum(df['anomaly'])/len(df['anomaly'])*100:.02f}%\n"
+        f"Total number of anomalous events: "
+        f"{sum(pd.Series(df['anomaly']).diff().dropna() == 1)}")
+    print(text)
 
 
 def signal_handler(sig, frame, detector, config):
     os.write(sys.stdout.fileno(), b"\nSignal received to stop the app...\n")
     detector.stop()
-    
+
     time.sleep(1)
     # Print summary
     if config.get("path"):
@@ -192,20 +197,20 @@ def signal_handler(sig, frame, detector, config):
             print_summary(d)
         else:
             print("No data retrieved")
-    # TODO: Find out how to flush kafka            
-    #if config.get("bootstrap.servers"):
+    # TODO: Find out how to flush kafka
+    # if config.get("bootstrap.servers"):
     #    detector.flush()
-    
+
     exit(0)
-    
-    
+
+
 def process_limits_streaming(
         config: dict,
         topic: str,
         debug: bool = False):
     model = GaussianScorer()
     model_inv = GaussianScorer()
-    
+
     if config.get("path"):
         data = pd.read_csv(config['path'], index_col=0)
         data.index = pd.to_datetime(data.index, utc=True)
@@ -216,21 +221,25 @@ def process_limits_streaming(
     elif config.get("host"):
         source = Stream.from_mqtt(**config, topic=topic)
     elif config.get("bootstrap.servers"):
-        source = Stream.from_kafka([topic], {**config, 'group.id': 'detection_service'})
+        source = Stream.from_kafka(
+            [topic], {**config, 'group.id': 'detection_service'})
     else:
-        raise(RuntimeError("Wrong data format."))
-    
-    detector = source.map(preprocess, topic).map(fit_transform, model, model_inv)
+        raise (RuntimeError("Wrong data format."))
+
+    detector = source.map(preprocess, topic).map(
+        fit_transform, model, model_inv)
 
     with open("data/output/dynamic_limits.json", 'a') as f:
         if config.get("path"):
             detector.sink(dump_to_file, f)
         elif config.get("host"):
             topic = f"{topic.rsplit('/', 1)[0]}/dynamic_limits"
-            detector.map(lambda x: json.dumps(x)).to_mqtt(**config, topic=topic, publish_kwargs={"retain":True})
+            detector.map(lambda x: json.dumps(x)).to_mqtt(
+                **config, topic=topic, publish_kwargs={"retain": True})
         elif config.get("bootstrap.servers"):
             topic = "dynamic_limits"
-            detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(topic, config)
+            detector.map(lambda x: (str(x), "dynamic_limits")
+                         ).to_kafka(topic, config)
 
         if debug:
             print("=== Debugging started... ===")
@@ -239,21 +248,23 @@ def process_limits_streaming(
             print("=== Debugging finished with success... ===")
         else:
             source.start()
-            
-            signal.signal(signal.SIGINT, lambda signalnum, frame: signal_handler(signalnum, frame, detector, config))
-                        
+
+            signal.signal(signal.SIGINT, lambda signalnum,
+                          frame: signal_handler(
+                              signalnum, frame, detector, config))
+
             while True:
                 time.sleep(2)
 
-    
+
 def get_config(config_parser):
-    if (config_parser.has_option('file', 'path') and 
-        config_parser.get('file', 'path')):
+    if (config_parser.has_option('file', 'path') and
+            config_parser.get('file', 'path')):
         config = dict(config_parser['file'])
     elif (config_parser.has_section('mqtt') and
           config_parser.has_option('mqtt', 'host') and
           config_parser.has_option('mqtt', 'port') and
-          config_parser.get('mqtt', 'host') and 
+          config_parser.get('mqtt', 'host') and
           config_parser.get('mqtt', 'port')):
         config = dict(config_parser['mqtt'])
         config['port'] = int(config['port'])
@@ -268,16 +279,21 @@ def get_config(config_parser):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('-f', '--config_file', type=FileType('r'), default='config.ini')
-    #"shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
-    #"Average Cell Temperature"
-    parser.add_argument("-t", "--topic", help="Topic of MQTT or Column of pd.DataFrame", default="Average Cell Temperature")
-    parser.add_argument("-d", "--debug", help="Debug the file using loop as source", default=False, type=bool)
+    parser.add_argument('-f', '--config_file',
+                        type=FileType('r'), default='config.ini')
+    # "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
+    # "Average Cell Temperature"
+    parser.add_argument("-t", "--topic",
+                        help="Topic of MQTT or Column of pd.DataFrame",
+                        default="Average Cell Temperature")
+    parser.add_argument("-d", "--debug",
+                        help="Debug the file using loop as source",
+                        default=False, type=bool)
     args = parser.parse_args()
-    
+
     config_parser = ConfigParser()
     config_parser.read_file(args.config_file)
-    
+
     # TODO: Handle possible errorous scenarios
     config = get_config(config_parser)
 
