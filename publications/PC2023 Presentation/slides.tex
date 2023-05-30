@@ -8,6 +8,8 @@
 % \usepackage{calligra}
 \usepackage{listings}  % graphicx, pstricks
 \usefonttheme[onlymath]{serif}
+% numeric tables
+\usepackage{siunitx}
 % algorithms
 \usepackage{algorithm}
 \usepackage{algorithmic}
@@ -15,12 +17,28 @@
 % draw
 \usepackage{tikz}
 \usepackage{cases}
+\usepackage{multimedia}
+% \usepackage{animate}
 
 \renewcommand{\today}{\number\year -\ifnum\month<10 0\fi\number\month -\ifnum\day<10 0\fi\number\day}
 \renewcommand{\alert}[1]{\textbf{\color{stuba}#1}}
 \newcommand{\ui}[2]{#1 _{\mathrm{#2}}}
 % upright sub-index with variable
 \newcommand{\uis}[3]{#1 _{\mathrm{#2}, #3}}
+
+% Turn off numbering in header
+\makeatletter
+\let\beamer@writeslidentry@miniframeson=\beamer@writeslidentry%
+\def\beamer@writeslidentry@miniframesoff{%
+  \expandafter\beamer@ifempty\expandafter{\beamer@framestartpage}{}% does not happen normally
+  {%else
+    % removed \addtocontents commands
+    \clearpage\beamer@notesactions%
+  }
+}
+\newcommand*{\miniframeson}{\let\beamer@writeslidentry=\beamer@writeslidentry@miniframeson}
+\newcommand*{\miniframesoff}{\let\beamer@writeslidentry=\beamer@writeslidentry@miniframesoff}
+\makeatother
 
 % The text inside the square brackets [] in the commands specifies their respective short versions that will appear in the header or footer of each slide in a Beamer presentation.
 \author[M. Wadinger ]{Marek Wadinger, Michal Kvasnica}
@@ -79,18 +97,42 @@ Institute of Information Engineering, Automation, and Mathematics \\
 
 \section{Motivation}
 
-\begin{frame}{Simulation Results}
+\begin{frame}{Real World Data}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/simulation.pdf}
+            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/bess/naive/min_signal.pdf}
         \end{center}
     \end{figure}
 \end{frame}
 
-\begin{frame}{Practical Scenario}
+\begin{frame}{Data with Outliers}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/real.pdf}
+            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/bess/naive/min_anomalies.pdf}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Static Threshold Limits}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/bess/naive/min_thresh.pdf}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Static Threshold Limits}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/bess/naive/pred_thresh.pdf}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Comming Problem}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/bess/naive/full_thresh.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -98,37 +140,18 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Control Engineering Meets Artificial Intelligence}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/imagined.pdf}
-        \end{center}
-    \end{figure}
-\end{frame}
-
-
-\section{Gaps in Existing Solutions}
-
-\begin{frame}{Lack of Labels}
-    \begin{figure}[htpb]
-        \begin{center}
-            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/un_supervised.pdf}
-        \end{center}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{Changes in Distribution}
-    \begin{figure}[htpb]
-        \begin{center}
-            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/online_freeze.pdf}
+            \includegraphics[width=0.75\linewidth]{../ilustrate/pc2023/bess/Average_Cell_Temperature_sliding_thresh.pdf}
         \end{center}
     \end{figure}
 \end{frame}
 
 \begin{frame}{Goals}
-    We need to make detector that:
+    We need to design a detector that:
     \begin{itemize}
         \item does not require huge amount of data
         \item adapts to unseen operation
-        \item offers credible decision boundary
-        \item does not alter operation of existing systems
+        \item provides conservative process limits
+        \item operates with existing infrastructure
         % \item Improves maintenance scheduling
     \end{itemize}
 \end{frame}
@@ -140,19 +163,28 @@ Institute of Information Engineering, Automation, and Mathematics \\
     Real-Time Outlier Detection with Dynamic Process Limits
     combining:
     \begin{itemize}
-        \item online Learning
-        \item outlier Detection
-        \item self-supervised Learning
-        \item soft Real-Time System
-        \item invertible Probabilistic Model
+        \item online learning
+        \item invertible probabilistic model
+        \item outlier detection
+        \item self-supervised learning
     \end{itemize}
 \end{frame}
 
 
-\begin{frame}{Welford Algorithm}
+\begin{frame}{Real Opeartion Data}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/welford.pdf}
+            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/all_signal.pdf}
+            % \movie{sample\_data}{../ilustrate/pc2023/sample_data.gif}
+        \end{center}
+    \end{figure}
+\end{frame}
+
+
+\begin{frame}{Online Learning via Welford Algorithm}
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/mean_signal.pdf}
         \end{center}
     \end{figure}
     \begin{table}
@@ -163,10 +195,10 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{table}
 \end{frame}
 
-\begin{frame}{Inverse Welford Algorithm}
+\begin{frame}{Online Learning via Invertible Welford Algorithm}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/welford_compare.pdf}
+            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/rmean_signal.pdf}
         \end{center}
     \end{figure}
     \begin{table}
@@ -177,10 +209,22 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{table}
 \end{frame}
 
+\begin{frame}{Dynamic Threshold Limits via Inversion}
+    \begin{figure}
+        \begin{center}
+            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_unsupervised_thresh.pdf}
+        \end{center}
+    \end{figure}
+    \begin{align*}
+        \ui{x}{l} & = F_{X}(1 - q; \bar x_n, s_n)^{-1} \\
+        \ui{x}{u} & = F_{X}(q; \bar x_n, s_n)^{-1}
+    \end{align*}
+\end{frame}
+
 \begin{frame}{Distance-based Outlier Detection}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/sigmas.pdf}
+            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_anomaly_unsupervised_thresh.pdf}
         \end{center}
     \end{figure}
     \begin{subnumcases}{y_i =}
@@ -193,7 +237,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Self-Supervised Learning}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/welford_unstable.pdf}
+            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_anomaly_selfsupervised_thresh.pdf}
         \end{center}
     \end{figure}
     \begin{subnumcases}{y_i =}
@@ -206,7 +250,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Self-Supervised Learning}
     \begin{figure}
         \begin{center}
-            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/welford_compare_prot.pdf}
+            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/final_uniform_xticks_thresh.pdf}
         \end{center}
     \end{figure}
     \begin{equation}
@@ -214,48 +258,78 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{equation}
 \end{frame}
 
-\begin{frame}{Inversion of CDF}
-    \begin{figure}
-        \begin{center}
-            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/cdf_ppf.pdf}
-        \end{center}
-    \end{figure}
-    \begin{align*}
-        \ui{x}{l} & = F_{X}(1 - q; \bar x_n, s_n)^{-1} \\
-        \ui{x}{u} & = F_{X}(q; \bar x_n, s_n)^{-1}
-    \end{align*}
-\end{frame}
-
 \section{Results}
 
-\begin{frame}{ICDF-based Outlier Detection - BESS}
-    \begin{figure}[htpb]
+\begin{frame}{Battery Energy Storage System - BESS}
+    \begin{figure}[h]
         \begin{center}
-            \includegraphics[width=0.78\linewidth]{figures/Average_Cell_Temperature_sliding_compare_anomalies.pdf}
+            \includegraphics[width=0.62\linewidth]{figures/megapack.jpeg}
         \end{center}
     \end{figure}
 \end{frame}
 
-\begin{frame}{ICDF-based Outlier Detection - Inverter}
+\begin{frame}{Case Study - BESS}
+    % Use a single frame => no frame counter stepping/bullet change
+    \only<1>{%
+      \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_a.pdf}
+        \end{center}
+    \end{figure}
+    }
+    \only<2>{%
+      \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_b.pdf}
+        \end{center}
+    \end{figure}
+    }
+    \only<3>{%
+      \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_c.pdf}
+        \end{center}
+    \end{figure}
+    }
+  \end{frame}
+
+\begin{frame}{Case Study - Inverter}
+    % Use a single frame => no frame counter stepping/bullet change
+    \only<1>{%
+      \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_a.pdf}
+        \end{center}
+    \end{figure}
+    }
+    \only<2>{%
+      \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_b.pdf}
+        \end{center}
+    \end{figure}
+    }
+    \only<3>{%
+      \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_c.pdf}
+        \end{center}
+    \end{figure}
+    }
+  \end{frame}
+
+\begin{frame}{Dynamic Process Limits - BESS}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.78\linewidth]{figures/Inverter_Temperature_sliding_compare_anomalies.pdf}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/Average_Cell_Temperature_sliding_thresh.pdf}
         \end{center}
     \end{figure}
 \end{frame}
 
-\begin{frame}{Dynamic Process Limits}
+\begin{frame}{Dynamic Process Limits - Inverter}
     \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.78\linewidth]{figures/Average_Cell_Temperature_sliding_thresh_.pdf}
-        \end{center}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{Dynamic Process Limits}
-    \begin{figure}[htpb]
-        \begin{center}
-            \includegraphics[width=0.78\linewidth]{figures/Inverter_Temperature_sliding_thresh.pdf}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/inverter_thresh.pdf}
         \end{center}
     \end{figure}
 \end{frame}
@@ -265,38 +339,38 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \centering
         \begin{tikzpicture}
             % Draw big circle in the center
-            \node[circle,draw, minimum size=1.5cm] (MQTT) at  (3, -2) {$\mathrm{MQTT}$};
+            \node[circle,draw, minimum size=1.6cm] (Broker) at  (3, -2) {$\mathrm{Broker}$};
 
             % Draw small circles on the left
-            \def\labels{{"T", "SoC", "V"}}
+            \def\labels{{"Sensor_1", "Sensor_2", "Driver"}}
             \xdefinecolor{subscribe}{RGB}{44, 160, 44}
             \xdefinecolor{signal}{RGB}{31, 119, 180}
             % Draw small circles on the left and add labels
-            \foreach \y [count=\i] in {0, -2, -4} {
+            \foreach \y [count=\i] in {0, -2} {
                     \def\label{\pgfmathparse{\labels[\i-1]}\pgfmathresult}
                     %\draw (0, \y) circle [radius=0.5cm] node {\label};
-                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {\ifnumcomp{\i}{=}{2}{$\mathrm{\label}$}{$\label$}};
+                    \node[circle,draw, minimum size=1.6cm] (\labels[\i-1]) at (0, \y) {\ifnumcomp{\i}{=}{2}{$\mathrm{\label}$}{$\mathrm{\label}$}};
                     \ifnumless{\i}{3}
-                    {\draw[-latex, signal] (\labels[\i-1]) -- (MQTT);}
+                    {\draw[-latex, signal] (\labels[\i-1]) -- (Broker);}
                     {}
                 }
 
-            \node[circle,draw, minimum size=1.5cm] (V) at (0, -4) {$V$};
+            \node[circle,draw, minimum size=1.6cm] (A) at (0, -4) {$\mathrm{A}$};
             % Connect middle circle to the circle on the right
-            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, -2) {$\ui{G}{C}$};
-            \draw[-latex, signal] (MQTT) -- (G_C);
+            \node[circle,draw, minimum size=1.6cm] (Control) at  (6, -2) {$\mathrm{Control}$};
+            \draw[-latex, signal] (Broker) -- (Control);
 
 
             % Add subscribe lines
-            \draw[-latex, subscribe] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](G_C-b) (G_C)
-            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](G_C-t) (G_C)
-            (MQTT-t) -- (G_C-t) node [pos=0.5,above=0.2cm] {S: {\color{black}{$T, \mathrm{SoC}, V$}}};
-            \draw[-latex] (G_C-b) -- (MQTT-b) node [pos=0.5,below=0.2cm] {$u$};
+            \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](Control-b) (Control)
+            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](Control-t) (Control)
+            (Broker-t) -- (Control-t) node [pos=0.5,above=0.2cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
+            \draw[-latex] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u$};
 
-            \draw[latex-, signal] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](V-b) (V)
-            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](V-t) (V)
-            (MQTT-t) -- (V-t);
-            \draw[latex-, subscribe] (V-b) -- (MQTT-b) node [pos=0.4,above=0.2cm] {S: {\color{black}{$u$}}};
+            \draw[latex-, signal] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](A-b) (A)
+            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](A-t) (A)
+            (Broker-t) -- (A-t);
+            \draw[latex-, subscribe] (A-b) -- (Broker-b) node [pos=0.4,below=0.2cm] {$\mathrm{S:}$ {\color{black}{$u$}}};
 
         \end{tikzpicture}
     \end{figure}
@@ -307,72 +381,102 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \centering
         \begin{tikzpicture}
             % Draw big circle in the center
-            \node[circle,draw, minimum size=1.5cm] (MQTT) at  (3, -2) {$\mathrm{MQTT}$};
+            \node[circle,draw, minimum size=1.5cm] (Broker) at  (3, -2) {$\mathrm{Broker}$};
             % Draw small circles on the left
-            \def\labels{{"T", "SoC", "V"}}
+            \def\labels{{"Sensor_1", "Sensor_2", "Driver"}}
             \xdefinecolor{subscribe}{RGB}{44, 160, 44}
             \xdefinecolor{signal}{RGB}{31, 119, 180}
 
             % Draw small circles on the left and add labels
-            \foreach \y [count=\i] in {0, -2, -4} {
+            \foreach \y [count=\i] in {0, -2} {
                     \def\label{\pgfmathparse{\labels[\i-1]}\pgfmathresult}
                     %\draw (0, \y) circle [radius=0.5cm] node {\label};
-                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {\ifnumcomp{\i}{=}{2}{$\mathrm{\label}$}{$\label$}};
+                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {\ifnumcomp{\i}{=}{2}{$\mathrm{\label}$}{$\mathrm{\label}$}};
                     \ifnumless{\i}{3}
-                    {\draw[-latex, signal] (\labels[\i-1]) -- (MQTT);}
+                    {\draw[-latex, signal] (\labels[\i-1]) -- (Broker);}
                     {}
                 }
+            \node[circle,draw, minimum size=1.5cm] (A) at (0, -4) {$\mathrm{Driver}$};
             % Connect middle circle to the circle on the right
-            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, 0) {$\ui{G}{C}$};
-            \draw[-latex, signal] (MQTT) -- (G_C);
+            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, 0) {$\mathrm{Control}$};
+            \draw[-latex, signal] (Broker) -- (G_C);
 
             % Add subscribe lines
-            \draw[-latex, subscribe] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](G_C-b) (G_C)
-            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](G_C-t) (G_C)
-            (MQTT-t) -- (G_C-t) node [pos=0.3,above=0.7cm] {S: {\color{black}{$T, \mathrm{SoC}, V, \color{red}{A}$}}};
-            \draw[-latex] (G_C-b) -- (MQTT-b) node [pos=0.5,below=0.2cm] {$u^{\color{red}{*}}$};
+            \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](G_C-b) (G_C)
+            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](G_C-t) (G_C)
+            (Broker-t) -- (G_C-t) node [pos=0.3,above=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}, \color{red}{y}$}}};
+            \draw[-latex] (G_C-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u^{\color{red}{*}}$};
 
-            \draw[latex-, signal] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](V-b) (V)
-            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](V-t) (V)
-            (MQTT-t) -- (V-t);
-            \draw[latex-, subscribe] (V-b) -- (MQTT-b) node [pos=0.4,above=0.1cm] {S: {\color{black}{$u^{\color{red}{*}}$}}};
+            \draw[latex-, signal] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](A-b) (A)
+            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](A-t) (A)
+            (Broker-t) -- (A-t);
+            \draw[latex-, subscribe] (A-b) -- (Broker-b) node [pos=0.4,below=0.2cm] {$\mathrm{S:}$ {\color{black}{$u^{\color{red}{*}}$}}};
 
             % Connect middle circle to the circle on the right
-            \node[circle,draw, minimum size=1.5cm] (ICDF) at  (6, -4) {$\mathrm{iCDF}$};
-            \draw[-latex, signal] (MQTT) -- (ICDF);
+            \node[circle,draw, minimum size=1.5cm, color=red] (ICDF) at  (6, -4) {\color{black}{$\mathrm{Monitor}$}};
+            \draw[-latex, signal] (Broker) -- (ICDF);
 
             % Add subscribe lines
-            \draw[latex-, red] (MQTT) edge[bend right,draw=none] coordinate[at start](MQTT-b) coordinate[at end](ICDF-b) (ICDF)
-            edge[bend left,draw=none] coordinate[at start](MQTT-t) coordinate[at end](ICDF-t) (ICDF)
-            (MQTT-t) -- (ICDF-t) node [pos=0.5,above=0.2cm] {\color{red}{$A$}};
-            \draw[latex-, subscribe] (ICDF-b) -- (MQTT-b) node [pos=0.7,below=0.7cm] {S: {\color{black}{$T, \mathrm{SoC}, V$}}};
+            \draw[latex-, red] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](ICDF-b) (ICDF)
+            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](ICDF-t) (ICDF)
+            (Broker-t) -- (ICDF-t) node [pos=0.5,above=0.2cm] {\color{red}{$y$}};
+            \draw[latex-, subscribe] (ICDF-b) -- (Broker-b) node [pos=0.7,below=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
             % Add text 
 
         \end{tikzpicture}
     \end{figure}
 \end{frame}
 
+
+% \begin{frame}{Summary}
+%     \begin{center}
+%         \animategraphics[controls]{1}{../ilustrate/pc2023/tmp/test_sample_data_frames/frame000000}{0}{9}
+%     \end{center}
+% \end{frame}
+% \begin{frame}{Summary}
+%     \begin{center}
+%         \movie[width=0.78\linewidth, height=184.64pt]{ahoj}{giphy.mov}
+%     \end{center}
+% \end{frame}
 \newcommand\blfootnote[1]{%
     \begingroup
     \renewcommand\thefootnote{}\footnote{#1}%
     \addtocounter{footnote}{-1}%
     \endgroup
     }
-
+ 
 \begin{frame}{Summary}
-    \begin{itemize}
-        \item automated alerting without prior knowledge of process limits
-        \item assessment of environmental conditions and device aging
-        \item self-learning approach using streamed data
-        \item sets dynamic threshold for individual signals
-        \item seamless integration with existing IT infrastructure
-    \end{itemize}
-    % \let\thefootnote\relax\footnote{\tiny some text}
+    \renewcommand{\figurename}{}
+    \begin{minipage}[c]{0.6\linewidth}
+        \begin{itemize}
+            \item outlier detection on streamed data
+            \item adaptation to external conditions
+            \item online self-learning approach
+            \item dynamic process limits for individual signals
+            \item integration with existing IT infrastructure
+        \end{itemize}
+        \begin{figure}[htpb]
+            \begin{center}
+                \includegraphics[width=0.2\linewidth]{figures/qr_uiam_squares_logo.pdf}\hfil
+                \includegraphics[width=0.2\linewidth]{figures/qr_pc2023_squares.pdf}
+            \end{center}
+        \end{figure}
+    \end{minipage}\hspace{1pt}
+    \begin{minipage}{0.38\linewidth}
+        \begin{figure}[htpb]
+            \begin{center}
+                \includegraphics[width=1\linewidth]{../ilustrate/pc2023/inverter/half_Inverter_Temperature_sliding_thresh.pdf}
+            \end{center}
+        \end{figure}
+    \end{minipage}
     
+
     \blfootnote{\tiny \textbf{Acknowledgements:} APVV-20-0261. VEGA 1/0490/23. Horizon Europe under the grant no. 101079342.}
 \end{frame}
 
-\begin{frame}{Follow-up research}
+\miniframesoff
+\section{}
+\begin{frame}[noframenumbering]{Follow-up research}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=0.65\linewidth]{../PC2023 Presentation/figures/cdc.pdf}
@@ -381,7 +485,28 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
-\begin{frame}{Online Anomaly Detection Workflow}
+\begin{frame}[noframenumbering]{Process Time Evaluation}
+    \begin{table}[h]
+        \begin{tabular} {
+                @{}
+                c|
+                S[table-format = 3(2), separate-uncertainty]|
+                S[table-format = 5.0, parse-numbers = false]|
+                S[table-format = 3(2), separate-uncertainty]|
+                S[table-format = 5.0, parse-numbers = false]|
+                @{}
+            }
+            {Evaluation}     & \multicolumn{2}{c|}{BESS} & \multicolumn{2}{c|}{Inverter}                       \\
+            {Time $\mathrm{[\mu s]}$}   & {average}               & {max}                         & {average} & {max} \\
+            \hline
+            Half-Space Trees & 218(198)                  & 10129                         & 216(196)    & 11281 \\
+            One-Class SVM    & 8(7)                      & 1233                          & 9(9)        & 1711  \\
+            Proposed         & 57(55)                    & 9431                          & 60(75)      & 12330 \\
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Online Anomaly Detection Workflow}
     \begin{algorithmic}[1]
         \scriptsize
         \algsetup{linenosize=\scriptsize}

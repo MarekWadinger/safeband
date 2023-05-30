@@ -52,8 +52,8 @@
 
 \useinnertheme{circles}
 
-%\useoutertheme{default}
-%\useinnertheme[shadow=true]{rounded}
+% \useoutertheme{default}
+\useinnertheme[shadow=true]{rounded}
 
 % STU {151,29,50}  % UIAM {0,75,166}  % FCHPT {236,194,0} % PC {3,115,125}
 \xdefinecolor{stuba}{RGB}{3,115,125}
@@ -92,16 +92,17 @@
 \setbeamercolor{structure}{fg=stuba}
 \setbeamercolor{subsection in sidebar}{fg=brown}
 \setbeamercolor{subsection in sidebar shaded}{fg=grey}
-\AtBeginSection[]{
-	\begin{frame}
-		\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/shaded/hide,subsubsectionstyle=show/shaded/hide]
-	\end{frame}
-}
-\AtBeginSubsection[]{
-	\begin{frame}
-		\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/shaded/hide,subsubsectionstyle=show/shaded/hide]
-	\end{frame}
-}
+% Show table of contents with current section highlighted 
+%\AtBeginSection[]{
+%\begin{frame}
+%		\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/shaded/hide,subsubsectionstyle=show/shaded/hide]
+%	\end{frame}
+%}
+%\AtBeginSubsection[]{
+%	\begin{frame}
+%		\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/shaded/hide,subsubsectionstyle=show/shaded/hide]
+%	\end{frame}
+%}
 
 \mode
 <all>
