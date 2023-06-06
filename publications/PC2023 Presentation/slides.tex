@@ -19,6 +19,10 @@
 \usepackage{cases}
 \usepackage{multimedia}
 % \usepackage{animate}
+% Numberless caption
+\usepackage{caption}
+% Enhance table quality
+\usepackage{booktabs}
 
 \renewcommand{\today}{\number\year -\ifnum\month<10 0\fi\number\month -\ifnum\day<10 0\fi\number\day}
 \renewcommand{\alert}[1]{\textbf{\color{stuba}#1}}
@@ -44,7 +48,7 @@
 \author[M. Wadinger ]{Marek Wadinger, Michal Kvasnica}
 % Authors with institution
 % \author[M. Wadinger]{Marek Wadinger\inst{1}, Michal Kvasnica\inst{1} }
-\title[Real-Time Outlier Detection]{Real-Time Outlier Detection with Dynamic Process Limits}
+\title[Real-Time OD with Dynamic Process Limits]{Real-Time Outlier Detection with Dynamic Process Limits}
 \subtitle{Process Control 2023}
 \institute[STU]
 {
@@ -148,7 +152,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \begin{frame}{Goals}
     We need to design a detector that:
     \begin{itemize}
-        \item does not require huge amount of data
+        % \item does not require huge amount of data
         \item adapts to unseen operation
         \item provides conservative process limits
         \item operates with existing infrastructure
@@ -156,6 +160,42 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{itemize}
 \end{frame}
 
+\begin{frame}{Challenges}
+
+    \begin{columns}
+        \begin{column}{0.62\textwidth}
+            \begin{itemize}[<+->]
+                \item need for training data
+                \item changes in operation regime
+                \item unavailability of labels
+                \item no storage of historical data
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.38\textwidth}
+            \only<1>{
+                \begin{figure}
+                    \includegraphics[width=\textwidth]{../ilustrate/pc2023/sample/labeled_data.pdf}
+                \end{figure}
+            }
+            \only<2>{
+                \begin{figure}
+                    \includegraphics[width=\textwidth]{../ilustrate/pc2023/sample/new_data.pdf}
+                \end{figure}
+            }
+            \only<3>{
+                \begin{figure}
+                    \includegraphics[width=\textwidth]{../ilustrate/pc2023/sample/unlabeled_data.pdf}
+                \end{figure}
+            }
+            \only<4>{
+                \begin{figure}
+                    \includegraphics[width=\textwidth]{../ilustrate/pc2023/sample/unlabeled_data_0.pdf}
+                \end{figure}
+            }
+        \end{column}
+    \end{columns}
+    
+\end{frame}
 
 \section{Proposed Approach}
 
@@ -222,11 +262,34 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \end{frame}
 
 \begin{frame}{Distance-based Outlier Detection}
-    \begin{figure}
-        \begin{center}
-            \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_anomaly_unsupervised_thresh.pdf}
-        \end{center}
-    \end{figure}
+    \only<1>{
+        \begin{figure}
+            \begin{center}
+                \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_anomaly_unsupervised_thresh_1.pdf}
+            \end{center}
+        \end{figure}
+    }
+    \only<2>{
+        \begin{figure}
+            \begin{center}
+                \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_anomaly_unsupervised_thresh_2.pdf}
+            \end{center}
+        \end{figure}
+    }
+    \only<3>{
+        \begin{figure}
+            \begin{center}
+                \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_anomaly_unsupervised_thresh_3.pdf}
+            \end{center}
+        \end{figure}
+    }
+    \only<4>{
+        \begin{figure}
+            \begin{center}
+                \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_anomaly_unsupervised_thresh.pdf}
+            \end{center}
+        \end{figure}
+    }
     \begin{subnumcases}{y_i =}
         0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)$ \nonumber\label{case:normal}
         \\
@@ -247,7 +310,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{subnumcases}
 \end{frame}
 
-\begin{frame}{Self-Supervised Learning}
+\begin{frame}{Self-Supervised Learning -- Faster Adaptation}
     \begin{figure}
         \begin{center}
             \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/final_uniform_xticks_thresh.pdf}
@@ -260,7 +323,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 
 \section{Results}
 
-\begin{frame}{Battery Energy Storage System - BESS}
+\begin{frame}{Battery Energy Storage System -- BESS}
     \begin{figure}[h]
         \begin{center}
             \includegraphics[width=0.62\linewidth]{figures/megapack.jpeg}
@@ -268,7 +331,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
-\begin{frame}{Case Study - BESS}
+\begin{frame}{Case Study -- BESS}
     % Use a single frame => no frame counter stepping/bullet change
     \only<1>{%
       \begin{figure}[htpb]
@@ -293,7 +356,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     }
   \end{frame}
 
-\begin{frame}{Case Study - Inverter}
+\begin{frame}{Case Study -- Inverter}
     % Use a single frame => no frame counter stepping/bullet change
     \only<1>{%
       \begin{figure}[htpb]
@@ -318,7 +381,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     }
   \end{frame}
 
-\begin{frame}{Dynamic Process Limits - BESS}
+\begin{frame}{Dynamic Process Limits -- BESS}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/Average_Cell_Temperature_sliding_thresh.pdf}
@@ -326,7 +389,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
-\begin{frame}{Dynamic Process Limits - Inverter}
+\begin{frame}{Dynamic Process Limits -- Inverter}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/inverter_thresh.pdf}
@@ -335,6 +398,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \end{frame}
 
 \begin{frame}{Utilize Existing Infrastructure}
+
     \begin{figure}
         \centering
         \begin{tikzpicture}
@@ -355,76 +419,66 @@ Institute of Information Engineering, Automation, and Mathematics \\
                     {}
                 }
 
+            % Driver
             \node[circle,draw, minimum size=1.6cm] (A) at (0, -4) {$\mathrm{Driver}$};
-            % Connect middle circle to the circle on the right
-            \node[circle,draw, minimum size=1.6cm] (Control) at  (6, -2) {$\mathrm{Control}$};
-            \draw[-latex, signal] (Broker) -- (Control);
-
-
-            % Add subscribe lines
-            \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](Control-b) (Control)
-            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](Control-t) (Control)
-            (Broker-t) -- (Control-t) node [pos=0.5,above=0.2cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
-            \draw[-latex] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u$};
-
-            \draw[latex-, signal] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](A-b) (A)
-            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](A-t) (A)
-            (Broker-t) -- (A-t);
-            \draw[latex-, subscribe] (A-b) -- (Broker-b) node [pos=0.4,below=0.2cm] {$\mathrm{S:}$ {\color{black}{$u$}}};
-
-        \end{tikzpicture}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{Utilize Existing Infrastructure}
-    \begin{figure}
-        \centering
-        \begin{tikzpicture}
-            % Draw big circle in the center
-            \node[circle,draw, minimum size=1.5cm] (Broker) at  (3, -2) {$\mathrm{Broker}$};
-            % Draw small circles on the left
-            \def\labels{{"Sensor_1", "Sensor_2", "Driver"}}
-            \xdefinecolor{subscribe}{RGB}{44, 160, 44}
-            \xdefinecolor{signal}{RGB}{31, 119, 180}
-
-            % Draw small circles on the left and add labels
-            \foreach \y [count=\i] in {0, -2} {
-                    \def\label{\pgfmathparse{\labels[\i-1]}\pgfmathresult}
-                    %\draw (0, \y) circle [radius=0.5cm] node {\label};
-                    \node[circle,draw, minimum size=1.5cm] (\labels[\i-1]) at (0, \y) {\ifnumcomp{\i}{=}{2}{$\mathrm{\label}$}{$\mathrm{\label}$}};
-                    \ifnumless{\i}{3}
-                    {\draw[-latex, signal] (\labels[\i-1]) -- (Broker);}
-                    {}
+            \only<1>{
+                \draw[-latex, signal] (A) -- (Broker);
+            }
+            \only<2->{
+                \draw[latex-, signal] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](A-b) (A)
+                edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](A-t) (A)
+                (Broker-t) -- (A-t);
+                \only<2-3>{
+                    \draw[latex-, subscribe] (A-b) -- (Broker-b) node [pos=0.4,below=0.2cm] {$\mathrm{S:}$ {\color{black}{$u$}}};
                 }
-            \node[circle,draw, minimum size=1.5cm] (A) at (0, -4) {$\mathrm{Driver}$};
-            % Connect middle circle to the circle on the right
-            \node[circle,draw, minimum size=1.5cm] (G_C) at  (6, 0) {$\mathrm{Control}$};
-            \draw[-latex, signal] (Broker) -- (G_C);
+                \only<4>{
+                    \draw[latex-, subscribe] (A-b) -- (Broker-b) node [pos=0.4,below=0.2cm] {$\mathrm{S:}$ {\color{black}{$u^{\color{red}{*}}$}}};
+                }
+            }
+            % Control
+            \only<1-2>{
+                \node[circle,draw, minimum size=1.6cm] (Control) at  (6, -2) {$\mathrm{Control}$};
+                \only<1>{
+                    \draw[-latex, signal] (Control) -- (Broker);
+                }
+                \only<2>{
+                    % Add subscribe lines
+                    \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](Control-b) (Control)
+                    edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](Control-t) (Control)
+                    (Broker-t) -- (Control-t) node [pos=0.5,above=0.2cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
+                    \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u$};
+                }
+            }
+            \only<3->{
+                \node[circle,draw, minimum size=1.5cm] (Control) at  (6, 0) {$\mathrm{Control}$};
+                \draw<1>[-latex, signal] (Control) -- (Broker);
+            }
+            \only<3>{
+                % Add subscribe lines
+                \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](Control-b) (Control)
+                edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](Control-t) (Control)
+                (Broker-t) -- (Control-t) node [pos=0.3,above=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
+                \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u$};
+            }
+            \only<4>{
+                \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](Control-b) (Control)
+                edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](Control-t) (Control)
+                (Broker-t) -- (Control-t) node [pos=0.3,above=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}, \color{red}{y}$}}};
+                \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u^{\color{red}{*}}$};
+            }
+            \only<3->{
+                \node[circle,draw, minimum size=1.5cm, color=red] (ICDF) at  (6, -4) {\color{black}{$\mathrm{Monitor}$}};
 
-            % Add subscribe lines
-            \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](G_C-b) (G_C)
-            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](G_C-t) (G_C)
-            (Broker-t) -- (G_C-t) node [pos=0.3,above=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}, \color{red}{y}$}}};
-            \draw[-latex] (G_C-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u^{\color{red}{*}}$};
-
-            \draw[latex-, signal] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](A-b) (A)
-            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](A-t) (A)
-            (Broker-t) -- (A-t);
-            \draw[latex-, subscribe] (A-b) -- (Broker-b) node [pos=0.4,below=0.2cm] {$\mathrm{S:}$ {\color{black}{$u^{\color{red}{*}}$}}};
-
-            % Connect middle circle to the circle on the right
-            \node[circle,draw, minimum size=1.5cm, color=red] (ICDF) at  (6, -4) {\color{black}{$\mathrm{Monitor}$}};
-            \draw[-latex, signal] (Broker) -- (ICDF);
-
-            % Add subscribe lines
-            \draw[latex-, red] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](ICDF-b) (ICDF)
-            edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](ICDF-t) (ICDF)
-            (Broker-t) -- (ICDF-t) node [pos=0.5,above=0.2cm] {\color{red}{$y$}};
-            \draw[latex-, subscribe] (ICDF-b) -- (Broker-b) node [pos=0.7,below=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
-            % Add text 
+                % Add subscribe lines
+                \draw[latex-, red] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](ICDF-b) (ICDF)
+                edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](ICDF-t) (ICDF)
+                (Broker-t) -- (ICDF-t) node [pos=0.5,above=0.2cm] {\color{red}{$y$}};
+                \draw[latex-, subscribe] (ICDF-b) -- (Broker-b) node [pos=0.7,below=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
+            }
 
         \end{tikzpicture}
     \end{figure}
+
 \end{frame}
 
 
@@ -438,12 +492,16 @@ Institute of Information Engineering, Automation, and Mathematics \\
 %         \movie[width=0.78\linewidth, height=184.64pt]{ahoj}{giphy.mov}
 %     \end{center}
 % \end{frame}
-\newcommand\blfootnote[1]{%
-    \begingroup
-    \renewcommand\thefootnote{}\footnote{#1}%
-    \addtocounter{footnote}{-1}%
-    \endgroup
-    }
+% Blind footnote without indentation
+\makeatletter
+\newcommand{\blfootnote}[1]{%
+  \begingroup
+  \renewcommand{\@makefntext}[1]{\noindent ##1}% Redefine \@makefntext for footnotes created by \blfootnote
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+\makeatother
  
 \begin{frame}{Summary}
     \renewcommand{\figurename}{}
@@ -476,32 +534,27 @@ Institute of Information Engineering, Automation, and Mathematics \\
 
 \miniframesoff
 \section{}
-\begin{frame}[noframenumbering]{Follow-up research}
-    \begin{figure}[htpb]
-        \begin{center}
-            \includegraphics[width=0.65\linewidth]{../PC2023 Presentation/figures/cdc.pdf}
-            \footnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. In Proceedings of the 62nd IEEE CDC, Singapore, 2023. under review.}
-        \end{center}
-    \end{figure}
-\end{frame}
 
-\begin{frame}[noframenumbering]{Process Time Evaluation}
+\begin{frame}[noframenumbering]
+    \frametitle{Process Time Evaluation}
+
     \begin{table}[h]
+        \caption*{Comparison of latency on univariate data.}
         \begin{tabular} {
                 @{}
-                c|
-                S[table-format = 3(2), separate-uncertainty]|
-                S[table-format = 5.0, parse-numbers = false]|
-                S[table-format = 3(2), separate-uncertainty]|
-                S[table-format = 5.0, parse-numbers = false]|
+                l|
+                S[table-format = 3.1(4), separate-uncertainty]|
+                S[table-format = 4.0, parse-numbers = false]|
+                S[table-format = 3.1(4), separate-uncertainty]|
+                S[table-format = 4.0, parse-numbers = false]|
                 @{}
             }
-            {Evaluation}     & \multicolumn{2}{c|}{BESS} & \multicolumn{2}{c|}{Inverter}                       \\
-            {Time $\mathrm{[\mu s]}$}   & {average}               & {max}                         & {average} & {max} \\
-            \hline
-            Half-Space Trees & 218(198)                  & 10129                         & 216(196)    & 11281 \\
-            One-Class SVM    & 8(7)                      & 1233                          & 9(9)        & 1711  \\
-            Proposed         & 57(55)                    & 9431                          & 60(75)      & 12330 \\
+            {}     & \multicolumn{2}{c|}{BESS} & \multicolumn{2}{c|}{Inverter}                       \\
+            {Algorithm}   & {\begin{tabular}{@{}c@{}}average \\ $\mathrm{[\mu s \pm \mu s]}$\end{tabular}}               & {\begin{tabular}{@{}c@{}}max \\ $\mathrm{[ms]}$\end{tabular}}                         & {\begin{tabular}{@{}c@{}}average \\ $\mathrm{[\mu s \pm \mu s]}$\end{tabular}} & {\begin{tabular}{@{}c@{}}max \\ $\mathrm{[ms]}$\end{tabular}} \\
+            \toprule
+            Half-Space Trees & 220(200)                  & 10                         & 220(200)    & 11 \\
+            One-Class SVM    & 8(7)                      & 1                          & 9(9)        & 2  \\
+            \textbf{Proposed}         & 57(55)                    & 9                          & 60(75)      & 12 \\
         \end{tabular}
     \end{table}
 \end{frame}
@@ -534,6 +587,34 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \STATE $i \leftarrow i + 1$;
         \ENDLOOP
     \end{algorithmic}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Far Less False Positive Alarms}
+
+    \begin{table}[htbp]
+        \caption*{Recall, precision, and F1 evaluation on multivariate benchmark dataset.}
+        \begin{center}
+            \label{tab:perf_comp_2}
+            \begin{tabular}{l|c|c|c}
+                Algorithm     & {\begin{tabular}{@{}c@{}}Recall \\ $\mathrm{[\%]}$\end{tabular}}        & {\begin{tabular}{@{}c@{}}Precision \\ $\mathrm{[\%]}$\end{tabular}}     & {\begin{tabular}{@{}c@{}}F1 \\ $\mathrm{[\%]}$\end{tabular}}   \\
+                \toprule
+                Half-Space Trees      & $33$                & $36$                & $34$ \\
+                One-Class SVM        & $\boldsymbol{57}$ & $37$                & $44$                \\
+                \textbf{Proposed} & $50$                & $\boldsymbol{48}$ & $\boldsymbol{49}$                \\
+            \end{tabular}
+        \end{center}
+    \end{table}
+    \blfootnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. IEEE CDC 2023. (under review)}
+\end{frame}
+
+\begin{frame}[noframenumbering]{Follow-up research}
+    \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.75\linewidth]{../PC2023 Presentation/figures/cdc.pdf}
+            \blfootnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. IEEE CDC 2023. (under review)}
+        \end{center}
+    \end{figure}
 \end{frame}
 
 \end{document}
