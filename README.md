@@ -16,7 +16,7 @@ of process limits
 aging
 * Uses self-learning approach on streamed data
 
-> ![Inverter_Temperature_168_hours_sliding_thresh](https://user-images.githubusercontent.com/50716630/220299639-b3f25288-dac6-428d-9270-6e8125915970.png)
+![Average_Cell_Temperature_sliding_thresh](https://github.com/MarekWadinger/online_outlier_detection/assets/50716630/427586d8-9858-4cf2-9aaa-1ee5407416bd)
 
 ## ⚡️ Quickstart
 
@@ -27,12 +27,12 @@ As a quick example, we will run the online service in the terminal and use query
 To start the service, run following line of code in your terminal:
 
 ```bash
-python3 dynamic_signal_limits_service.py config.ini -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
+python3 dynamic_signal_limits_service.py -f config.ini -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
 ```
 
 Note: You can modify the source data stream using attributes:
 
-* `[-f | --config_file]` with path to `config.ini`
+* `[-f | --config_file]` with path to `config.ini` (NOTE: first defined key value pair is used)
 * `[-t | --topic]` to define topic to subscribe to or column in csv file
 
 If you want to stream example dataset use
@@ -63,7 +63,7 @@ The response is the latest date in `dynamic_limits.json`
  'level_low': 1151.15}
 ```
 
-Note: You can modify the attributes to retrieve any date:
+Note: You can modify the attributes to retrieve thrasholds at any date:
 
 * `[-d | --date]` date as 'Y-m-d H:M:S'
 
