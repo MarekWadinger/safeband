@@ -1,4 +1,6 @@
 # Real-Time Outlier Detection with Dynamic Process Limits
+[![Python application](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml/badge.svg)](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml)
+
 Online outlier detection service for existing real-time infrastructures for low-latency detection and change-point adaptation.
 The service provides dynamic process limits based on changing environmental conditions and sensors aging.
 
