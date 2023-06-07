@@ -45,7 +45,7 @@
 \makeatother
 
 % The text inside the square brackets [] in the commands specifies their respective short versions that will appear in the header or footer of each slide in a Beamer presentation.
-\author[M. Wadinger ]{Marek Wadinger, Michal Kvasnica}
+\author[M. Wadinger ]{\textbf{Marek Wadinger}, Michal Kvasnica}
 % Authors with institution
 % \author[M. Wadinger]{Marek Wadinger\inst{1}, Michal Kvasnica\inst{1} }
 \title[Real-Time OD with Dynamic Process Limits]{Real-Time Outlier Detection with Dynamic Process Limits}
@@ -53,7 +53,9 @@
 \institute[STU]
 {
 \inst{} 
-Institute of Information Engineering, Automation, and Mathematics \\
+Institute of Information Engineering, Automation, and Mathematics\\
+Faculty of Chemical and Food Technology\\
+Slovak University of Technology in Bratislava\\
 \textit{marek.wadinger@stuba.sk}
 }
 \date{}
@@ -81,13 +83,12 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \setbeamertemplate{headline}{}
 \setbeamertemplate{footline}{}
 
-\begin{frame}
+\begin{frame}[noframenumbering]
     \titlepage
     \begin{figure}[htpb]
-        \begin{center}
-            \raisebox{-0.5\height}{\includegraphics[width=0.1\linewidth]{figures/logos/logo_black_blue_transparent.pdf}}
-            \raisebox{-0.5\height}{\includegraphics[width=0.5\linewidth]{figures/logos/STU-FCHPT-anfh.pdf}}
-        \end{center}
+        \raisebox{-0.5\height}{\includegraphics[height=25pt]{figures/logos/STU-FCHPT-zfv_cut.pdf}}\hspace{20pt}
+        \raisebox{-0.5\height}{\includegraphics[height=25pt]{figures/logos/logo_black_blue_transparent.pdf}}\hspace{20pt}
+        \raisebox{-0.5\height}{\includegraphics[height=25pt]{figures/logos/front_seat.pdf}}
     \end{figure}
 \end{frame}
 
@@ -149,18 +150,20 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{figure}
 \end{frame}
 
+\section{Goals}
+
 \begin{frame}{Goals}
-    We need to design a detector that:
+    We need to design a data-driven outlier detector that:
     \begin{itemize}
-        % \item does not require huge amount of data
-        \item adapts to unseen operation
-        \item provides conservative process limits
+        % \item does not require a huge amount of data
+        \item adapts to unseen operation regime
+        \item provides conservative dynamic process limits
         \item operates with existing infrastructure
         % \item Improves maintenance scheduling
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Challenges}
+\begin{frame}{Limitations of Data-driven Outlier Detection}
 
     \begin{columns}
         \begin{column}{0.62\textwidth}
@@ -211,13 +214,19 @@ Institute of Information Engineering, Automation, and Mathematics \\
 \end{frame}
 
 
-\begin{frame}{Real Opeartion Data}
+\begin{frame}{Real Operation Data}
     \begin{figure}
         \begin{center}
             \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/all_signal.pdf}
             % \movie{sample\_data}{../ilustrate/pc2023/sample_data.gif}
         \end{center}
     \end{figure}
+    \vphantom{
+    \centering
+    \begin{tabular}{c|c}
+        {\color{green}{$+$}} One-Pass Algorithm & {\color{red}{$-$}} Adaptation Slows Down \\
+    \end{tabular}
+    }
 \end{frame}
 
 
@@ -227,12 +236,11 @@ Institute of Information Engineering, Automation, and Mathematics \\
             \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/mean_signal.pdf}
         \end{center}
     \end{figure}
-    \begin{table}
-        \centering
-        \begin{tabular}{c|c}
-            {\color{green}{$+$}} One-Pass Algorithm & {\color{red}{$-$}} Adaptation Slows Down \\
-        \end{tabular}
-    \end{table}
+
+    \centering
+    \begin{tabular}{c|c}
+        {\color{green}{$+$}} One-Pass Algorithm & {\color{red}{$-$}} Adaptation Slows Down \\
+    \end{tabular}
 \end{frame}
 
 \begin{frame}{Online Learning via Invertible Welford Algorithm}
@@ -241,12 +249,11 @@ Institute of Information Engineering, Automation, and Mathematics \\
             \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/rmean_signal.pdf}
         \end{center}
     \end{figure}
-    \begin{table}
-        \centering
-        \begin{tabular}{c|c}
-            {\color{green}{$+$}} Constant Adaptation & {\color{red}{$-$}} Memorizes Data Window \\
-        \end{tabular}
-    \end{table}
+
+    \centering
+    \begin{tabular}{c|c}
+        {\color{green}{$+$}} Constant Adaptation & {\color{red}{$-$}} Memorizes Data Window \\
+    \end{tabular}
 \end{frame}
 
 \begin{frame}{Dynamic Threshold Limits via Inversion}
@@ -255,10 +262,11 @@ Institute of Information Engineering, Automation, and Mathematics \\
             \includegraphics[width=0.62\linewidth]{../ilustrate/pc2023/bess/thresh_unsupervised_thresh.pdf}
         \end{center}
     \end{figure}
-    \begin{align*}
-        \ui{x}{l} & = F_{X}(1 - q; \bar x_n, s_n)^{-1} \\
-        \ui{x}{u} & = F_{X}(q; \bar x_n, s_n)^{-1}
-    \end{align*}
+    \begin{eqnarray}
+        \ui{x}{u}&=&F_{X}(q; \bar x_n, s_n)^{-1}\nonumber \\
+        \ui{x}{l}&=&F_{X}(1 - q; \bar x_n, s_n)^{-1}\nonumber
+    \end{eqnarray}
+    
 \end{frame}
 
 \begin{frame}{Distance-based Outlier Detection}
@@ -304,9 +312,9 @@ Institute of Information Engineering, Automation, and Mathematics \\
         \end{center}
     \end{figure}
     \begin{subnumcases}{y_i =}
-        0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)$ \nonumber  % \label{case:normal1}\tag{\ref{case:normal}}
+        0 & $\text{ if } q \leq F_{X}(x_i; \bar x_n, s_n)$ \nonumber\label{case:normal1}
         \\
-        1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)$ \nonumber  % \label{case:anomaly1}\tag{\ref{case:anomaly}}
+        1 & $\text{ if } q > F_{X}(x_i; \bar x_n, s_n)$ \nonumber  \label{case:anomaly1}
     \end{subnumcases}
 \end{frame}
 
@@ -336,18 +344,25 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \only<1>{%
       \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_a.pdf}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_0.pdf}
         \end{center}
     \end{figure}
     }
     \only<2>{%
       \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_b.pdf}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_a.pdf}
         \end{center}
     \end{figure}
     }
     \only<3>{%
+      \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_b.pdf}
+        \end{center}
+    \end{figure}
+    }
+    \only<4>{%
       \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/bess/_compare_anomalies_c.pdf}
@@ -361,18 +376,25 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \only<1>{%
       \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_a.pdf}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_0.pdf}
         \end{center}
     \end{figure}
     }
     \only<2>{%
       \begin{figure}[htpb]
         \begin{center}
-            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_b.pdf}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_a.pdf}
         \end{center}
     \end{figure}
     }
     \only<3>{%
+      \begin{figure}[htpb]
+        \begin{center}
+            \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_b.pdf}
+        \end{center}
+    \end{figure}
+    }
+    \only<4>{%
       \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=0.78\linewidth]{../ilustrate/pc2023/inverter/_compare_anomalies_c.pdf}
@@ -446,7 +468,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
                     \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](Control-b) (Control)
                     edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](Control-t) (Control)
                     (Broker-t) -- (Control-t) node [pos=0.5,above=0.2cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
-                    \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u$};
+                    \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$\color{black}u$};
                 }
             }
             \only<3->{
@@ -458,13 +480,13 @@ Institute of Information Engineering, Automation, and Mathematics \\
                 \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](Control-b) (Control)
                 edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](Control-t) (Control)
                 (Broker-t) -- (Control-t) node [pos=0.3,above=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}$}}};
-                \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u$};
+                \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$\color{black}u$};
             }
             \only<4>{
                 \draw[-latex, subscribe] (Broker) edge[bend right,draw=none] coordinate[at start](Broker-b) coordinate[at end](Control-b) (Control)
                 edge[bend left,draw=none] coordinate[at start](Broker-t) coordinate[at end](Control-t) (Control)
                 (Broker-t) -- (Control-t) node [pos=0.3,above=0.7cm] {$\mathrm{S:}$ {\color{black}{$\mathrm{S_1, S_2, D}, \color{red}{y}$}}};
-                \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$u^{\color{red}{*}}$};
+                \draw[-latex, signal] (Control-b) -- (Broker-b) node [pos=0.5,below=0.2cm] {$\color{black}{u}^{\color{red}{*}}$};
             }
             \only<3->{
                 \node[circle,draw, minimum size=1.5cm, color=red] (ICDF) at  (6, -4) {\color{black}{$\mathrm{Monitor}$}};
@@ -505,31 +527,33 @@ Institute of Information Engineering, Automation, and Mathematics \\
  
 \begin{frame}{Summary}
     \renewcommand{\figurename}{}
-    \begin{minipage}[c]{0.6\linewidth}
-        \begin{itemize}
-            \item outlier detection on streamed data
-            \item adaptation to external conditions
-            \item online self-learning approach
-            \item dynamic process limits for individual signals
-            \item integration with existing IT infrastructure
-        \end{itemize}
-        \begin{figure}[htpb]
-            \begin{center}
-                \includegraphics[width=0.2\linewidth]{figures/qr_uiam_squares_logo.pdf}\hfil
-                \includegraphics[width=0.2\linewidth]{figures/qr_pc2023_squares.pdf}
-            \end{center}
-        \end{figure}
-    \end{minipage}\hspace{1pt}
-    \begin{minipage}{0.38\linewidth}
-        \begin{figure}[htpb]
-            \begin{center}
-                \includegraphics[width=1\linewidth]{../ilustrate/pc2023/inverter/half_Inverter_Temperature_sliding_thresh.pdf}
-            \end{center}
-        \end{figure}
-    \end{minipage}
-    
+    \begin{columns}
+        \begin{column}{0.65\linewidth}
+            \begin{itemize}
+                \item outlier detection on streamed data
+                \item adaptation to external conditions
+                \item online self-learning approach
+                \item dynamic process limits for individual signals
+                \item integration with existing IT infrastructure
+            \end{itemize}
+            \begin{figure}[htpb]
+                \begin{center}
+                    \includegraphics[width=0.2\linewidth]{figures/qr_pc2023_squares.pdf}\hfil
+                    \includegraphics[width=0.2\linewidth]{figures/qr_in_squares_logo.pdf}\hfil
+                    \includegraphics[width=0.2\linewidth]{figures/qr_uiam_squares_logo.pdf}
+                \end{center}
+            \end{figure}
+        \end{column}
+        \begin{column}{0.35\linewidth}
+            \begin{figure}[htpb]
+                \begin{center}
+                    \includegraphics[width=\linewidth]{../ilustrate/pc2023/inverter/half_Inverter_Temperature_sliding_thresh.pdf}
+                \end{center}
+            \end{figure}
+        \end{column}
+    \end{columns}
 
-    \blfootnote{\tiny \textbf{Acknowledgements:} APVV-20-0261. VEGA 1/0490/23. Horizon Europe under the grant no. 101079342.}
+    \blfootnote{\tiny \textbf{Acknowledgements:} APVV-20-0261. VEGA 1/0490/23. Horizon Europe under grant no. 101079342 (FrontSeat).}
 \end{frame}
 
 \miniframesoff
@@ -589,7 +613,7 @@ Institute of Information Engineering, Automation, and Mathematics \\
     \end{algorithmic}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[noframenumbering]
     \frametitle{Far Less False Positive Alarms}
 
     \begin{table}[htbp]
@@ -605,14 +629,14 @@ Institute of Information Engineering, Automation, and Mathematics \\
             \end{tabular}
         \end{center}
     \end{table}
-    \blfootnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. IEEE CDC 2023. (under review)}
+    \blfootnote{\tiny M. Wadinger -- M. Kvasnica. Adaptable and Interpretable Framework for Novelty Detection in Real-Time IoT Systems. IEEE CDC 2023. (reviewed)}
 \end{frame}
 
 \begin{frame}[noframenumbering]{Follow-up research}
     \begin{figure}[htpb]
         \begin{center}
             \includegraphics[width=0.75\linewidth]{../PC2023 Presentation/figures/cdc.pdf}
-            \blfootnote{\tiny M. Wadinger and M. Kvasnica. Adaptable and interpretable framework for novelty detection in real-time iot systems. IEEE CDC 2023. (under review)}
+            \blfootnote{\tiny M. Wadinger -- M. Kvasnica. Adaptable and Interpretable Framework for Novelty Detection in Real-Time IoT Systems. IEEE CDC 2023. (reviewed)}
         \end{center}
     \end{figure}
 \end{frame}
