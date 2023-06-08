@@ -48,4 +48,8 @@ jobs:
         git config --global user.email "marekwadinger5506@gmail.com"
         git add reports/flake8-badge.svg reports/test-badge.svg reports/coverage-badge.svg
         git commit -m "Update Coverage Badges"
-        git push
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
