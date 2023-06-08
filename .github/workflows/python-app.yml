@@ -36,7 +36,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --output-file=reports/flake8/flake8stats.txt
     - name: Test with pytest
       run: |
-        pytest tests/encryption.py --doctest-modules --ignore=publications --ignore=streamz_redis --ignore=legacy --junitxml=reports/junit/test-results.xml --cov=. --cov-report=xml:reports/coverage/coverage.xml
+        pytest --doctest-modules --junitxml=reports/junit/test-results.xml --cov=. --cov-report=xml:reports/coverage/coverage.xml
     - name: Update Coverage Badges
       run: |
         genbadge flake8 -o reports/flake8-badge.svg
