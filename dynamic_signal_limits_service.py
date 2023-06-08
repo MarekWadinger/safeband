@@ -105,7 +105,9 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
 
     def limit_one(self):
         kwargs = {"loc": self.gaussian.mu,
-                  "scale": self.gaussian.sigma}
+                  "scale": 
+                      self.gaussian.sigma
+                      if not isinstance(self.gaussian.sigma, complex) else 0}
         # TODO: consider strict process boundaries
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning)
