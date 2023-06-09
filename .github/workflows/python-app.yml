@@ -55,7 +55,7 @@ jobs:
         body: "Automated update of coverage badges"
         add-paths: |
           reports/*.svg
-          reports/*/report/*
+          reports/**/report/**
     - name: Enable Pull Request Automerge
       run: gh pr merge -d --merge --auto "1"
       env:
