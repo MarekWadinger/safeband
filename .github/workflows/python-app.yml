@@ -37,10 +37,10 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --output-file=reports/flake8/flake8stats.txt
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --output-file=reports/flake8/flake8stats.txt --format=html --htmldir=reports/flake8/report
     - name: Test with pytest
       run: |
-        pytest --doctest-modules --junitxml=reports/junit/junit.xml --cov=. --cov-report=xml:reports/coverage/coverage.xml
+        pytest --doctest-modules --junitxml=reports/junit/junit.xml --cov=. --cov-report=xml:reports/coverage/coverage.xml --cov-report=html:reports/coverage/report --html=reports/junit/report/index.html
     - name: Update Coverage Badges
       run: |
         genbadge flake8 -o reports/flake8-badge.svg
@@ -54,6 +54,7 @@ jobs:
         body: "Automated update of coverage badges"
         add-paths: |
           reports/*.svg
+          reports/*/report/*
     - name: Enable Pull Request Automerge
       run: gh pr merge -d --merge --auto "1"
       env:
