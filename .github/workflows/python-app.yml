@@ -56,6 +56,10 @@ jobs:
         add-paths: |
           reports/*.svg
           reports/**/report/**
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     - name: Enable Pull Request Automerge
       run: gh pr merge -d --merge --auto "1"
       env:
