@@ -19,6 +19,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
+        fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository.
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
@@ -44,8 +47,8 @@ jobs:
         genbadge coverage -o reports/coverage-badge.svg
     - name: Commit and push changes
       run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "marekwadinger5506@gmail.com"
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add reports/flake8-badge.svg reports/test-badge.svg reports/coverage-badge.svg
         git commit -m "Update Coverage Badges"
     - name: Push changes
