@@ -45,24 +45,8 @@ jobs:
         genbadge flake8 -o reports/flake8-badge.svg
         genbadge tests -o reports/test-badge.svg
         genbadge coverage -o reports/coverage-badge.svg
-    - name: Commit and push changes
-      continue-on-error: true
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git remote set-url --push origin https://marekwadinger:$GITHUB_TOKEN@github.com/MarekWadinger/online_outlier_detection
-        git add reports/flake8-badge.svg reports/test-badge.svg reports/coverage-badge.svg
-        git commit -m "Update Coverage Badges"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v5
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        branch: main
-        base: main
         title: "Update Coverage Badges"
         body: "Automated update of coverage badges"
-        commit-message: "Update Coverage Badges"
-        committer: "GitHub <noreply@github.com>"
-        path: "reports/flake8-badge.svg,reports/test-badge.svg,reports/coverage-badge.svg"
