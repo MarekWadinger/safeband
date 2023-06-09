@@ -53,45 +53,16 @@ jobs:
         git remote set-url --push origin https://marekwadinger:$GITHUB_TOKEN@github.com/MarekWadinger/online_outlier_detection
         git add reports/flake8-badge.svg reports/test-badge.svg reports/coverage-badge.svg
         git commit -m "Update Coverage Badges"
-        git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Commit and push changes
-      continue-on-error: true
-      run: |
-        git config --global user.name "marekwadinger"
-        git config --global user.email "marekwadinger5506@gmail.com"
-        git remote set-url --push origin https://marekwadinger:$GITHUB_TOKEN@github.com/MarekWadinger/online_outlier_detection
-        git add reports/flake8-badge.svg reports/test-badge.svg reports/coverage-badge.svg
-        git commit -am "Update Coverage Badges"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Commit and push changes
-      continue-on-error: true
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git remote set-url --push origin https://marekwadinger:$GITHUB_TOKEN@github.com/MarekWadinger/online_outlier_detection
-        git add reports/flake8-badge.svg reports/test-badge.svg reports/coverage-badge.svg
-        git commit -am "Update Coverage Badges"
-        git push --set-upstream origin HEAD:${{ github.ref }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Push badges 2#
-      continue-on-error: true
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git remote set-url --push origin https://marekwadinger:$GITHUB_TOKEN@github.com/MarekWadinger/online_outlier_detection
-        git add reports/flake8-badge.svg reports/test-badge.svg reports/coverage-badge.svg
-        git commit -m "Update Coverage Badges"
-        git push --force
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Push badges
-      uses: ad-m/github-push-action@master
-      continue-on-error: true
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v5
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: ${{ github.ref }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        branch: main
+        base: main
+        title: "Update Coverage Badges"
+        body: "Automated update of coverage badges"
+        commit-message: "Update Coverage Badges"
+        committer: "GitHub <noreply@github.com>"
+        path: "reports/flake8-badge.svg,reports/test-badge.svg,reports/coverage-badge.svg"
