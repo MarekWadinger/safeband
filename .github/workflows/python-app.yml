@@ -42,7 +42,6 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --doctest-modules --junitxml=reports/junit/junit.xml --cov=. --cov-report=xml:reports/coverage/coverage.xml --cov-report=html:reports/coverage/report --html=reports/junit/report/index.html
-        rm reports/coverage/report/.gitignore
     - name: Update Coverage Badges
       run: |
         genbadge flake8 -o reports/flake8-badge.svg
