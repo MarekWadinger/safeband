@@ -42,3 +42,8 @@ data/*
 # Misc
 legacy/
 tests/
+
+# Allow gitignore
+!*.gitignore
+!*.github
+!*.gitattributes

@@ -84,7 +84,7 @@ class MultivariateGaussian(base.ContinuousDistribution):
     """  # noqa: W291
 
     def __init__(self, seed=None):
-        super().__init__(seed)
+        super().__init__()
         self._var = covariance.EmpiricalCovariance(ddof=1)
         self.feature_names_in_ = None
 

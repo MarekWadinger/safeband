@@ -70,6 +70,45 @@ class to_mqtt(Sink):
 def preprocess(
         x,
         col):
+    """Preprocess the input data.
+
+    Args:
+        x (Union[pd.Series, tuple, dict, MQTTMessage, bytes]): The input data
+        to be preprocessed.
+        col (Union[str, List[str]]): The column(s) to be extracted from the
+        input data.
+
+    Returns:
+        dict: The preprocessed data.
+
+    Examples:
+        >>> series = pd.Series([1.], name=pd.to_datetime('2023-01-01'),
+        ...                    index=["sensor_1"])
+        >>> preprocess(series, 'sensor_1')
+        {'time': Timestamp('2023-01-01 00:00:00'), 'data': {'sensor_1': 1.0}}
+
+        >>> series_tuple = (pd.to_datetime('2023-01-01'), series)
+        >>> preprocess(series_tuple, 'sensor_1')
+        {'time': Timestamp('2023-01-01 00:00:00'), 'data': {'sensor_1': 1.0}}
+
+        >>> data_dict = {'time': pd.to_datetime('2023-01-01'), 'sensor_1': 1.}
+        >>> out = preprocess(data_dict, ['sensor_1'])
+        >>> out.keys(), out['data'].keys()
+        (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
+
+        >>> mqtt_message = MQTTMessage()
+        >>> mqtt_message.timestamp = 1672527600.0
+        >>> mqtt_message.payload = b'1.'
+        >>> mqtt_message.topic = b'sensors/sensor_1'
+        >>> out = preprocess(mqtt_message, '1')
+        >>> out.keys(), out['data'].keys()
+        (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
+
+        >>> binary_data = b'1.0'
+        >>> out = preprocess(binary_data, 'sensor_1')
+        >>> out.keys(), out['data'].keys()
+        (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
+    """
     if isinstance(x, pd.Series):
         col = [col] if not isinstance(col, list) else col
         return {"time": x.name.tz_localize(None),
@@ -81,11 +120,12 @@ def preprocess(
                 "data": x[1][col].to_dict()
                 }
     elif isinstance(x, dict):
-        return {k: v for k, v in x.items() if k in col}
+        return {"time": dt.datetime.now().replace(microsecond=0),
+                "data": {k: v for k, v in x.items() if k in col}
+                }
     elif isinstance(x, MQTTMessage):
-        return {"time": (dt.datetime
-                         .fromtimestamp(x.timestamp)
-                         .replace(microsecond=0)),
+        return {"time": dt.datetime
+                .fromtimestamp(x.timestamp).replace(microsecond=0),
                 "data": {x.topic.split("/")[-1]: float(x.payload)}
                 }
     elif isinstance(x, bytes):

@@ -75,7 +75,9 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
 
     def limit_one(self):
         kwargs = {"loc": self.gaussian.mu,
-                  "scale": self.gaussian.sigma}
+                  "scale": self.gaussian.sigma
+                  if not isinstance(self.gaussian.sigma, complex)
+                  else 0}
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
