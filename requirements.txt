@@ -7,3 +7,5 @@ streamz==0.6.4
 confluent-kafka==2.0.2
 matplotlib==3.7.0
 plotly==5.13.0
+cryptography==41.0.1
+human_security==1.0

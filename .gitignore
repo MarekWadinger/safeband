@@ -46,3 +46,4 @@ tests/
 # Allow gitignore
 !*.gitignore
 !*.github
+!*.gitattributes
