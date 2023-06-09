@@ -8,12 +8,12 @@ topic = "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/dynamic_limits"  # topic
 # MQTT callback functions
 
 
-def on_connect(client, flags, rc):
+def on_connect(self, client, flags, rc):
     print("Connected with result code " + str(rc))
-    client.subscribe(topic)
+    self.subscribe(topic)
 
 
-def on_message(client, msg):
+def on_message(self, client, msg):
     print(msg.payload)
     print("Received message: " + msg.payload.decode())
 
