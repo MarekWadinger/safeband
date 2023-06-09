@@ -51,5 +51,10 @@ jobs:
       with:
         title: "Update Coverage Badges"
         body: "Automated update of coverage badges"
+        delete-branch: true
         add-paths: |
           reports/*.svg
+    - name: Enable Pull Request Automerge
+      run: gh pr merge --merge --auto "1"
+      env:
+        GH_TOKEN: ${{ secrets.PAT }}
