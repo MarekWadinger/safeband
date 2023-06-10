@@ -42,11 +42,7 @@ def plot_limits(
         **kwargs):
 
     if not file_name:
-        if window:
-            file_name = (f"{ser.name.replace(' ', '_')}_"
-                         f"{int(window.total_seconds()/60/60)}_hours_sliding")
-        else:
-            file_name = (f"{ser.name.replace(' ', '_')}_sliding")
+        file_name = get_file_name(ser, window)
 
     a = anomalies.astype(int).diff()
     # Show dates of anomalous events
@@ -54,53 +50,25 @@ def plot_limits(
 
     fig = go.Figure()
 
-    fig.update_layout(FIG_LAYOUT.update(dict(yaxis_title=ser.name,
-                                             yaxis_range=[ser.min(),
-                                                          ser.max()],
-                                             xaxis_tickangle=60,
-                                             xaxis_tickfont_size=9,
-                                             xaxis_tickvals=b[b > 0].index)))
+    fig.update_layout(
+        FIG_LAYOUT.update(dict(
+            yaxis_title=ser.name,
+            yaxis_range=[ser.min(), ser.max()],
+            xaxis_tickangle=60,
+            xaxis_tickfont_size=9,
+            xaxis_tickvals=b[b > 0].index)))
 
-    # To show discontinuation of the signal stream
-    # d = ser.copy()
-    # d.index = d.index.round("1T")
-    # d = d.resample('2T').min()
-
-    fig.add_trace(go.Scatter(
-        x=ser.index, y=ser,
-        connectgaps=False,
-        line_color='rgb(0,140,120)',
-        name=ser.name, showlegend=True,
-        line_width=0.7
-    ))
+    plot_add_signal(fig, ser)
 
     if save:
         fig.write_image(f"{file_name}_signal.pdf")
 
     if kwargs.keys() == {"ser_mean", "ser_pos", "ser_neg"}:
-        fig.add_trace(go.Scatter(
-            x=kwargs["ser_pos"].index.append(kwargs["ser_pos"].index[::-1]),
-            y=pd.concat([kwargs["ser_pos"], kwargs["ser_neg"][::-1]]),
-            fill='toself',
-            fillcolor='rgba(100,0,80,0.2)',
-            line_color='rgba(255,255,255,0)',
-            showlegend=False,
-            name=f'Mov Mean {ser.name}',
-            line_width=0.7
-        ))
-
-        fig.add_trace(go.Scatter(
-            x=kwargs["ser_mean"].index, y=kwargs["ser_mean"],
-            line_color='rgb(100,0,80)',
-            name=f'Mov Mean {ser.name}',
-            line_width=0.7
-        ))
+        plot_add_mean_std(fig, ser, kwargs)
 
         if save:
             fig.write_image(f"{file_name}_mean.pdf")
-        for trace, visibility in zip([-1, -2],
-                                     [False, False]):
-            fig.data[trace].visible = visibility
+        set_invisible(fig, [-1, -2])
 
     for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
         fig.add_vrect(x0=x0, x1=x1, line_color="red", fillcolor="red",
@@ -110,43 +78,13 @@ def plot_limits(
         fig.write_image(f"{file_name}_anomalies.pdf")
 
     if (ser_high is not None) and (ser_low is not None):
-        fig.add_trace(go.Scatter(
-            x=ser.index, y=([1] if ser_high.max(skipna=True) < 1
-                            else [ser_high.max(skipna=True)])*len(ser),
-            line_color='rgba(100,100,100, 0)',
-            name='Threshold', legendgroup='thresh', showlegend=False,
-            line_width=0.7
-        ))
-
-        fig.add_trace(go.Scatter(
-            x=ser_high.index, y=ser_high,
-            line_color='rgba(100,0,0,0.25)',
-            fillcolor='rgba(100,0,0, 0.1)', fill="tonexty",
-            name='Threshold', legendgroup='thresh', showlegend=True,
-            line_width=0.7
-        ))
-
-        fig.add_trace(go.Scatter(
-            x=ser_low.index, y=ser_low,
-            line_color='rgba(100,0,0,0.25)',
-            fillcolor='rgba(100,0,0, 0.1)', fill="tozeroy",
-            name='Threshold', legendgroup='thresh', showlegend=False,
-            line_width=0.7
-        ))
+        yaxis_range = [ser.min(), ser.max()]
+        add_thresholds(fig, ser_high, ser_low,
+                       row=None, col=None,
+                       yaxis_range=yaxis_range)
 
         if save:
             fig.write_image(f"{file_name}_thresh.pdf")
-
-    if window:
-        text = (f"Sliding window: {window}\n"
-                f"Proportion of anomalous samples: "
-                f"{sum(anomalies)/len(anomalies)*100:.02f}%\n"
-                f"Total number of anomalous events: "
-                f"{sum(pd.Series(anomalies).diff().dropna() == 1)}")
-        text = text.replace('\n', '<br>')
-        fig.add_annotation(text=text, align='left',
-                           xref="paper", yref="paper",
-                           x=0, y=1.2, showarrow=False)
 
     fig.update_layout(
         height=90*10,
@@ -156,6 +94,60 @@ def plot_limits(
         fig.write_html(f"{file_name}_all.html")
 
     fig.show()
+
+
+def get_file_name(
+        ser,
+        window=None
+):
+    if window is not None:
+        file_name = (f"{ser.name.replace(' ', '_')}_"
+                     f"{int(window.total_seconds()/60/60)}_hours_sliding")
+    else:
+        file_name = (f"{ser.name.replace(' ', '_')}_sliding")
+    return file_name
+
+
+def plot_add_signal(
+        fig,
+        ser
+):
+    fig.add_trace(go.Scatter(
+        x=ser.index, y=ser,
+        connectgaps=False,
+        line_color='rgb(0,140,120)',
+        name=ser.name, showlegend=True,
+        line_width=0.7
+    ))
+
+
+def plot_add_mean_std(
+        fig,
+        ser,
+        kwargs
+):
+    fig.add_trace(go.Scatter(
+        x=kwargs["ser_pos"].index.append(kwargs["ser_pos"].index[::-1]),
+        y=pd.concat([kwargs["ser_pos"], kwargs["ser_neg"][::-1]]),
+        fill='toself',
+        fillcolor='rgba(100,0,80,0.2)',
+        line_color='rgba(255,255,255,0)',
+        showlegend=False,
+        name=f'Mov Mean {ser.name}',
+        line_width=0.7
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=kwargs["ser_mean"].index, y=kwargs["ser_mean"],
+        line_color='rgb(100,0,80)',
+        name=f'Mov Mean {ser.name}',
+        line_width=0.7
+    ))
+
+
+def set_invisible(fig, inv_lines: list):
+    for trace in inv_lines:
+        fig.data[trace].visible = inv_lines
 
 
 def plot_limits_3d(
@@ -208,35 +200,14 @@ def plot_limits_3d(
         line_width=0.7
     ), row=4, col=1)
 
+    yaxis_range = [df.iloc[:, col2].min(), df.iloc[:, col2].max()]
+
     # THRESHOLD
     thresh_high = ser_high.apply(lambda x: x[col1][col1])
     thresh_low = ser_low.apply(lambda x: x[col1][col1])
-    fig.add_trace(go.Scatter(
-        x=thresh_high.index, y=(
-            [thresh_high.max(skipna=True)])*len(thresh_high),
-        line_color='rgba(100,100,100, 0)',
-        name='Threshold', legendgroup='thresh', showlegend=False,
-        line_width=0.7
-    ), row=4, col=1)
-
-    fig.add_trace(go.Scatter(
-        x=thresh_high.index, y=thresh_high,
-        line_color='rgba(100,0,0,0.25)',
-        fillcolor='rgba(100,0,0, 0.1)', fill="tonexty",
-        name='Threshold', legendgroup='thresh', showlegend=False,
-        line_width=0.7
-    ), row=4, col=1)
-
-    fig.add_trace(go.Scatter(
-        x=thresh_low.index, y=thresh_low,
-        line_color='rgba(100,0,0,0.25)',
-        fillcolor='rgba(100,0,0, 0.1)', fill="tozeroy",
-        name='Threshold', legendgroup='thresh', showlegend=False,
-        line_width=0.7
-    ), row=4, col=1)
-    fig.layout['yaxis'].update(
-        dict(range=[thresh_low.min(), thresh_high.max()]))
-
+    add_thresholds(fig, thresh_high, thresh_low,
+                   row=4, col=2,
+                   yaxis_range=yaxis_range)
     # THIRD
     fig.add_trace(go.Scatter(
         x=df.index, y=df.iloc[:, col2],
@@ -246,34 +217,14 @@ def plot_limits_3d(
         line_width=0.7
     ), row=4, col=2)
 
+    yaxis_range = [df.iloc[:, col2].min(), df.iloc[:, col2].max()]
+
     # THRESHOLD
     thresh_high = ser_high.apply(lambda x: x[col2][col2])
     thresh_low = ser_low.apply(lambda x: x[col2][col2])
-    fig.add_trace(go.Scatter(
-        x=thresh_high.index, y=(
-            [thresh_high.max(skipna=True)])*len(thresh_high),
-        line_color='rgba(100,100,100, 0)',
-        name='Threshold', legendgroup='thresh', showlegend=False,
-        line_width=0.7
-    ), row=4, col=2)
-
-    fig.add_trace(go.Scatter(
-        x=thresh_high.index, y=thresh_high,
-        line_color='rgba(100,0,0,0.25)',
-        fillcolor='rgba(100,0,0, 0.1)', fill="tonexty",
-        name='Threshold', legendgroup='thresh', showlegend=False,
-        line_width=0.7
-    ), row=4, col=2)
-
-    fig.add_trace(go.Scatter(
-        x=thresh_low.index, y=thresh_low,
-        line_color='rgba(100,0,0,0.25)',
-        fillcolor='rgba(100,0,0, 0.1)', fill="tozeroy",
-        name='Threshold', legendgroup='thresh', showlegend=False,
-        line_width=0.7
-    ), row=4, col=2)
-    fig.layout['yaxis2'].update(
-        dict(range=[thresh_low.min(), thresh_high.max()]))
+    add_thresholds(fig, thresh_high, thresh_low,
+                   row=4, col=2,
+                   yaxis_range=yaxis_range)
 
     fig.update_layout(
         height=90*10,
@@ -281,9 +232,49 @@ def plot_limits_3d(
     )
 
     if save:
-        fig.write_html(f"multi_all.html")
+        fig.write_html("multi_all.html")
 
     return fig
+
+
+def add_thresholds(
+        fig,
+        thresh_high,
+        thresh_low,
+        row: int,
+        col: int,
+        yaxis_range: list[int]):
+    fig.add_trace(go.Scatter(
+        x=thresh_high.index, y=(
+            [max(yaxis_range)])*len(thresh_high),
+        line_color='rgba(100,100,100, 0)',
+        name='Threshold', legendgroup='thresh', showlegend=False,
+        line_width=0.7
+    ), row=row, col=col)
+
+    fig.add_trace(go.Scatter(
+        x=thresh_high.index, y=thresh_high,
+        line_color='rgba(100,0,0,0.25)',
+        fillcolor='rgba(100,0,0, 0.1)', fill="tonexty",
+        name='Threshold', legendgroup='thresh', showlegend=False,
+        line_width=0.7
+    ), row=row, col=col)
+
+    fig.add_trace(go.Scatter(
+        x=thresh_low.index, y=(
+            [min(yaxis_range)])*len(thresh_low),
+        line_color='rgba(100,100,100, 0)',
+        name='Threshold', legendgroup='thresh', showlegend=False,
+        line_width=0.7
+    ), row=row, col=col)
+
+    fig.add_trace(go.Scatter(
+        x=thresh_low.index, y=thresh_low,
+        line_color='rgba(100,0,0,0.25)',
+        fillcolor='rgba(100,0,0, 0.1)', fill="tonexty",
+        name='Threshold', legendgroup='thresh', showlegend=False,
+        line_width=0.7
+    ), row=row, col=col)
 
 
 def plot_compare_anomalies(
@@ -295,11 +286,7 @@ def plot_compare_anomalies(
         **kwargs):
 
     if not file_name:
-        if window:
-            file_name = (f"{ser.name.replace(' ', '_')}_"
-                         f"{int(window.total_seconds()/60/60)}_hours_sliding")
-        else:
-            file_name = (f"{ser.name.replace(' ', '_')}_sliding")
+        file_name = get_file_name(ser, window)
 
     n_rows = len(anomalies.columns)
     fig = make_subplots(rows=n_rows, cols=1,
@@ -331,7 +318,8 @@ def plot_compare_anomalies(
                           opacity=0.25, layer="below", row=row, col=1)
 
         fig.update_yaxes(
-            title_text=f"{ser.name}<br>{anomaly}", title_standoff=0, row=row, col=1)
+            title_text=f"{ser.name}<br>{anomaly}", title_standoff=0,
+            row=row, col=1)
 
     if save:
         fig.write_image(f"{file_name}_compare_anomalies.pdf")

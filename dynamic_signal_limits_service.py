@@ -105,7 +105,7 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
 
     def limit_one(self):
         kwargs = {"loc": self.gaussian.mu,
-                  "scale": 
+                  "scale":
                       self.gaussian.sigma
                       if not isinstance(self.gaussian.sigma, complex) else 0}
         # TODO: consider strict process boundaries
@@ -246,6 +246,25 @@ def signal_handler(sig, frame, detector, config):
     exit(0)
 
 
+def get_source(
+        config: dict,
+        topic: str,
+        debug: bool = False):
+    if config.get("path"):
+        if debug:
+            source = Stream()
+        else:
+            source = Stream.from_iterable(config['data'].iterrows())
+    elif config.get("host"):
+        source = Stream.from_mqtt(**config, topic=topic)
+    elif config.get("bootstrap.servers"):
+        source = Stream.from_kafka(
+            [topic], {**config, 'group.id': 'detection_service'})
+    else:
+        raise (RuntimeError("Wrong data format."))
+    return source
+
+
 def process_limits_streaming(
         config: dict,
         topic: str,
@@ -256,17 +275,9 @@ def process_limits_streaming(
     if config.get("path"):
         data = pd.read_csv(config['path'], index_col=0)
         data.index = pd.to_datetime(data.index, utc=True)
-        if debug:
-            source = Stream()
-        else:
-            source = Stream.from_iterable(data.iterrows())
-    elif config.get("host"):
-        source = Stream.from_mqtt(**config, topic=topic)
-    elif config.get("bootstrap.servers"):
-        source = Stream.from_kafka(
-            [topic], {**config, 'group.id': 'detection_service'})
-    else:
-        raise (RuntimeError("Wrong data format."))
+        config['data'] = data
+
+    source = get_source(config, topic, debug)
 
     detector = source.map(preprocess, topic).map(
         fit_transform, model, model_inv)

@@ -135,7 +135,7 @@ def plot_limits_(
                 marker='.', markersize=0.8)
 
     if (ser_high is not None) and (ser_low is not None):
-        ax.fill_between(ser_high.index, ser_high, kwargs["ylim"][1], 
+        ax.fill_between(ser_high.index, ser_high, kwargs["ylim"][1],
                         label=r'Limits',
                         color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.5),
                         linestyle="-", linewidth=0.7,)
@@ -191,7 +191,7 @@ def plot_compare_anomalies_(
         axs[0].legend(
             ['Signal', "Anomalies"], bbox_to_anchor=(0., 1.05, 1., .102),
             loc='lower left', ncols=2, mode="expand", borderaxespad=0.)
-        
+
         if save:
             plt.savefig(f"{file_name}_compare_anomalies_{chr(97+row)}.pdf")
 
