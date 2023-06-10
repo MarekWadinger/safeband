@@ -1,31 +1,65 @@
 import json
 import argparse
 from datetime import datetime
+import paho.mqtt.client as mqtt
+
+
+PORT = 1883
+
+
+# MQTT callback functions
+def on_connect(self, userdata, flags, rc):
+    print("Connected with result code " + str(rc))
+    self.subscribe(userdata.topic)
+
+
+def on_message(self, userdata, msg):
+    print(msg.payload)
+    print("Received message: " + msg.payload.decode())
 
 
 if __name__ == '__main__':
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--date", help="date as 'Y-m-d H:M:S'",
+    parser.add_argument("-b", "--broker", help="Host or output file path.",
+                        default=None)
+    parser.add_argument("-t", "--topic",
+                        help="Topic of MQTT or Column of pd.DataFrame",)
+    parser.add_argument("-d", "--date", help="Date as 'Y-m-d H:M:S'",
                         default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     args = parser.parse_args()
 
-    # Load the JSON file as a list of dictionaries
-    with open("data/output/dynamic_limits.json", 'r') as f:
-        data = [json.loads(line) for line in f]
+    if args.broker.endswith(".json"):
+        # Load the JSON file as a list of dictionaries
+        with open("data/output/dynamic_limits.json", 'r') as f:
+            data = [json.loads(line) for line in f]
 
-    # Convert the time strings to datetime objects
-    for item in data:
-        item["time"] = datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
+            # Convert the time strings to datetime objects
+        for item in data:
+            item["time"] = datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
 
-    # Sort the data by time in descending order
-    data.sort(key=lambda x: x["time"], reverse=True)
+        # Sort the data by time in descending order
+        data.sort(key=lambda x: x["time"], reverse=True)
 
-    # Find the closest past item
-    for item in data:
-        if item["time"] <= datetime.strptime(args.date, "%Y-%m-%d %H:%M:%S"):
-            closest_item = item
-            break
+        # Find the closest past item
+        for item in data:
+            if item["time"] <= datetime.strptime(args.date,
+                                                 "%Y-%m-%d %H:%M:%S"):
+                closest_item = item
+                break
 
-    # Print the closest past item
-    print(closest_item)
+        # Print the closest past item
+        print(closest_item)
+    else:
+        # Create MQTT client instance
+        client = mqtt.Client(userdata=args)
+
+        # Assign callback functions
+        client.on_connect = on_connect
+        client.on_message = on_message
+
+        # Connect to the MQTT broker
+        client.connect(args.broker, PORT, 60)
+
+        # Start the MQTT loop
+        client.loop_forever()
