@@ -135,7 +135,7 @@ def plot_limits_(
                 marker='.', markersize=0.8)
 
     if (ser_high is not None) and (ser_low is not None):
-        ax.fill_between(ser_high.index, ser_high, kwargs["ylim"][1], 
+        ax.fill_between(ser_high.index, ser_high, kwargs["ylim"][1],
                         label=r'Limits',
                         color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.5),
                         linestyle="-", linewidth=0.7,)
@@ -191,7 +191,7 @@ def plot_compare_anomalies_(
         axs[0].legend(
             ['Signal', "Anomalies"], bbox_to_anchor=(0., 1.05, 1., .102),
             loc='lower left', ncols=2, mode="expand", borderaxespad=0.)
-        
+
         if save:
             plt.savefig(f"{file_name}_compare_anomalies_{chr(97+row)}.pdf")
 
@@ -208,7 +208,8 @@ def plot_limits_grid_(
         changepoints: pd.Series | None = None,
         samplings: pd.Series | None = None,
         **kwargs):
-
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+              '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
     # file_name = make_name(ser.name, window, file_name)
 
     a = anomalies.astype(int).diff()
@@ -218,56 +219,61 @@ def plot_limits_grid_(
     fig, axs = plt.subplots(nrows=n_rows, ncols=1,
                             figsize=set_size(subplots=(1, 1)),
                             sharex=True)
+    fig.subplots_adjust(left=0.10, bottom=0.15, right=0.95, top=0.90)
     fig.subplots_adjust(hspace=0.05)
-    # y_labels = [r"$T_{\downarrow}$", r"$T_{-}$", r"$T_{\uparrow}$",
-    #  r"$e_P$"]
+
+    # TODO: drop if ordering is corrected before plotting
+    y_labels = [r"$T_{-}~[-]$", r"$T_{\uparrow}~[-]$",
+                r"$e_P~[-]$", r"$T_{\downarrow} [-]$", ]
+    j = [1, 0, 3, 2]
+
     for i, col_name in enumerate(df.columns):
         ser = df[col_name]
-        ser_high_ = ser_high.apply(
-            lambda x: x[i][i]) if ser_high is not None else None
-        ser_low_ = ser_low.apply(
-            lambda x: x[i][i]) if ser_low is not None else None
 
-        ax = axs[i]
-        ax.plot(ser.index, ser, color=(0, 0.5, 0.5),
+        ax: plt.Axes = axs[j[i]]
+        ax.plot(ser.resample('1t').fillna(None),
                 linewidth=0.7, label='Signal')
-        set_axis_style(ax, ser, ylabel=f"{ser.name} [-]")
+        set_axis_style(ax, ser, ylabel=y_labels[i])
         ax.scatter(ser[anomalies == 1].index, ser[anomalies == 1],
-                   color=(0.5, 0, 0), s=3, label='System Anomalies')
+                   color=colors[5], s=3, label='System Anomalies')
 
-        if changepoints is not None:
+        if samplings is not None:
             ax.scatter(ser[samplings == 1].index, ser[samplings == 1],
-                       color=(0, 0, 0.5), s=2, label='Sampling Anomalies')
+                       color=colors[1], s=2, label='Sampling Anomalies')
 
             a = samplings.astype(int).diff()
             for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
-                ax.axvspan(x0, x1, color='blue', alpha=1)
+                ax.axvspan(x0, x1, color=colors[1], alpha=1)
 
         if changepoints is not None:
             c = changepoints.astype(int).diff()
             ax.scatter(ser[c == 1].index, ser[c == 1],
-                       color=(1, 1, 0), s=2, label='Changepoint')
+                       color=colors[2], s=2, label='Changepoint')
 
             for x0 in c[c == 1].index:
                 x1 = c.index[c.index.get_loc(x0) + 1]
-                ax.axvspan(x0, x1, color='yellow', alpha=1)
+                ax.axvspan(x0, x1, color=colors[2], alpha=1)
 
+        ser_high_ = ser_high.apply(
+            lambda x: x[i][i]) if ser_high is not None else None
+        ser_low_ = ser_low.apply(
+            lambda x: x[i][i]) if ser_low is not None else None
+        ax: plt.Axes = axs[j[i]]
         if ser_high_ is not None and ser_low_ is not None:
-            ax.plot(ser_high_.index, ser_high_, color=(
-                1, 0, 0, 0.25), linewidth=0.7, label=r'Threshold')
-            ax.plot(ser_low_.index, ser_low_, color=(1, 0, 0, 0.25),
-                    linewidth=0.7, label=r'Threshold')
-
             ax.fill_between(ser_high_.index, ser_high_, ser.max(),
-                            color=(1, 0, 0, 0.1), alpha=0.1)
+                            label=r'Limits',
+                            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.5),
+                            linestyle="-", linewidth=0.7,)
             ax.fill_between(ser_low_.index, ser_low_, ser.min(),
-                            color=(1, 0, 0, 0.1), alpha=0.1)
+                            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.5),
+                            linestyle="-", linewidth=0.7,)
 
         ax.tick_params(axis='both', which='major', labelsize=9)
 
-    ax.set_xticks(b[b > 0].index.map(str))
+    axs[0].legend(bbox_to_anchor=(0., 1.05, 1., .102),
+                  loc='lower left', ncols=3, mode="expand", borderaxespad=0.)
 
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
+    ax.set_xticks(b[b > 0].index.map(str))
 
     if save:
         plt.savefig(f"plots/{file_name}_thresh.pdf")
