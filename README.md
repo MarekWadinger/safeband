@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/MarekWadinger/online_outlier_detection/branch/main/graph/badge.svg?token=BIS0A7CF1F)](https://codecov.io/gh/MarekWadinger/online_outlier_detection)
 [![Test Status](/reports/test-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/junit/report/index.html)
 [![Flake8 Status](/reports/flake8-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/flake8/report/index.html)
-
+![DOI](https://img.shields.io/badge/DOI-arXiv.2301.13527-brightgreen?link=https%3A%2F%2Fdoi.org%2F10.48550%2FarXiv.2301.13527)
 
 Online outlier detection service for existing real-time infrastructures for low-latency detection and change-point adaptation.
 The service provides dynamic process limits based on changing environmental conditions and sensors aging.
