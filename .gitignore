@@ -38,6 +38,7 @@ plots/
 # Data
 data/*
 !data/input/
+!data/output/
 
 # Misc
 legacy/
