@@ -44,11 +44,7 @@ def plot_limits(
         **kwargs):
 
     if not file_name:
-        if window:
-            file_name = (f"{ser.name.replace(' ', '_')}_"
-                         f"{int(window.total_seconds()/60/60)}_hours_sliding")
-        else:
-            file_name = (f"{ser.name.replace(' ', '_')}_sliding")
+        file_name = get_file_name(ser, window)
 
     a = anomalies.astype(int).diff()
     # Show dates of anomalous events
@@ -56,60 +52,32 @@ def plot_limits(
 
     fig = go.Figure()
 
-    fig.update_layout(FIG_LAYOUT.update(dict(yaxis_title=ser.name,
-                                             yaxis_range=[ser.min(),
-                                                          ser.max()],
-                                             xaxis_tickangle=60,
-                                             xaxis_tickfont_size=9,
-                                             xaxis_tickvals=b[b > 0].index)))
+    fig.update_layout(
+        FIG_LAYOUT.update(dict(
+            yaxis_title=ser.name,
+            yaxis_range=[ser.min(), ser.max()],
+            xaxis_tickangle=60,
+            xaxis_tickfont_size=9,
+            xaxis_tickvals=b[b > 0].index)))
 
-    # To show discontinuation of the signal stream
-    # d = ser.copy()
-    # d.index = d.index.round("1T")
-    # d = d.resample('2T').min()
-
-    fig.add_trace(go.Scatter(
-        x=ser.index, y=ser,
-        connectgaps=False,
-        line_color='rgb(0,140,120)',
-        name=ser.name, showlegend=True,
-        line_width=0.7
-    ))
+    plot_add_signal(fig, ser)
 
     if save:
-        fig.write_image(f"plot/{file_name}_signal.pdf")
+        fig.write_image(f"{file_name}_signal.pdf")
 
     if kwargs.keys() == {"ser_mean", "ser_pos", "ser_neg"}:
-        fig.add_trace(go.Scatter(
-            x=kwargs["ser_pos"].index.append(kwargs["ser_pos"].index[::-1]),
-            y=pd.concat([kwargs["ser_pos"], kwargs["ser_neg"][::-1]]),
-            fill='toself',
-            fillcolor='rgba(100,0,80,0.2)',
-            line_color='rgba(255,255,255,0)',
-            showlegend=False,
-            name=f'Mov Mean {ser.name}',
-            line_width=0.7
-        ))
-
-        fig.add_trace(go.Scatter(
-            x=kwargs["ser_mean"].index, y=kwargs["ser_mean"],
-            line_color='rgb(100,0,80)',
-            name=f'Mov Mean {ser.name}',
-            line_width=0.7
-        ))
+        plot_add_mean_std(fig, ser, kwargs)
 
         if save:
-            fig.write_image(f"plot/{file_name}_mean.pdf")
-        for trace, visibility in zip([-1, -2],
-                                     [False, False]):
-            fig.data[trace].visible = visibility
+            fig.write_image(f"{file_name}_mean.pdf")
+        set_invisible(fig, [-1, -2])
 
     for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
         fig.add_vrect(x0=x0, x1=x1, line_color="red", fillcolor="red",
                       opacity=0.25, layer="below")
 
     if save:
-        fig.write_image(f"plot/{file_name}_anomalies.pdf")
+        fig.write_image(f"{file_name}_anomalies.pdf")
 
     if (ser_high is not None) and (ser_low is not None):
         yaxis_range = [ser.min(), ser.max()]
@@ -118,27 +86,70 @@ def plot_limits(
                        yaxis_range=yaxis_range)
 
         if save:
-            fig.write_image(f"plot/{file_name}_thresh.pdf")
-
-    if window:
-        text = (f"Sliding window: {window}\n"
-                f"Proportion of anomalous samples: "
-                f"{sum(anomalies)/len(anomalies)*100:.02f}%\n"
-                f"Total number of anomalous events: "
-                f"{sum(pd.Series(anomalies).diff().dropna() == 1)}")
-        text = text.replace('\n', '<br>')
-        fig.add_annotation(text=text, align='left',
-                           xref="paper", yref="paper",
-                           x=0, y=1.2, showarrow=False)
+            fig.write_image(f"{file_name}_thresh.pdf")
 
     fig.update_layout(
         height=90*10,
         width=120*10,
     )
     if save:
-        fig.write_html(f"plot/{file_name}_all.html")
+        fig.write_html(f"{file_name}_all.html")
 
     fig.show()
+
+
+def get_file_name(
+        ser,
+        window=None
+):
+    if window is not None:
+        file_name = (f"{ser.name.replace(' ', '_')}_"
+                     f"{int(window.total_seconds()/60/60)}_hours_sliding")
+    else:
+        file_name = (f"{ser.name.replace(' ', '_')}_sliding")
+    return file_name
+
+
+def plot_add_signal(
+        fig,
+        ser
+):
+    fig.add_trace(go.Scatter(
+        x=ser.index, y=ser,
+        connectgaps=False,
+        line_color='rgb(0,140,120)',
+        name=ser.name, showlegend=True,
+        line_width=0.7
+    ))
+
+
+def plot_add_mean_std(
+        fig,
+        ser,
+        kwargs
+):
+    fig.add_trace(go.Scatter(
+        x=kwargs["ser_pos"].index.append(kwargs["ser_pos"].index[::-1]),
+        y=pd.concat([kwargs["ser_pos"], kwargs["ser_neg"][::-1]]),
+        fill='toself',
+        fillcolor='rgba(100,0,80,0.2)',
+        line_color='rgba(255,255,255,0)',
+        showlegend=False,
+        name=f'Mov Mean {ser.name}',
+        line_width=0.7
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=kwargs["ser_mean"].index, y=kwargs["ser_mean"],
+        line_color='rgb(100,0,80)',
+        name=f'Mov Mean {ser.name}',
+        line_width=0.7
+    ))
+
+
+def set_invisible(fig, inv_lines: list):
+    for trace in inv_lines:
+        fig.data[trace].visible = inv_lines
 
 
 def plot_limits_3d(
@@ -194,30 +205,14 @@ def plot_limits_3d(
         line_width=0.7
     ), row=4, col=1)
 
-    yaxis_range = [df.iloc[:, col1].min(), df.iloc[:, col1].max()]
+    yaxis_range = [df.iloc[:, col2].min(), df.iloc[:, col2].max()]
 
     # THRESHOLD
     thresh_high = ser_high.apply(lambda x: x[col1][col1])
     thresh_low = ser_low.apply(lambda x: x[col1][col1])
     add_thresholds(fig, thresh_high, thresh_low,
-                   row=4, col=1,
+                   row=4, col=2,
                    yaxis_range=yaxis_range)
-
-    # ANOMALIES
-    if signal_anomalies is not None:
-        df_anomalies = df[signal_anomalies.apply(lambda x: x[y]) == 1]
-        fig.add_trace(go.Scatter(
-            x=df_anomalies.index,
-            y=df_anomalies.iloc[:, col1],
-            connectgaps=False,
-            name='Anomalies',
-            line_color='rgb(150,0,0)', showlegend=True,
-            line_width=0.7, mode='markers', marker_size=2
-        ), row=4, col=1)
-
-    fig.layout['yaxis'].update(
-        dict(range=yaxis_range))
-
     # THIRD
     fig.add_trace(go.Scatter(
         x=df.index, y=df.iloc[:, col2],
@@ -236,28 +231,13 @@ def plot_limits_3d(
                    row=4, col=2,
                    yaxis_range=yaxis_range)
 
-    # ANOMALIES
-    if signal_anomalies is not None:
-        df_anomalies = df[signal_anomalies.apply(lambda x: x[z]) == 1]
-        fig.add_trace(go.Scatter(
-            x=df_anomalies.index,
-            y=df_anomalies.iloc[:, col2],
-            connectgaps=False,
-            name='Anomalies',
-            line_color='rgb(150,0,0)', showlegend=True,
-            line_width=0.7, mode='markers', marker_size=2
-        ), row=4, col=2)
-
-    fig.layout['yaxis2'].update(
-        dict(range=yaxis_range))
-
     fig.update_layout(
         height=90*10,
         width=120*10,
     )
 
     if save:
-        fig.write_html(f"plot/{file_name}_multi_all.html")
+        fig.write_html("multi_all.html")
 
     return fig
 
@@ -311,11 +291,7 @@ def plot_compare_anomalies(
         **kwargs):
 
     if not file_name:
-        if window:
-            file_name = (f"{ser.name.replace(' ', '_')}_"
-                         f"{int(window.total_seconds()/60/60)}_hours_sliding")
-        else:
-            file_name = (f"{ser.name.replace(' ', '_')}_sliding")
+        file_name = get_file_name(ser, window)
 
     n_rows = len(anomalies.columns)
     fig = make_subplots(rows=n_rows, cols=1,
@@ -518,9 +494,10 @@ if __name__ == '__main__':
     col = 'Average Cell Temperature'
 
     df_out = pd.read_json('data/output/dynamic_limits.json',
-                          lines=True).set_index('time')
+                          lines=True).set_index('time').dropna()
     df_out.index = pd.to_datetime(df_out.index)
     df_out = df_out.iloc[0:len(df)]
 
+    df = df.tz_localize(None).loc[df_out.index]
     plot_limits(df[col], df_out.level_high, df_out.level_low, df_out.anomaly,
                 save=False,)

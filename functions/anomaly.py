@@ -28,6 +28,60 @@ class Distribution(typing.Protocol):
 
 
 class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
+    """
+    Gaussian Scorer for anomaly detection.
+
+    Args:
+        threshold (float): Anomaly threshold.
+        window_size (int or None): Size of the rolling window.
+        period (int or None): Time period for time rolling.
+        grace_period (int): Grace period before scoring starts.
+
+    Examples:
+    >>> scorer = GaussianScorer(window_size=3, grace_period=2)
+    >>> isinstance(scorer, GaussianScorer)
+    True
+    >>> scorer.gaussian.mu
+    0.0
+    >>> scorer.learn_one(1).gaussian.mu
+    1.0
+    >>> scorer.gaussian.sigma
+    0.0
+    >>> scorer.learn_one(0).gaussian.sigma
+    0.7071067811865476
+    >>> scorer.limit_one()
+    2.625326733368662
+    >>> scorer.predict_one(2.625326733368662)
+    0
+    >>> scorer.score_one(2.625326733368662)
+    0.99735
+
+    Anomaly is zero due to grace_period
+    >>> scorer.predict_one(2.62532673337)
+    0
+    >>> scorer.learn_one(1).gaussian.sigma
+    0.5773502691896258
+    >>> scorer.predict_one(2.62532673337)
+    1
+
+    Keeps the sigma due to window_size of 3
+    >>> scorer.learn_one(1).gaussian.sigma
+    0.5773502691896258
+    >>> scorer.process_one(0.5)
+    (0, 2.401988677816472)
+
+    Gaussian scorer on time rolling window
+    >>> import datetime
+    >>> scorer = GaussianScorer()
+    >>> scorer.process_one(1, t=datetime.datetime(2022,2,2))
+    (0, nan)
+
+    Gaussian scorer without window
+    >>> import datetime
+    >>> scorer = GaussianScorer(window_size=None, period=None)
+    >>> scorer.process_one(1)
+    (0, nan)
+    """
     def __init__(self,
                  obj: Distribution,
                  grace_period: int,
