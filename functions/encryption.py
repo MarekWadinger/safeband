@@ -1,7 +1,10 @@
+import json
 import os
 
 from pathlib import Path
 from human_security import HumanRSA
+
+LEN_LIMIT = 214
 
 
 def save_public_key(key_path, key):
@@ -109,7 +112,18 @@ def encrypt_data(data, key):
         >>> key.generate()
         >>> encrypt_data(b'Test', key)  # doctest: +SKIP
     """
-    return key.encrypt(data)
+    if isinstance(data, dict):
+        for x in data:
+            data[x] = encrypt_data(data[x], key)
+        return data
+    elif isinstance(data, bytes):
+        if len(data) > LEN_LIMIT:
+            data_ = split_string(data, LEN_LIMIT)
+            return [encrypt_data(d, controller) for d in data_]
+        else:
+            return key.encrypt(data)
+    else:
+        return encrypt_data(str(data).encode('utf-8'), key)
 
 
 def decrypt_data(data, key):
@@ -130,7 +144,17 @@ def decrypt_data(data, key):
         >>> encrypted_data = key.encrypt(b'Test')
         >>> decrypt_data(encrypted_data, key)  # doctest: +SKIP
     """
-    return key.decrypt(data)
+    if isinstance(data, dict):
+        for x in data:
+            data[x] = decrypt_data(data[x], key)
+        return data
+    elif isinstance(data, bytes):
+        return key.decrypt(data)
+    elif isinstance(data, list):
+        dec = [decrypt_data(d, actuator) for d in data]
+        return b''.join(dec).decode('utf-8')
+    else:
+        return decrypt_data(str(data).encode('utf-8'), key)
 
 
 def sign_data(data, key):
@@ -153,7 +177,16 @@ def sign_data(data, key):
         >>> len(signature) > 0
         True
     """
-    return key.sign(data)
+    if isinstance(data, dict):
+        for x in data:
+            if not isinstance(data[x], str):
+                data[x] = str(data[x])
+        data["signature"] = key.sign(json.dumps(data).encode('utf-8'))
+        return data
+    elif isinstance(data, bytes):
+        return key.sign(data)
+    else:
+        return key.sign(str(data).encode('utf-8'))
 
 
 def verify_signature(data, signature, key):
@@ -177,7 +210,14 @@ def verify_signature(data, signature, key):
         >>> verify_signature(data, signature, key)
         True
     """
-    return key.verify(data, signature)
+    if isinstance(data, dict):
+        for x in data:
+            if isinstance(data[x], bytes):
+                data[x] = data[x].decode('utf-8')
+        return verify_signature(json.dumps(data).encode('utf-8'),
+                                signature, key)
+    else:
+        return key.verify(data, signature)
 
 
 # Main code
@@ -206,8 +246,8 @@ if __name__ == '__main__':
     encrypted_c_a = encrypt_data(control_action, controller)
 
     # Encrypt and split signature if necessary
-    if len(signature) > 214:
-        signatures = split_string(signature, 214)
+    if len(signature) > LEN_LIMIT:
+        signatures = split_string(signature, LEN_LIMIT)
         encrypted_s_cs = [encrypt_data(bytes(signature_, 'utf-8'), controller)
                           for signature_ in signatures]
     else:
@@ -225,3 +265,12 @@ if __name__ == '__main__':
     signature_valid = verify_signature(decrypted_c_a, signature, actuator)
 
     assert signature_valid
+
+    # Test 2
+    data = {'a': 1}
+    data_sign = sign_data(data, controller)
+    data_sec = encrypt_data(data_sign, controller)
+    data_dec = decrypt_data(data_sec, actuator)
+    sig = data_dec.pop('signature')
+    verify = verify_signature(data_dec, sig, actuator)
+    assert verify
