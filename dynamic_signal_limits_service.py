@@ -26,21 +26,32 @@ VAR_SMOOTHING = 1e-9
 @Stream.register_api()
 class to_mqtt(Sink):
     """
-    Send data to MQTT broker
+    Initialize the to_mqtt instance.
 
-    See also ``sources.from_mqtt``.
+    Args:
+        upstream (Stream): Upstream stream.
+        host (str): MQTT broker host.
+        port (int): MQTT broker port.
+        topic (str): MQTT topic.
+        keepalive (int): Keepalive duration.
+        client_kwargs (dict): Additional arguments for MQTT client connect.
+        publish_kwargs (dict): Additional arguments for MQTT publish.
+        **kwargs: Additional keyword arguments.
 
-    Requires ``paho.mqtt``
+    Examples:
+    >>> out_msg = bytes(str(dt.datetime.now()), encoding='utf-8')
+    >>> mqtt_sink = to_mqtt(
+    ...     Stream(), host="mqtt.eclipseprojects.io",
+    ...     port=1883, topic='test', publish_kwargs={"retain":True})
+    >>> mqtt_sink.update(out_msg)
 
-    :param host: str
-    :param port: int
-    :param topic: str
-    :param keepalive: int
-        See mqtt docs - to keep the channel alive
-    :param client_kwargs:
-        Passed to the client's ``connect()`` method
+    Check the message
+    >>> import paho.mqtt.subscribe as subscribe
+    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
+    ...                        topics="test")
+    >>> msg.payload == out_msg
+    True
     """
-
     def __init__(self, upstream, host, port, topic, keepalive=60,
                  client_kwargs=None, publish_kwargs=None,
                  **kwargs):
@@ -62,13 +73,67 @@ class to_mqtt(Sink):
         # TODO: wait on successful delivery
         self.client.publish(self.topic, x, **self.p_kw)
 
-    def destroy(self):
+    def destroy(self):  # pragma: no cover
         self.client.disconnect()
         self.client = None
         super().destroy()
 
 
 class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
+    """
+    Gaussian Scorer for anomaly detection.
+
+    Args:
+        threshold (float): Anomaly threshold.
+        window_size (int or None): Size of the rolling window.
+        period (int or None): Time period for time rolling.
+        grace_period (int): Grace period before scoring starts.
+
+    Examples:
+    >>> scorer = GaussianScorer(window_size=3, grace_period=2)
+    >>> isinstance(scorer, GaussianScorer)
+    True
+    >>> scorer.gaussian.mu
+    0.0
+    >>> scorer.learn_one(1).gaussian.mu
+    1.0
+    >>> scorer.gaussian.sigma
+    0.0
+    >>> scorer.learn_one(0).gaussian.sigma
+    0.7071067811865476
+    >>> scorer.limit_one()
+    2.625326733368662
+    >>> scorer.predict_one(2.625326733368662)
+    0
+    >>> scorer.score_one(2.625326733368662)
+    0.99735
+
+    Anomaly is zero due to grace_period
+    >>> scorer.predict_one(2.62532673337)
+    0
+    >>> scorer.learn_one(1).gaussian.sigma
+    0.5773502691896258
+    >>> scorer.predict_one(2.62532673337)
+    1
+
+    Keeps the sigma due to window_size of 3
+    >>> scorer.learn_one(1).gaussian.sigma
+    0.5773502691896258
+    >>> scorer.process_one(0.5)
+    (0, 2.401988677816472)
+
+    Gaussian scorer on time rolling window
+    >>> import datetime
+    >>> scorer = GaussianScorer()
+    >>> scorer.process_one(1, t=datetime.datetime(2022,2,2))
+    (0, nan)
+
+    Gaussian scorer without window
+    >>> import datetime
+    >>> scorer = GaussianScorer(window_size=None, period=None)
+    >>> scorer.process_one(1)
+    (0, nan)
+    """
     def __init__(self,
                  threshold=THRESHOLD,
                  window_size=None,
@@ -124,7 +189,10 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
         real_thresh = self.limit_one()
 
         if not is_anomaly:
-            self = self.learn_one(x, **{"t": t})
+            if isinstance(self.gaussian, utils.TimeRolling):
+                self = self.learn_one(x, **{"t": t})
+            else:
+                self = self.learn_one(x)
 
         return is_anomaly, real_thresh
 
@@ -202,6 +270,36 @@ def fit_transform(
         model,
         model_inv
 ):
+    """Apply anomaly detection model to the input data.
+
+    The function applies the provided anomaly detection model to the input
+    data and returns the result as a dictionary.
+
+    Args:
+        x (dict): The input data dictionary.
+        model: The anomaly detection model.
+        model_inv: The inverse anomaly detection model.
+
+    Returns:
+        dict: The processed data dictionary.
+
+    Examples:
+        >>> x = {"time": dt.datetime(2022,1,1),
+        ...      "data": {"feature1": 0.5, "feature2": 1.2, "feature3": -0.8}}
+        >>> model = GaussianScorer()
+        >>> model_inv = GaussianScorer()
+        >>> result = fit_transform(x, model, model_inv)
+        >>> sorted(result.keys())
+        ['anomaly', 'level_high', 'level_low', 'time']
+        >>> isinstance(result["time"], str)
+        True
+        >>> isinstance(result["anomaly"], int)
+        True
+        >>> isinstance(result["level_high"], float)
+        True
+        >>> isinstance(result["level_low"], float)
+        True
+    """
     # TODO: replace x_ for multidimensional implementation
     x_ = next(iter(x["data"].values()))
     is_anomaly, real_thresh = model.process_one(x_, x["time"])
@@ -214,11 +312,27 @@ def fit_transform(
             }
 
 
-def dump_to_file(x, f):
+def dump_to_file(x, f):  # pragma: no cover
     print(json.dumps(x), file=f)
 
 
 def print_summary(df):
+    """Print a summary of the given DataFrame.
+
+    The function calculates and prints the proportion of anomalous samples
+    and the total number of anomalous events based on the 'anomaly' column
+    in the DataFrame.
+
+    Args:
+        df (DataFrame): The input DataFrame.
+
+    Examples:
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({'anomaly': [False, True, True, False]})
+        >>> print_summary(df)
+        Proportion of anomalous samples: 50.00%
+        Total number of anomalous events: 2
+    """
     text = (
         f"Proportion of anomalous samples: "
         f"{sum(df['anomaly'])/len(df['anomaly'])*100:.02f}%\n"
@@ -227,7 +341,7 @@ def print_summary(df):
     print(text)
 
 
-def signal_handler(sig, frame, detector, config):
+def signal_handler(sig, frame, detector, config):  # pragma: no cover
     os.write(sys.stdout.fileno(), b"\nSignal received to stop the app...\n")
     detector.stop()
 
@@ -250,6 +364,63 @@ def get_source(
         config: dict,
         topic: str,
         debug: bool = False):
+    """Get the data source based on the provided configuration.
+
+    The function returns a data source stream object based on the
+    configuration settings.
+    If the 'path' key is present in the config, it returns a stream from an
+    iterable of
+    rows in the 'data' dictionary. If the 'host' key is present, it returns a
+    stream from
+    MQTT messages with the specified topic. If the 'bootstrap.servers' key is
+    present,
+    it returns a stream from Kafka messages with the specified topic. If none
+    of the expected keys are found, it raises a RuntimeError.
+
+    Args:
+        config (dict): The configuration dictionary.
+        topic (str): The topic to subscribe to for MQTT or Kafka sources.
+        debug (bool, optional): Enable debug mode. Defaults to False.
+
+    Returns:
+        stream.Stream: The data source stream object.
+
+    Raises:
+        RuntimeError: If the data format is incorrect.
+
+    Examples:
+    >>> config = {
+    ...     "path": "path/to/input/data.csv",
+    ...     "data": pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})}
+    >>> topic = "test"
+    >>> source = get_source(config, topic)
+    >>> type(source)
+    <class 'streamz.sources.from_iterable'>
+
+    >>> source = get_source(config, topic, debug=True)
+    >>> type(source)
+    <class 'streamz.core.Stream'>
+
+    >>> config = {"host": "mqtt.server", "port": 1883}
+    >>> topic = "test"
+    >>> source = get_source(config, topic)
+    >>> type(source)
+    <class 'streamz.sources.from_mqtt'>
+
+    >>> config = {"bootstrap.servers": "kafka.server:9092",
+    ...           "group.id": "consumer-group"}
+    >>> topic = "kafka-topic"
+    >>> source = get_source(config, topic)
+    >>> type(source)
+    <class 'streamz.sources.from_kafka'>
+
+    >>> config = {"invalid": "config"}
+    >>> topic = "test"
+    >>> source = get_source(config, topic)  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+    ...
+    RuntimeError: Wrong data format.
+    """
     if config.get("path"):
         if debug:
             source = Stream()
@@ -269,6 +440,28 @@ def process_limits_streaming(
         config: dict,
         topic: str,
         debug: bool = False):
+    """Process the limits in a streaming manner.
+
+    The function sets up the necessary components for streaming processing of
+    limits.
+    It creates instances of the GaussianScorer model for anomaly detection,
+    prepares
+    the data source based on the configuration, and performs the required
+    transformations.
+    The processed data is then stored or published based on the configuration.
+
+    Args:
+        config (dict): The configuration dictionary.
+        topic (str): The topic to subscribe to for MQTT or Kafka sources.
+        debug (bool, optional): Enable debug mode. Defaults to False.
+
+    Examples:
+    >>> config = {"path": "data/test.csv"}
+    >>> topic = "A"
+    >>> process_limits_streaming(config, topic, debug=True)
+    === Debugging started... ===
+    === Debugging finished with success... ===
+    """
     model = GaussianScorer()
     model_inv = GaussianScorer()
 
@@ -285,11 +478,11 @@ def process_limits_streaming(
     with open("data/output/dynamic_limits.json", 'a') as f:
         if config.get("path"):
             detector.sink(dump_to_file, f)
-        elif config.get("host"):
+        elif config.get("host"):  # pragma: no cover
             topic = f"{topic.rsplit('/', 1)[0]}/dynamic_limits"
             detector.map(lambda x: json.dumps(x)).to_mqtt(
                 **config, topic=topic, publish_kwargs={"retain": True})
-        elif config.get("bootstrap.servers"):
+        elif config.get("bootstrap.servers"):  # pragma: no cover
             topic = "dynamic_limits"
             detector.map(lambda x: (str(x), "dynamic_limits")
                          ).to_kafka(topic, config)
@@ -299,7 +492,7 @@ def process_limits_streaming(
             for row in data.iterrows():
                 source.emit(row)
             print("=== Debugging finished with success... ===")
-        else:
+        else:  # pragma: no cover
             source.start()
 
             signal.signal(signal.SIGINT, lambda signalnum,
@@ -310,7 +503,7 @@ def process_limits_streaming(
                 time.sleep(2)
 
 
-def get_config(config_parser):
+def get_config(config_parser):  # pragma: no cover
     if (config_parser.has_option('file', 'path') and
             config_parser.get('file', 'path')):
         config = dict(config_parser['file'])
@@ -330,7 +523,7 @@ def get_config(config_parser):
     return config
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     parser = ArgumentParser()
     parser.add_argument('-f', '--config_file',
                         type=FileType('r'), default='config.ini')
