@@ -1,7 +1,7 @@
 import typing
 
 import numpy as np
-from river import anomaly
+from river import anomaly, utils
 from scipy.stats import norm
 
 
@@ -12,7 +12,7 @@ VAR_SMOOTHING = 1e-9
 
 
 @typing.runtime_checkable
-class Distribution(typing.Protocol):
+class Distribution(typing.Protocol):  # pragma: no cover
     mu: typing.Optional[float | typing.Sequence[float]]
     sigma: typing.Optional[float | typing.Sequence[float]]
     n_samples: typing.Optional[float]
@@ -38,11 +38,25 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
         grace_period (int): Grace period before scoring starts.
 
     Examples:
-    >>> scorer = GaussianScorer(window_size=3, grace_period=2)
+    >>> bad_scorer = GaussianScorer(
+    ...     type('Dist', (object,), {})(), grace_period=0
+    ...     )  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+    ...
+    ValueError:  does not satisfy the necessary protocol
+
+    >>> from river.utils import Rolling
+    >>> from river.proba import Gaussian
+    >>> scorer = GaussianScorer(Rolling(Gaussian(), window_size=3),
+    ...     grace_period=2)
     >>> isinstance(scorer, GaussianScorer)
     True
     >>> scorer.gaussian.mu
     0.0
+    >>> scorer.score_one(2.4715629565996924)
+    0.5
+    >>> scorer.score_log_one(2.4715629565996924)
+    0.5
     >>> scorer.learn_one(1).gaussian.mu
     1.0
     >>> scorer.gaussian.sigma
@@ -50,37 +64,44 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
     >>> scorer.learn_one(0).gaussian.sigma
     0.7071067811865476
     >>> scorer.limit_one()
-    2.625326733368662
-    >>> scorer.predict_one(2.625326733368662)
+    (2.4715629565996924, -1.4715629565996926)
+    >>> scorer.predict_one(2.4715629565996924)
     0
-    >>> scorer.score_one(2.625326733368662)
+    >>> scorer.predict_log_one(2.4715629565996924)
+    0
+    >>> scorer.score_one(2.4715629565996924)
     0.99735
+    >>> scorer.score_log_one(2.4715629565996924)
+    -0.002653517465563446
 
     Anomaly is zero due to grace_period
-    >>> scorer.predict_one(2.62532673337)
+    >>> scorer.predict_one(2.4715629565996924)
     0
     >>> scorer.learn_one(1).gaussian.sigma
     0.5773502691896258
-    >>> scorer.predict_one(2.62532673337)
+    >>> scorer.predict_one(2.4715629565996924)
     1
+    >>> scorer.predict_log_one(2.4715629565996924)
+    0
 
     Keeps the sigma due to window_size of 3
     >>> scorer.learn_one(1).gaussian.sigma
     0.5773502691896258
     >>> scorer.process_one(0.5)
-    (0, 2.401988677816472)
+    (0, 2.276441079814074, -0.943107746480741)
 
     Gaussian scorer on time rolling window
-    >>> import datetime
-    >>> scorer = GaussianScorer()
-    >>> scorer.process_one(1, t=datetime.datetime(2022,2,2))
-    (0, nan)
+    >>> import datetime as dt
+    >>> from river.utils import TimeRolling
+    >>> scorer = GaussianScorer(TimeRolling(Gaussian(), period=dt.timedelta(hours=24*7)),
+    ...     grace_period=2)
+    >>> scorer.process_one(1, t=dt.datetime(2022,2,2))
+    (0, nan, nan)
 
     Gaussian scorer without window
-    >>> import datetime
-    >>> scorer = GaussianScorer(window_size=None, period=None)
+    >>> scorer = GaussianScorer(Gaussian(), grace_period=2)
     >>> scorer.process_one(1)
-    (0, nan)
+    (0, nan, nan)
     """
     def __init__(self,
                  obj: Distribution,
@@ -149,6 +170,9 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
         thresh_high, thresh_low = self.limit_one()
 
         if not is_anomaly:
-            self = self.learn_one(x, **{"t": t})
+            if isinstance(self.gaussian, utils.TimeRolling):
+                self = self.learn_one(x, **{"t": t})
+            else:
+                self = self.learn_one(x)
 
         return is_anomaly, thresh_high, thresh_low

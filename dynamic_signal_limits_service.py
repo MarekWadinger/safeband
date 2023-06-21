@@ -157,7 +157,6 @@ def fit_transform(
     Args:
         x (dict): The input data dictionary.
         model: The anomaly detection model.
-        model_inv: The inverse anomaly detection model.
 
     Returns:
         dict: The processed data dictionary.
@@ -165,9 +164,10 @@ def fit_transform(
     Examples:
         >>> x = {"time": dt.datetime(2022,1,1),
         ...      "data": {"feature1": 0.5, "feature2": 1.2, "feature3": -0.8}}
-        >>> model = GaussianScorer()
-        >>> model_inv = GaussianScorer()
-        >>> result = fit_transform(x, model, model_inv)
+        >>> model = model = GaussianScorer(
+        ...     utils.TimeRolling(proba.Gaussian(), period=WINDOW),
+        ...     grace_period=GRACE_PERIOD)
+        >>> result = fit_transform(x, model)
         >>> sorted(result.keys())
         ['anomaly', 'level_high', 'level_low', 'time']
         >>> isinstance(result["time"], str)
