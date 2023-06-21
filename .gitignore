@@ -38,6 +38,7 @@ plots/
 # Data
 data/*
 !data/input/
+!data/test.csv
 
 # Misc
 legacy/
