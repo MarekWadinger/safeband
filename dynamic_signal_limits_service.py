@@ -456,7 +456,7 @@ def process_limits_streaming(
         debug (bool, optional): Enable debug mode. Defaults to False.
 
     Examples:
-    >>> config = {"path": "data/test.csv"}
+    >>> config = {"path": "tests/test.csv"}
     >>> topic = "A"
     >>> process_limits_streaming(config, topic, debug=True)
     === Debugging started... ===

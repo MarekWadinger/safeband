@@ -38,11 +38,12 @@ plots/
 # Data
 data/*
 !data/input/
-!data/test.csv
 
 # Misc
 legacy/
-tests/
+tests/*
+!tests/test.csv
+!tests/sample.json
 
 # Allow gitignore
 !*.gitignore
