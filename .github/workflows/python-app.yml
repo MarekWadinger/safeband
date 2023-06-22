@@ -5,7 +5,7 @@ name: Python application
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "multivariate_dev" ]
   pull_request:
     branches: [ "main" ]
 
@@ -51,7 +51,6 @@ jobs:
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v5
       with:
-        base: main
         title: "Update Coverage Badges"
         body: "Automated update of coverage badges"
         add-paths: |
