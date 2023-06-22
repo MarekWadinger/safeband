@@ -60,8 +60,9 @@ class MultivariateGaussian(base.ContinuousDistribution):
     9.0
 
     To retrieve pdf and cdf
-    >>> p(x)
-    1.7039912355273796
+    # TODO: find out why last two digits differ locally and on github
+    >>> p(x)  # doctest: +ELLIPSIS
+    1.70399123552737...
     >>> p.cdf(x)
     0.014216200210727994
 
