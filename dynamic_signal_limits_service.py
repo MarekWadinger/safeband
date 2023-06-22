@@ -14,6 +14,10 @@ from river import utils, proba
 from streamz import Stream, Sink
 
 from functions.anomaly import GaussianScorer
+from human_security import HumanRSA
+from functions.encryption import (
+    load_public_key, save_public_key, sign_data, encrypt_data,
+    decode_data)
 
 # CONSTANTS
 GRACE_PERIOD = 60*24
@@ -340,6 +344,11 @@ def process_limits_streaming(
     === Debugging started... ===
     === Debugging finished with success... ===
     """
+    detector = HumanRSA()
+    detector.generate()
+    save_public_key("functions/.security/a_pem.pub", detector)
+    load_public_key("functions/.security/c_pem.pub", detector)
+
     model = GaussianScorer(
         utils.TimeRolling(proba.Gaussian(), period=WINDOW),
         grace_period=GRACE_PERIOD)
@@ -351,8 +360,13 @@ def process_limits_streaming(
 
     source = get_source(config, topic, debug)
 
-    detector = source.map(preprocess, topic).map(
-        fit_transform, model)
+    detector = (source
+                .map(preprocess, topic)
+                .map(fit_transform, model)
+                .map(sign_data, detector)
+                .map(encrypt_data, detector)
+                .map(decode_data)
+                )
 
     with open("data/output/dynamic_limits.json", 'a') as f:
         if config.get("path"):
@@ -366,6 +380,7 @@ def process_limits_streaming(
             detector.map(lambda x: (str(x), "dynamic_limits")
                          ).to_kafka(topic, config)
 
+        # TODO: handle combination of debug and remote broker
         if debug:
             print("=== Debugging started... ===")
             for row in data.iterrows():
@@ -407,6 +422,7 @@ if __name__ == '__main__':  # pragma: no cover
     parser = ArgumentParser()
     parser.add_argument('-f', '--config_file', type=FileType('r'),
                         default='config.ini')
+    parser.add_argument('-k', '--rsa_key', help='Path to public RSA key file')
     # "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
     # "Average Cell Temperature"
     parser.add_argument("-t", "--topic",
