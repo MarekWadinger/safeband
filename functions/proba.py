@@ -173,7 +173,8 @@ class MultivariateGaussian(base.ContinuousDistribution):
     def revert(self, x, w=1.0):
         if w != 1.0:
             # TODO: find out why not called during TimeRolling usage test
-            warnings.warn("Weights not implemented yet.", RuntimeWarning)
+            warnings.warn("Weights not implemented yet.",
+                          RuntimeWarning)  # pragma: no cover
         self._var.revert(x)
         return self
 
@@ -189,7 +190,7 @@ class MultivariateGaussian(base.ContinuousDistribution):
             # TODO: validate occurence of OverflowError
             except OverflowError:  # pragma: no cover
                 return 0.0
-        return 0.0
+        return 0.0  # pragma: no cover
 
     def cdf(self, x):
         x = list(x.values())
