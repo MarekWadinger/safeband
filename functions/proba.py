@@ -60,11 +60,11 @@ class MultivariateGaussian(base.ContinuousDistribution):
     9.0
 
     To retrieve pdf and cdf
-    # TODO: find out why last two digits differ locally and on github
+    # TODO: find out why there is different precission loss locally and on git
     >>> p(x)  # doctest: +ELLIPSIS
     1.70399123552737...
-    >>> p.cdf(x)
-    0.014216200210727994
+    >>> p.cdf(x) +ELLIPSIS
+    0.01421620021072799...
 
     >>> from river import utils
     >>> p = utils.Rolling(MultivariateGaussian(), window_size=5)
