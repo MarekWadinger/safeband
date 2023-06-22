@@ -63,7 +63,7 @@ class MultivariateGaussian(base.ContinuousDistribution):
     # TODO: find out why there is different precission loss locally and on git
     >>> p(x)  # doctest: +ELLIPSIS
     1.70399123552737...
-    >>> p.cdf(x) +ELLIPSIS
+    >>> p.cdf(x)  # doctest: +ELLIPSIS
     0.01421620021072799...
 
     >>> from river import utils
