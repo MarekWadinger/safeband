@@ -1,6 +1,9 @@
-import json
 import argparse
+import json
+import os
+
 from datetime import datetime
+
 import paho.mqtt.client as mqtt
 
 from human_security import HumanRSA
@@ -45,9 +48,9 @@ def on_message(self, userdata, msg):
         >>> on_message(obj, usr, msg)
         Received message: Hello
     """
-    if isinstance(userdata, argparse.Namespace) and 'reader' in userdata:
+    if isinstance(userdata, argparse.Namespace) and 'receiver' in userdata:
         item = verify_and_decrypt_data(json.loads(msg.payload.decode()),
-                                       userdata.reader)
+                                       userdata.receiver)
         item = json.dumps(item)
     else:
         item = msg.payload.decode()
@@ -64,6 +67,8 @@ def parse_args():  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--broker", help="Host or output file path.",
                         default="mqtt.eclipseprojects.io")
+    parser.add_argument('-k', '--key-path', help='Path to RSA keys',
+                        default='.security')
     parser.add_argument("-t", "--topic",
                         help="Topic of MQTT or Column of pd.DataFrame",
                         default="test")
@@ -93,8 +98,8 @@ def query_file(args):
 
     # Convert the time strings to datetime objects
     for item in data:
-        if 'reader' in args and not item['time'].isascii():
-            item = verify_and_decrypt_data(item, args.reader)
+        if 'receiver' in args and not item['time'].isascii():
+            item = verify_and_decrypt_data(item, args.receiver)
         item["time"] = datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
 
     # Sort the data by time in descending order
@@ -146,10 +151,11 @@ if __name__ == '__main__':  # pragma: no cover
     # Parse command-line arguments
     args = parse_args()
 
-    args.reader = HumanRSA()
-    args.reader.generate()
-    load_public_key("functions/.security/a_pem.pub", args.reader)
-    load_private_key("functions/.security/c_pem", args.reader)
+    args.receiver = HumanRSA()
+    if not os.path.exists(args.key_path):
+        raise RuntimeError('Cannot find key path.')
+    load_private_key(args.key_path + "/receiver_pem", args.receiver)
+    load_public_key(args.key_path + "/sender_pem.pub", args.receiver)
 
     if args.broker.endswith(".json"):
         query_file(args)

@@ -16,7 +16,9 @@ from streamz import Stream, Sink
 from functions.anomaly import GaussianScorer
 from human_security import HumanRSA
 from functions.encryption import (
-    load_public_key, save_public_key, sign_data, encrypt_data,
+    generate_keys, load_public_key, load_private_key,
+    save_public_key, save_private_key,
+    sign_data, encrypt_data,
     decode_data)
 
 # CONSTANTS
@@ -321,6 +323,7 @@ def get_source(
 def process_limits_streaming(
         config: dict,
         topic: str,
+        key_path: str,
         debug: bool = False):
     """Process the limits in a streaming manner.
 
@@ -335,6 +338,7 @@ def process_limits_streaming(
     Args:
         config (dict): The configuration dictionary.
         topic (str): The topic to subscribe to for MQTT or Kafka sources.
+        key_path (str): The path to the RSA keys
         debug (bool, optional): Enable debug mode. Defaults to False.
 
     Examples:
@@ -344,10 +348,33 @@ def process_limits_streaming(
     === Debugging started... ===
     === Debugging finished with success... ===
     """
-    detector = HumanRSA()
-    detector.generate()
-    save_public_key("functions/.security/a_pem.pub", detector)
-    load_public_key("functions/.security/c_pem.pub", detector)
+    # TODO: Move to encryption.py
+    sender, receiver = generate_keys()
+    if not os.path.exists(key_path):
+        os.makedirs(key_path, exist_ok=True)
+        save_private_key(key_path + "/sender_pem", sender)
+        save_public_key(key_path + "/sender_pem.pub", sender)
+        save_private_key(key_path + "/receiver_pem", receiver)
+        save_public_key(key_path + "/receiver_pem.pub", receiver)
+        load_public_key(key_path + "/receiver_pem.pub", sender)
+    else:
+        if (
+                os.path.exists(key_path + "/sender_pem") and
+                os.path.exists(key_path + "/sender_pem.pub")
+                ):
+            load_private_key(key_path + "/sender_pem", sender)
+        else:
+            save_private_key(key_path + "/sender_pem", sender)
+            save_public_key(key_path + "/sender_pem.pub", sender)
+
+        if (
+                os.path.exists(key_path + "/receiver_pem") and
+                os.path.exists(key_path + "/receiver_pem.pub")
+                ):
+            load_public_key(key_path + "/receiver_pem.pub", sender)
+        else:
+            save_private_key(key_path + "/receiver_pem", receiver)
+            save_public_key(key_path + "/receiver_pem.pub", receiver)
 
     model = GaussianScorer(
         utils.TimeRolling(proba.Gaussian(), period=WINDOW),
@@ -363,8 +390,8 @@ def process_limits_streaming(
     detector = (source
                 .map(preprocess, topic)
                 .map(fit_transform, model)
-                .map(sign_data, detector)
-                .map(encrypt_data, detector)
+                .map(sign_data, sender)
+                .map(encrypt_data, sender)
                 .map(decode_data)
                 )
 
@@ -383,7 +410,7 @@ def process_limits_streaming(
         # TODO: handle combination of debug and remote broker
         if debug:
             print("=== Debugging started... ===")
-            for row in data.iterrows():
+            for row in data.head(3).iterrows():
                 source.emit(row)
             print("=== Debugging finished with success... ===")
         else:  # pragma: no cover
@@ -422,15 +449,16 @@ if __name__ == '__main__':  # pragma: no cover
     parser = ArgumentParser()
     parser.add_argument('-f', '--config_file', type=FileType('r'),
                         default='config.ini')
-    parser.add_argument('-k', '--rsa_key', help='Path to public RSA key file')
+    parser.add_argument('-k', '--key-path', help='Path to RSA keys',
+                        default='.security')
     # "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
     # "Average Cell Temperature"
     parser.add_argument("-t", "--topic",
                         help="Topic of MQTT or Column of pd.DataFrame",
-                        default="shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power")
+                        default="Average Cell Temperature")
     parser.add_argument("-d", "--debug",
                         help="Debug the file using loop as source",
-                        default=False, type=bool)
+                        default=True, type=bool)
     args = parser.parse_args()
 
     config_parser = ConfigParser()
@@ -439,4 +467,4 @@ if __name__ == '__main__':  # pragma: no cover
     # TODO: Handle possible errorous scenarios
     config = get_config(config_parser)
 
-    process_limits_streaming(config, args.topic, args.debug)
+    process_limits_streaming(config, args.topic, args.key_path, args.debug)
