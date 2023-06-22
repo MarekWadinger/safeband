@@ -1,4 +1,5 @@
 import json
+import os
 
 from cryptography.exceptions import InvalidSignature
 from human_security import HumanRSA
@@ -333,3 +334,33 @@ def decode_data(data):
         else:
             raise ValueError(f"Invalid data in {k}")
     return data
+
+
+def init_rsa_security(key_path):
+    sender, receiver = generate_keys()
+    if not os.path.exists(key_path):  # pragma: no cover
+        os.makedirs(key_path, exist_ok=True)
+        save_private_key(key_path + "/sender_pem", sender)
+        save_public_key(key_path + "/sender_pem.pub", sender)
+        save_private_key(key_path + "/receiver_pem", receiver)
+        save_public_key(key_path + "/receiver_pem.pub", receiver)
+        load_public_key(key_path + "/receiver_pem.pub", sender)
+    else:  # pragma: no cover
+        if (
+                os.path.exists(key_path + "/sender_pem") and
+                os.path.exists(key_path + "/sender_pem.pub")
+                ):
+            load_private_key(key_path + "/sender_pem", sender)
+        else:
+            save_private_key(key_path + "/sender_pem", sender)
+            save_public_key(key_path + "/sender_pem.pub", sender)
+
+        if (
+                os.path.exists(key_path + "/receiver_pem") and
+                os.path.exists(key_path + "/receiver_pem.pub")
+                ):
+            load_public_key(key_path + "/receiver_pem.pub", sender)
+        else:
+            save_private_key(key_path + "/receiver_pem", receiver)
+            save_public_key(key_path + "/receiver_pem.pub", receiver)
+    return sender

@@ -14,12 +14,8 @@ from river import utils, proba
 from streamz import Stream, Sink
 
 from functions.anomaly import GaussianScorer
-from human_security import HumanRSA
 from functions.encryption import (
-    generate_keys, load_public_key, load_private_key,
-    save_public_key, save_private_key,
-    sign_data, encrypt_data,
-    decode_data)
+    init_rsa_security, sign_data, encrypt_data, decode_data)
 
 # CONSTANTS
 GRACE_PERIOD = 60*24
@@ -344,37 +340,12 @@ def process_limits_streaming(
     Examples:
     >>> config = {"path": "tests/test.csv"}
     >>> topic = "A"
-    >>> process_limits_streaming(config, topic, key_path="temp", debug=True)
+    >>> process_limits_streaming(config, topic, key_path=".temp", debug=True)
     === Debugging started... ===
     === Debugging finished with success... ===
     """
     # TODO: Move to encryption.py
-    sender, receiver = generate_keys()
-    if not os.path.exists(key_path):
-        os.makedirs(key_path, exist_ok=True)
-        save_private_key(key_path + "/sender_pem", sender)
-        save_public_key(key_path + "/sender_pem.pub", sender)
-        save_private_key(key_path + "/receiver_pem", receiver)
-        save_public_key(key_path + "/receiver_pem.pub", receiver)
-        load_public_key(key_path + "/receiver_pem.pub", sender)
-    else:
-        if (
-                os.path.exists(key_path + "/sender_pem") and
-                os.path.exists(key_path + "/sender_pem.pub")
-                ):
-            load_private_key(key_path + "/sender_pem", sender)
-        else:
-            save_private_key(key_path + "/sender_pem", sender)
-            save_public_key(key_path + "/sender_pem.pub", sender)
-
-        if (
-                os.path.exists(key_path + "/receiver_pem") and
-                os.path.exists(key_path + "/receiver_pem.pub")
-                ):
-            load_public_key(key_path + "/receiver_pem.pub", sender)
-        else:
-            save_private_key(key_path + "/receiver_pem", receiver)
-            save_public_key(key_path + "/receiver_pem.pub", receiver)
+    sender = init_rsa_security(key_path)
 
     model = GaussianScorer(
         utils.TimeRolling(proba.Gaussian(), period=WINDOW),

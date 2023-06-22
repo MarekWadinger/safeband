@@ -4,7 +4,7 @@ import time
 import pandas as pd
 
 
-def progressive_val_predict(
+def progressive_val_predict(  # noqa: C901
         model,
         dataset,
         metrics,

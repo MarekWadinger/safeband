@@ -1,5 +1,4 @@
 import argparse
-from datetime import datetime
 from io import StringIO
 import json
 import os
@@ -46,7 +45,8 @@ class TestSecurity():
         sys.stdout = f
         on_message(obj, self.args, msg)
         sys.stdout = stdout_  # restore the previous stdout.
-        assert f.getvalue() == 'Received message: {"time": "2022-01-01 00:00:00"}\n'
+        assert (f.getvalue() ==
+                'Received message: {"time": "2022-01-01 00:00:00"}\n')
 
     def test_verify_file_message(self):
         f = StringIO()
@@ -54,4 +54,5 @@ class TestSecurity():
         sys.stdout = f
         query_file(self.args)
         sys.stdout = stdout_
-        assert f.getvalue() == "{'time': datetime.datetime(2022, 1, 1, 0, 0)}\n"
+        assert (f.getvalue() ==
+                "{'time': datetime.datetime(2022, 1, 1, 0, 0)}\n")
