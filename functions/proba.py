@@ -37,6 +37,8 @@ class MultivariateGaussian(base.ContinuousDistribution):
     7  0.139494  0.292145  0.366362
 
     >>> p = MultivariateGaussian()
+    >>> p.n_samples
+    0.0
     >>> for x in X.to_dict(orient="records"):
     ...     p = p.update(x)
     >>> p._var
@@ -45,11 +47,23 @@ class MultivariateGaussian(base.ContinuousDistribution):
     green    0.020    0.113   -0.053  
       red   -0.010   -0.053    0.079  
 
+    Weighted samples are currently not implemented. Updates with default w = 1.
+    >>> p = p.update(x, w=2)
+
+    There are different ways to get current state
     >>> p
-    𝒩(μ=(0.416, 0.387, 0.518),
-    σ^2=([0.076 0.020 -0.010]
-     [0.020 0.113 -0.053]
-     [-0.010 -0.053 0.079]))
+    𝒩(μ=(0.385, 0.376, 0.501),
+    σ^2=([0.069 0.019 -0.004]
+     [0.019 0.100 -0.044]
+     [-0.004 -0.044 0.078]))
+    >>> p.n_samples
+    9.0
+
+    To retrieve pdf and cdf
+    >>> p(x)
+    1.7039912355273796
+    >>> p.cdf(x)
+    0.014216200210727994
 
     >>> from river import utils
     >>> p = utils.Rolling(MultivariateGaussian(), window_size=5)
@@ -72,6 +86,9 @@ class MultivariateGaussian(base.ContinuousDistribution):
     green   -0.023    0.014   -0.025  
       red    0.008   -0.025    0.095  
 
+    Weighted samples are currently not implemented. Updates with default w = 1.
+    >>> p = p.update(x.to_dict(), t=t + td(seconds=1), **{"w":2})
+
     >>> from river.proba import Gaussian
     >>> p = MultivariateGaussian()
     >>> p_ = Gaussian()
@@ -80,6 +97,13 @@ class MultivariateGaussian(base.ContinuousDistribution):
     ...     p_ = p_.update(x['blue'])
     >>> p.sigma[0][0] == p_.sigma
     True
+
+    Initiation of class from state is currently not implemented
+    >>> p = MultivariateGaussian()._from_state(
+    ...     0, 0, 0, 0)  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+    ...
+    NotImplementedError: from_state_ not implemented yet.
 
     """  # noqa: W291
 
@@ -90,12 +114,12 @@ class MultivariateGaussian(base.ContinuousDistribution):
 
     @classmethod
     def _from_state(cls, n, m, sig, ddof):
-        raise NotImplementedError("from_state_ not implemented yet.")
+        raise NotImplementedError("_from_state not implemented yet.")
 
     @property
     def n_samples(self):
         if not self._var.matrix:
-            return 0
+            return 0.0
         else:
             return list(self._var.matrix.values())[-1].mean.n
 
@@ -148,6 +172,7 @@ class MultivariateGaussian(base.ContinuousDistribution):
 
     def revert(self, x, w=1.0):
         if w != 1.0:
+            # TODO: find out why not called during TimeRolling usage test
             warnings.warn("Weights not implemented yet.", RuntimeWarning)
         self._var.revert(x)
         return self
@@ -158,9 +183,11 @@ class MultivariateGaussian(base.ContinuousDistribution):
         if var is not None:
             try:
                 return multivariate_normal(self.mu, var).pdf(x)
-            except ValueError:
+            # TODO: validate occurence of ValueError
+            except ValueError:  # pragma: no cover
                 return 0.0
-            except OverflowError:
+            # TODO: validate occurence of OverflowError
+            except OverflowError:  # pragma: no cover
                 return 0.0
         return 0.0
 
@@ -170,10 +197,6 @@ class MultivariateGaussian(base.ContinuousDistribution):
         try:
             return multivariate_normal(self.mu, var,
                                        allow_singular=True).cdf(x)
-        except ZeroDivisionError:
+        # TODO: validate occurence of ZeroDivisionError
+        except ZeroDivisionError:  # pragma: no cover
             return 0.0
-
-
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
