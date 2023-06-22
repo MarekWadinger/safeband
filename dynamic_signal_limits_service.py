@@ -344,7 +344,7 @@ def process_limits_streaming(
     Examples:
     >>> config = {"path": "tests/test.csv"}
     >>> topic = "A"
-    >>> process_limits_streaming(config, topic, debug=True)
+    >>> process_limits_streaming(config, topic, key_path="temp", debug=True)
     === Debugging started... ===
     === Debugging finished with success... ===
     """

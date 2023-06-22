@@ -243,7 +243,7 @@ def verify_and_decrypt_data(item, key):
 
     Args:
         item: The item to verify and decrypt.
-        reader: The reader object or key used for decryption.
+        key: The key object or key used for decryption.
 
     Raises:
         InvalidSignature: If the signature verification fails.
@@ -252,9 +252,9 @@ def verify_and_decrypt_data(item, key):
         dict: The decrypted data.
     """
     item = encode_data(item)
-    item = decrypt_data(item, reader)
+    item = decrypt_data(item, key)
     sign = item.pop('signature')
-    verify = verify_signature(item, sign, reader)
+    verify = verify_signature(item, sign, key)
     if verify is not True:
         raise InvalidSignature("Signature verification failed.")
 
