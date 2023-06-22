@@ -20,14 +20,14 @@ class TestSecurity():
     def setup_class(self):
         self.parent_path = Path(__file__).parent
         self.args = argparse.Namespace()
-        self.args.reader = HumanRSA()
-        self.args.reader.generate()
+        self.args.receiver = HumanRSA()
+        self.args.receiver.generate()
         self.args.broker = self.parent_path / 'test.json'
         self.args.date = "2022-01-01 00:00:00"
 
         msg = {'time': "2022-01-01 00:00:00"}
-        signed_msg = sign_data(msg, self.args.reader)
-        ciphertext = encrypt_data(signed_msg, self.args.reader)
+        signed_msg = sign_data(msg, self.args.receiver)
+        ciphertext = encrypt_data(signed_msg, self.args.receiver)
         ciphertext = decode_data(ciphertext)
         self.encrypted_msg = json.dumps(ciphertext.copy())
         with open(self.args.broker, 'w') as f:

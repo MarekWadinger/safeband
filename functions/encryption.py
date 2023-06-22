@@ -102,13 +102,13 @@ def generate_keys():
         tuple: Tuple containing two HumanRSA objects.
 
     Examples:
-        >>> controller, actuator = generate_keys()
+        >>> sender, receiver = generate_keys()
     """
-    controller = HumanRSA()
-    controller.generate()
-    actuator = HumanRSA()
-    actuator.generate()
-    return controller, actuator
+    sender = HumanRSA()
+    sender.generate()
+    receiver = HumanRSA()
+    receiver.generate()
+    return sender, receiver
 
 
 def encrypt_data(data, key):
@@ -237,7 +237,7 @@ def verify_signature(data, signature, key):
         return key.verify(data, signature)
 
 
-def verify_and_decrypt_data(item, reader):
+def verify_and_decrypt_data(item, key):
     """
     Verify the signature of the item, and return the decrypted data.
 
