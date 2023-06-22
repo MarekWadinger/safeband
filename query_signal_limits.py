@@ -3,12 +3,15 @@ import argparse
 from datetime import datetime
 import paho.mqtt.client as mqtt
 
+from human_security import HumanRSA
+from functions.encryption import (
+    load_public_key, load_private_key, verify_and_decrypt_data)
 
 PORT = 1883
 
 
 # MQTT callback functions
-def on_connect(self, userdata, flags, rc):
+def on_connect(self: mqtt.Client, userdata, flags, rc):
     """
     MQTT callback function for handling the connect event.
 
@@ -37,13 +40,18 @@ def on_message(self, userdata, msg):
 
     Examples:
         >>> obj = mqtt.Client()
+        >>> usr = argparse.Namespace(topic="my_topic")
         >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
-        >>> on_message(obj, None, msg)
-        b'Hello'
+        >>> on_message(obj, usr, msg)
         Received message: Hello
     """
-    print(msg.payload)
-    print("Received message: " + msg.payload.decode())
+    if isinstance(userdata, argparse.Namespace) and 'reader' in userdata:
+        item = verify_and_decrypt_data(json.loads(msg.payload.decode()),
+                                       userdata.reader)
+        item = json.dumps(item)
+    else:
+        item = msg.payload.decode()
+    print("Received message: " + item)
 
 
 def parse_args():  # pragma: no cover
@@ -83,8 +91,10 @@ def query_file(args):
     with open(args.broker, 'r') as f:
         data = [json.loads(line) for line in f]
 
-        # Convert the time strings to datetime objects
+    # Convert the time strings to datetime objects
     for item in data:
+        if 'reader' in args and not item['time'].isascii():
+            item = verify_and_decrypt_data(item, args.reader)
         item["time"] = datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
 
     # Sort the data by time in descending order
@@ -135,6 +145,11 @@ if __name__ == '__main__':  # pragma: no cover
     doctest.testmod()
     # Parse command-line arguments
     args = parse_args()
+
+    args.reader = HumanRSA()
+    args.reader.generate()
+    load_public_key("functions/.security/a_pem.pub", args.reader)
+    load_private_key("functions/.security/c_pem", args.reader)
 
     if args.broker.endswith(".json"):
         query_file(args)
