@@ -1,7 +1,5 @@
 import json
-import os
 
-from pathlib import Path
 from human_security import HumanRSA
 
 LEN_LIMIT = 214
@@ -86,7 +84,7 @@ def generate_keys():
         tuple: Tuple containing two HumanRSA objects.
 
     Examples:
-        >>> controller, actuator = generate_keys()  # doctest: +SKIP
+        >>> controller, actuator = generate_keys()
     """
     controller = HumanRSA()
     controller.generate()
@@ -110,7 +108,7 @@ def encrypt_data(data, key):
         >>> from human_security import HumanRSA
         >>> key = HumanRSA()
         >>> key.generate()
-        >>> encrypt_data(b'Test', key)  # doctest: +SKIP
+        >>> ciphertext = encrypt_data(b'Test', key)
     """
     if isinstance(data, dict):
         for x in data:
@@ -119,7 +117,7 @@ def encrypt_data(data, key):
     elif isinstance(data, bytes):
         if len(data) > LEN_LIMIT:
             data_ = split_string(data, LEN_LIMIT)
-            return [encrypt_data(d, controller) for d in data_]
+            return [encrypt_data(d, key) for d in data_]
         else:
             return key.encrypt(data)
     else:
@@ -142,7 +140,7 @@ def decrypt_data(data, key):
         >>> key = HumanRSA()
         >>> key.generate()
         >>> encrypted_data = key.encrypt(b'Test')
-        >>> decrypt_data(encrypted_data, key)  # doctest: +SKIP
+        >>> plaintext = decrypt_data(encrypted_data, key)
     """
     if isinstance(data, dict):
         for x in data:
@@ -151,10 +149,11 @@ def decrypt_data(data, key):
     elif isinstance(data, bytes):
         return key.decrypt(data)
     elif isinstance(data, list):
-        dec = [decrypt_data(d, actuator) for d in data]
+        dec = [decrypt_data(d, key) for d in data]
         return b''.join(dec).decode('utf-8')
     else:
-        return decrypt_data(str(data).encode('utf-8'), key)
+        raise ValueError(f"Wrong type of data. Got {type(data)}. "
+                         "Expected (bytes, list, dict).")
 
 
 def sign_data(data, key):
@@ -218,59 +217,3 @@ def verify_signature(data, signature, key):
                                 signature, key)
     else:
         return key.verify(data, signature)
-
-
-# Main code
-if __name__ == '__main__':
-    control_action = b'4.20'
-    parent_path = Path(__file__).parent
-    security_dir = parent_path / ".security"
-    os.makedirs(security_dir, exist_ok=True)
-    # Generate keys for controller and actuator
-    controller, actuator = generate_keys()
-
-    # Save keys
-    save_public_key(security_dir / "c_pem.pub", controller)
-    save_private_key(security_dir / "c_pem", controller)
-    save_public_key(security_dir / "a_pem.pub", actuator)
-    save_private_key(security_dir / "a_pem", actuator)
-
-    # Load public keys for key exchange
-    load_public_key(security_dir / "c_pem.pub", actuator)
-    load_public_key(security_dir / "a_pem.pub", controller)
-
-    # Sign control action
-    signature = sign_data(control_action, controller)
-
-    # Encrypt control action
-    encrypted_c_a = encrypt_data(control_action, controller)
-
-    # Encrypt and split signature if necessary
-    if len(signature) > LEN_LIMIT:
-        signatures = split_string(signature, LEN_LIMIT)
-        encrypted_s_cs = [encrypt_data(bytes(signature_, 'utf-8'), controller)
-                          for signature_ in signatures]
-    else:
-        encrypted_s_cs = encrypt_data(signature, controller)
-
-    # Decrypt control action
-    decrypted_c_a = decrypt_data(encrypted_c_a, actuator)
-
-    # Decrypt and join signatures
-    decrypted_s_cs = [decrypt_data(encrypted_s_c, actuator)
-                      for encrypted_s_c in encrypted_s_cs]
-    decrypted_s_c = b''.join(decrypted_s_cs).decode('utf-8')
-
-    # Verify signature
-    signature_valid = verify_signature(decrypted_c_a, signature, actuator)
-
-    assert signature_valid
-
-    # Test 2
-    data = {'a': 1}
-    data_sign = sign_data(data, controller)
-    data_sec = encrypt_data(data_sign, controller)
-    data_dec = decrypt_data(data_sec, actuator)
-    sig = data_dec.pop('signature')
-    verify = verify_signature(data_dec, sig, actuator)
-    assert verify
