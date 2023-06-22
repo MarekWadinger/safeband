@@ -1,5 +1,6 @@
 import json
 
+from cryptography.exceptions import InvalidSignature
 from human_security import HumanRSA
 
 LEN_LIMIT = 214
@@ -56,6 +57,23 @@ def load_public_key(key_path, key):
     """
     with open(key_path) as pub:
         key.load_public_pem(''.join(pub))
+
+
+def load_private_key(key_path, key: HumanRSA):
+    """
+    Load the private key from a file.
+
+    Args:
+        key_path (str or Path): Path to the private key file.
+        key (HumanRSA): Key object to load the private key into.
+
+    Examples:
+        >>> from human_security import HumanRSA
+        >>> key = HumanRSA()
+        >>> load_private_key('private_key.pem', key)  # doctest: +SKIP
+    """
+    with open(key_path) as pub:
+        key.load_private_pem(''.join(pub))
 
 
 def split_string(string, max_length):
@@ -217,3 +235,101 @@ def verify_signature(data, signature, key):
                                 signature, key)
     else:
         return key.verify(data, signature)
+
+
+def verify_and_decrypt_data(item, reader):
+    """
+    Verify the signature of the item, and return the decrypted data.
+
+    Args:
+        item: The item to verify and decrypt.
+        reader: The reader object or key used for decryption.
+
+    Raises:
+        InvalidSignature: If the signature verification fails.
+
+    Returns:
+        dict: The decrypted data.
+    """
+    item = encode_data(item)
+    item = decrypt_data(item, reader)
+    sign = item.pop('signature')
+    verify = verify_signature(item, sign, reader)
+    if verify is not True:
+        raise InvalidSignature("Signature verification failed.")
+
+    return item
+
+
+def encode_data(data):
+    """
+    Encode a data by encoding string values to bytes.
+
+    Args:
+        data (dict): The data to encode.
+
+    Returns:
+        dict: The encoded data.
+
+    Examples:
+        >>> msg = {
+        ...     'key1': 'Hello',
+        ...     'key2': ['abcó\\x9cÆ', 'xyz']
+        ... }
+        >>> encode_data(msg)
+        {'key1': b'Hello', 'key2': [b'abc\xf3\x9c\xc6', b'xyz']}
+
+        >>> invalid_msg = {
+        ...     'key1': '123',
+        ...     'key2': b'Hello'
+        ... }
+        >>> encode_data(invalid_msg)
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid data in key2
+    """
+    for k, v in data.items():
+        if isinstance(v, str):
+            data[k] = v.encode('latin1')
+        elif isinstance(v, list):
+            data[k] = [s.encode("latin1") for s in v]
+        else:
+            raise ValueError(f"Invalid data in {k}")
+    return data
+
+
+def decode_data(data):
+    """
+    Decode a data by decoding bytes values to strings.
+
+    Args:
+        data (dict): The data to decode.
+
+    Returns:
+        dict: The decoded data.
+
+    Examples:
+        >>> msg = {
+        ...     'key1': b'Hello',
+        ...     'key2': [b"abc\\xf3\\x9c\\xc6", b"xyz"]
+        ... }
+        >>> decode_data(msg)
+        {'key1': 'Hello', 'key2': ['abcó\x9cÆ', 'xyz']}
+
+        >>> invalid_msg = {
+        ...     'key1': 123,
+        ...     'key2': b'Hello'
+        ... }
+        >>> decode_data(invalid_msg)
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid data in key1
+    """
+    for k, v in data.items():
+        if isinstance(v, bytes):
+            data[k] = v.decode('latin1')
+        elif isinstance(v, list):
+            data[k] = [s.decode("latin1") for s in v]
+        else:
+            raise ValueError(f"Invalid data in {k}")
+    return data

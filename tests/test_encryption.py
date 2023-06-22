@@ -3,12 +3,16 @@ import pytest
 import sys
 from pathlib import Path
 
+from cryptography.exceptions import InvalidSignature
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 from functions.encryption import (  # noqa: E402
-    generate_keys, save_public_key, save_private_key, load_public_key,
-    encrypt_data, decrypt_data, sign_data, verify_signature)
+    generate_keys, save_public_key, save_private_key,
+    load_public_key, load_private_key,
+    encrypt_data, decrypt_data,
+    sign_data, verify_signature,
+    decode_data, verify_and_decrypt_data)
 
 
 class TestSecurity():
@@ -54,6 +58,19 @@ class TestSecurity():
         assert self.controller.public_pem() == remote_actuator.public_pem()
         assert self.actuator.public_pem() == remote_controller.public_pem()
 
+    def test_key_retaining(self):
+        save_public_key(self.security_dir / "c_pem.pub", self.controller)
+        save_private_key(self.security_dir / "c_pem", self.controller)
+        save_public_key(self.security_dir / "a_pem.pub", self.actuator)
+        save_private_key(self.security_dir / "a_pem", self.actuator)
+
+        remote_actuator = HumanRSA()
+        remote_controller = HumanRSA()
+        load_private_key(self.security_dir / "c_pem", remote_actuator)
+        load_private_key(self.security_dir / "a_pem", remote_controller)
+        assert self.controller.private_pem() == remote_actuator.private_pem()
+        assert self.actuator.private_pem() == remote_controller.private_pem()
+
     def test_bytes_encryption_and_decryption(self):
         control_action = b'4.20'
         encrypted_c_a = encrypt_data(control_action, self.controller)
@@ -91,11 +108,20 @@ class TestSecurity():
         verify = verify_signature(plaintext, sign, self.actuator)
         assert verify is True
 
-    def test_message_signing_encryption_decryption_fail(self):
+    def test_message_signing_encryption_dump_verify_and_decrypt(self):
         msg = {'a': 1}
         signed_msg = sign_data(msg, self.controller)
         ciphertext = encrypt_data(signed_msg, self.controller)
-        plaintext = decrypt_data(ciphertext, self.actuator)
-        sign = plaintext.pop('signature')
-        verify = verify_signature(plaintext, sign, self.actuator)
-        assert verify is True
+        ciphertext = decode_data(ciphertext)
+        item = verify_and_decrypt_data(ciphertext, self.actuator)
+        assert msg == item
+
+    def test_message_signing_encryption_dump_fail_verify(self):
+        msg = {'a': 1}
+        signed_msg = sign_data(msg, self.controller)
+        other_msg = sign_data({'a': 2}, self.controller)
+        signed_msg['signature'] = other_msg['signature']
+        ciphertext = encrypt_data(signed_msg, self.controller)
+        ciphertext = decode_data(ciphertext)
+        with pytest.raises(InvalidSignature):
+            verify_and_decrypt_data(ciphertext, self.actuator)
