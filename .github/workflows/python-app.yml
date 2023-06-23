@@ -5,7 +5,7 @@ name: Python application
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "multivariate_dev" ]
   pull_request:
     branches: [ "main" ]
 
@@ -41,7 +41,8 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --output-file=reports/flake8/flake8stats.txt --format=html --htmldir=reports/flake8/report/
     - name: Test with pytest
       run: |
-        pytest --doctest-modules --junitxml=reports/junit/junit.xml --ignore=publications --ignore=functions/plot.py --cov=. --cov-report=xml:reports/coverage/coverage.xml --cov-report=html:reports/coverage/report --html=reports/junit/report/index.html
+        # Configurations in pytest.ini and reports/.coveragerc
+        pytest .
     - name: Update Coverage Badges
       run: |
         genbadge flake8 -o reports/flake8-badge.svg
@@ -50,7 +51,6 @@ jobs:
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v5
       with:
-        base: main
         title: "Update Coverage Badges"
         body: "Automated update of coverage badges"
         add-paths: |

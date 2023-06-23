@@ -45,6 +45,8 @@ legacy/
 tests/*
 !tests/test.csv
 !tests/sample.json
+!tests/test*.py
+!reports/.coveragerc
 
 # Allow gitignore
 !*.gitignore

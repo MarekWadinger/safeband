@@ -1,14 +1,20 @@
-import json
 import argparse
+import json
+import os
+
 from datetime import datetime
+
 import paho.mqtt.client as mqtt
 
+from human_security import HumanRSA
+from functions.encryption import (
+    load_public_key, load_private_key, verify_and_decrypt_data)
 
 PORT = 1883
 
 
 # MQTT callback functions
-def on_connect(self, userdata, flags, rc):
+def on_connect(self: mqtt.Client, userdata, flags, rc):
     """
     MQTT callback function for handling the connect event.
 
@@ -37,13 +43,18 @@ def on_message(self, userdata, msg):
 
     Examples:
         >>> obj = mqtt.Client()
+        >>> usr = argparse.Namespace(topic="my_topic")
         >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
-        >>> on_message(obj, None, msg)
-        b'Hello'
+        >>> on_message(obj, usr, msg)
         Received message: Hello
     """
-    print(msg.payload)
-    print("Received message: " + msg.payload.decode())
+    if isinstance(userdata, argparse.Namespace) and 'receiver' in userdata:
+        item = verify_and_decrypt_data(json.loads(msg.payload.decode()),
+                                       userdata.receiver)
+        item = json.dumps(item)
+    else:
+        item = msg.payload.decode()
+    print("Received message: " + item)
 
 
 def parse_args():  # pragma: no cover
@@ -56,6 +67,8 @@ def parse_args():  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--broker", help="Host or output file path.",
                         default="mqtt.eclipseprojects.io")
+    parser.add_argument('-k', '--key-path', help='Path to RSA keys',
+                        default='.security')
     parser.add_argument("-t", "--topic",
                         help="Topic of MQTT or Column of pd.DataFrame",
                         default="test")
@@ -83,8 +96,10 @@ def query_file(args):
     with open(args.broker, 'r') as f:
         data = [json.loads(line) for line in f]
 
-        # Convert the time strings to datetime objects
+    # Convert the time strings to datetime objects
     for item in data:
+        if 'receiver' in args and not item['time'].isascii():
+            item = verify_and_decrypt_data(item, args.receiver)
         item["time"] = datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
 
     # Sort the data by time in descending order
@@ -135,6 +150,12 @@ if __name__ == '__main__':  # pragma: no cover
     doctest.testmod()
     # Parse command-line arguments
     args = parse_args()
+
+    args.receiver = HumanRSA()
+    if not os.path.exists(args.key_path):
+        raise RuntimeError('Cannot find key path.')
+    load_private_key(args.key_path + "/receiver_pem", args.receiver)
+    load_public_key(args.key_path + "/sender_pem.pub", args.receiver)
 
     if args.broker.endswith(".json"):
         query_file(args)

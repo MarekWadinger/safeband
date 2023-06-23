@@ -7,19 +7,19 @@ import os
 import signal
 import sys
 import time
-import warnings
 
 from paho.mqtt.client import MQTTMessage
 import pandas as pd
-from river import utils, proba, anomaly
-from scipy.stats import norm
+from river import utils, proba
 from streamz import Stream, Sink
 
+from functions.anomaly import GaussianScorer
+from functions.encryption import (
+    init_rsa_security, sign_data, encrypt_data, decode_data)
+
 # CONSTANTS
-THRESHOLD = 0.99735
 GRACE_PERIOD = 60*24
 WINDOW = dt.timedelta(hours=24*7)
-VAR_SMOOTHING = 1e-9
 
 
 # DEFINITIONS
@@ -77,124 +77,6 @@ class to_mqtt(Sink):
         self.client.disconnect()
         self.client = None
         super().destroy()
-
-
-class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
-    """
-    Gaussian Scorer for anomaly detection.
-
-    Args:
-        threshold (float): Anomaly threshold.
-        window_size (int or None): Size of the rolling window.
-        period (int or None): Time period for time rolling.
-        grace_period (int): Grace period before scoring starts.
-
-    Examples:
-    >>> scorer = GaussianScorer(window_size=3, grace_period=2)
-    >>> isinstance(scorer, GaussianScorer)
-    True
-    >>> scorer.gaussian.mu
-    0.0
-    >>> scorer.learn_one(1).gaussian.mu
-    1.0
-    >>> scorer.gaussian.sigma
-    0.0
-    >>> scorer.learn_one(0).gaussian.sigma
-    0.7071067811865476
-    >>> scorer.limit_one()
-    2.625326733368662
-    >>> scorer.predict_one(2.625326733368662)
-    0
-    >>> scorer.score_one(2.625326733368662)
-    0.99735
-
-    Anomaly is zero due to grace_period
-    >>> scorer.predict_one(2.62532673337)
-    0
-    >>> scorer.learn_one(1).gaussian.sigma
-    0.5773502691896258
-    >>> scorer.predict_one(2.62532673337)
-    1
-
-    Keeps the sigma due to window_size of 3
-    >>> scorer.learn_one(1).gaussian.sigma
-    0.5773502691896258
-    >>> scorer.process_one(0.5)
-    (0, 2.401988677816472)
-
-    Gaussian scorer on time rolling window
-    >>> import datetime
-    >>> scorer = GaussianScorer()
-    >>> scorer.process_one(1, t=datetime.datetime(2022,2,2))
-    (0, nan)
-
-    Gaussian scorer without window
-    >>> import datetime
-    >>> scorer = GaussianScorer(window_size=None, period=None)
-    >>> scorer.process_one(1)
-    (0, nan)
-    """
-    def __init__(self,
-                 threshold=THRESHOLD,
-                 window_size=None,
-                 period=WINDOW,
-                 grace_period=GRACE_PERIOD):
-        self.window_size = window_size
-        self.period = period
-        if window_size:
-            self.gaussian = utils.Rolling(proba.Gaussian(),
-                                          window_size=self.window_size)
-        elif period:
-            self.gaussian = utils.TimeRolling(proba.Gaussian(),
-                                              period=self.period)
-        else:
-            self.gaussian = proba.Gaussian()
-        self.grace_period = grace_period
-        self.threshold = threshold
-
-    def learn_one(self, x, **kwargs):
-        self.gaussian.update(x, **kwargs)
-        return self
-
-    def score_one(self, x, t=None):
-        if self.gaussian.n_samples < self.grace_period:
-            return 0
-        return 2 * abs(self.gaussian.cdf(x) - 0.5)
-
-    def predict_one(self, x, t=None):
-        score = self.score_one(x)
-        if self.gaussian.obj.n_samples > self.grace_period:
-            return 1 if score > self.threshold else 0
-        else:
-            return 0
-
-    def limit_one(self):
-        kwargs = {"loc": self.gaussian.mu,
-                  "scale":
-                      self.gaussian.sigma
-                      if not isinstance(self.gaussian.sigma, complex) else 0}
-        # TODO: consider strict process boundaries
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=RuntimeWarning)
-            real_thresh = norm.ppf((self.threshold/2 + 0.5), **kwargs)
-        return real_thresh
-
-    def process_one(self, x, t=None):
-        if self.gaussian.n_samples == 0:
-            self.gaussian.obj = self.gaussian._from_state(0, x,
-                                                          VAR_SMOOTHING, 1)
-
-        is_anomaly = self.predict_one(x)
-
-        real_thresh = self.limit_one()
-
-        if not is_anomaly:
-            if isinstance(self.gaussian, utils.TimeRolling):
-                self = self.learn_one(x, **{"t": t})
-            else:
-                self = self.learn_one(x)
-
-        return is_anomaly, real_thresh
 
 
 # FUNCTIONS
@@ -267,8 +149,7 @@ def preprocess(
 
 def fit_transform(
         x,
-        model,
-        model_inv
+        model: GaussianScorer,
 ):
     """Apply anomaly detection model to the input data.
 
@@ -278,7 +159,6 @@ def fit_transform(
     Args:
         x (dict): The input data dictionary.
         model: The anomaly detection model.
-        model_inv: The inverse anomaly detection model.
 
     Returns:
         dict: The processed data dictionary.
@@ -286,9 +166,10 @@ def fit_transform(
     Examples:
         >>> x = {"time": dt.datetime(2022,1,1),
         ...      "data": {"feature1": 0.5, "feature2": 1.2, "feature3": -0.8}}
-        >>> model = GaussianScorer()
-        >>> model_inv = GaussianScorer()
-        >>> result = fit_transform(x, model, model_inv)
+        >>> model = model = GaussianScorer(
+        ...     utils.TimeRolling(proba.Gaussian(), period=WINDOW),
+        ...     grace_period=GRACE_PERIOD)
+        >>> result = fit_transform(x, model)
         >>> sorted(result.keys())
         ['anomaly', 'level_high', 'level_low', 'time']
         >>> isinstance(result["time"], str)
@@ -302,13 +183,12 @@ def fit_transform(
     """
     # TODO: replace x_ for multidimensional implementation
     x_ = next(iter(x["data"].values()))
-    is_anomaly, real_thresh = model.process_one(x_, x["time"])
-    _, real_thresh_ = model_inv.process_one(-x_, x["time"])
+    is_anomaly, thresh_high, thresh_low = model.process_one(x_, x["time"])
     return {"time": str(x["time"]),
             # **x["data"], # Comment out to lessen the size of payload
             "anomaly": is_anomaly,
-            "level_high": real_thresh,
-            "level_low": -real_thresh_
+            "level_high": thresh_high,
+            "level_low": thresh_low
             }
 
 
@@ -355,7 +235,7 @@ def signal_handler(sig, frame, detector, config):  # pragma: no cover
             print("No data retrieved")
     # TODO: Find out how to flush kafka
     # if config.get("bootstrap.servers"):
-    #    detector.flush()
+    #     detector.flush()
 
     exit(0)
 
@@ -439,6 +319,7 @@ def get_source(
 def process_limits_streaming(
         config: dict,
         topic: str,
+        key_path: str,
         debug: bool = False):
     """Process the limits in a streaming manner.
 
@@ -453,17 +334,22 @@ def process_limits_streaming(
     Args:
         config (dict): The configuration dictionary.
         topic (str): The topic to subscribe to for MQTT or Kafka sources.
+        key_path (str): The path to the RSA keys
         debug (bool, optional): Enable debug mode. Defaults to False.
 
     Examples:
     >>> config = {"path": "tests/test.csv"}
     >>> topic = "A"
-    >>> process_limits_streaming(config, topic, debug=True)
+    >>> process_limits_streaming(config, topic, key_path=".temp", debug=True)
     === Debugging started... ===
     === Debugging finished with success... ===
     """
-    model = GaussianScorer()
-    model_inv = GaussianScorer()
+    # TODO: Move to encryption.py
+    sender = init_rsa_security(key_path)
+
+    model = GaussianScorer(
+        utils.TimeRolling(proba.Gaussian(), period=WINDOW),
+        grace_period=GRACE_PERIOD)
 
     if config.get("path"):
         data = pd.read_csv(config['path'], index_col=0)
@@ -472,8 +358,13 @@ def process_limits_streaming(
 
     source = get_source(config, topic, debug)
 
-    detector = source.map(preprocess, topic).map(
-        fit_transform, model, model_inv)
+    detector = (source
+                .map(preprocess, topic)
+                .map(fit_transform, model)
+                .map(sign_data, sender)
+                .map(encrypt_data, sender)
+                .map(decode_data)
+                )
 
     with open("data/output/dynamic_limits.json", 'a') as f:
         if config.get("path"):
@@ -487,9 +378,10 @@ def process_limits_streaming(
             detector.map(lambda x: (str(x), "dynamic_limits")
                          ).to_kafka(topic, config)
 
+        # TODO: handle combination of debug and remote broker
         if debug:
             print("=== Debugging started... ===")
-            for row in data.iterrows():
+            for row in data.head(3).iterrows():
                 source.emit(row)
             print("=== Debugging finished with success... ===")
         else:  # pragma: no cover
@@ -497,7 +389,8 @@ def process_limits_streaming(
 
             signal.signal(signal.SIGINT, lambda signalnum,
                           frame: signal_handler(
-                              signalnum, frame, detector, config))
+                              signalnum, frame, detector, config)
+                          )
 
             while True:
                 time.sleep(2)
@@ -525,8 +418,10 @@ def get_config(config_parser):  # pragma: no cover
 
 if __name__ == '__main__':  # pragma: no cover
     parser = ArgumentParser()
-    parser.add_argument('-f', '--config_file',
-                        type=FileType('r'), default='config.ini')
+    parser.add_argument('-f', '--config_file', type=FileType('r'),
+                        default='config.ini')
+    parser.add_argument('-k', '--key-path', help='Path to RSA keys',
+                        default='.security')
     # "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
     # "Average Cell Temperature"
     parser.add_argument("-t", "--topic",
@@ -534,7 +429,7 @@ if __name__ == '__main__':  # pragma: no cover
                         default="Average Cell Temperature")
     parser.add_argument("-d", "--debug",
                         help="Debug the file using loop as source",
-                        default=False, type=bool)
+                        default=True, type=bool)
     args = parser.parse_args()
 
     config_parser = ConfigParser()
@@ -543,4 +438,4 @@ if __name__ == '__main__':  # pragma: no cover
     # TODO: Handle possible errorous scenarios
     config = get_config(config_parser)
 
-    process_limits_streaming(config, args.topic, args.debug)
+    process_limits_streaming(config, args.topic, args.key_path, args.debug)
