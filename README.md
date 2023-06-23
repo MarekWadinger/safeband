@@ -27,7 +27,9 @@ aging
 
 Get your hand on the algorithm using this [notebook](https://github.com/MarekWadinger/online_outlier_detection/blob/main/online_outlier_detection.ipynb) to play around with example data.
 
-As a quick example, we will run the online service in the terminal and use query the latest dynamic limits for our process.
+## 🏃 Run the services
+
+### Stream MQTT messages
 
 To start the service, run following line of code in your terminal:
 
@@ -37,13 +39,31 @@ python3 dynamic_signal_limits_service.py -f config.ini -t "shellies/Shelly3EM-Ma
 
 Note: You can modify the source data stream using attributes:
 
-* `[-f | --config_file]` with path to `config.ini` (NOTE: first defined key value pair is used)
+* `[-f | --config_file]` with path to `config.ini` (NOTE: first valid key value pair is used)
 * `[-t | --topic]` to define topic to subscribe to or column in csv file
 
+To start query service, run following command:
+
+```bash
+python3 query_signal_limits.py -b "mqtt.cloud.uiam.sk" -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/dynamic_limits"
+```
+
+Note: You can modify the source data stream using attributes:
+
+* `[-b | --broker]` host or output file path.
+* `[-t | --topic]` topic of MQTT or column of pd.DataFrame
+
+Query service responds with printed messages as follows:
+
+```bash
+Received message: {"time": "1970-01-01 03:17:11", "anomaly": "0", "level_high": "658.396223558289", "level_low": "635.8731097750442"}
+```
+
+### Stream file messages
 If you want to stream example dataset use
 
 ```bash
-python3 dynamic_signal_limits_service.py -f config.ini -t "Average Cell Temperature"
+python3 dynamic_signal_limits_service.py -f config.ini -t "Average Cell Temperature" --debug True
 ```
 
 where your `config.ini` shall contain
@@ -56,7 +76,7 @@ path=data/input/average_temperature.csv
 Now, let's query the latest limits from data/output/dynamic_limits.json
 
 ```bash
-python3 query_signal_limits.py
+python3 query_signal_limits.py -b "data/output/dynamic_limits.json" -t "Average Cell Temperature"
 ```
 
 The response is the latest date in `dynamic_limits.json`
