@@ -149,7 +149,7 @@ def plot_add_mean_std(
 
 def set_invisible(fig, inv_lines: list):
     for trace in inv_lines:
-        fig.data[trace].visible = inv_lines
+        fig.data[trace].visible = False
 
 
 def plot_limits_3d(
