@@ -416,7 +416,7 @@ def get_config(config_parser):  # pragma: no cover
     return config
 
 
-if __name__ == '__main__':  # pragma: no cover
+if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-f', '--config_file', type=FileType('r'),
                         default='config.ini')

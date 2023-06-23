@@ -144,7 +144,7 @@ def query_mqtt(args):
     return client
 
 
-if __name__ == '__main__':  # pragma: no cover
+if __name__ == '__main__':
     import doctest
     # Run the doctests
     doctest.testmod()
