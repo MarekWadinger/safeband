@@ -381,7 +381,7 @@ def process_limits_streaming(
         # TODO: handle combination of debug and remote broker
         if debug:
             print("=== Debugging started... ===")
-            for row in data.head(3).iterrows():
+            for row in data.head().iterrows():
                 source.emit(row)
             print("=== Debugging finished with success... ===")
         else:  # pragma: no cover
@@ -429,7 +429,7 @@ if __name__ == '__main__':
                         default="Average Cell Temperature")
     parser.add_argument("-d", "--debug",
                         help="Debug the file using loop as source",
-                        default=True, type=bool)
+                        default=False, type=bool)
     args = parser.parse_args()
 
     config_parser = ConfigParser()
