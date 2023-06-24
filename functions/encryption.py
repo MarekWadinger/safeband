@@ -311,29 +311,42 @@ def decode_data(data):
 
     Examples:
         >>> msg = {
-        ...     'key1': b'Hello',
+        ...     'key1': b'abc',
         ...     'key2': [b"abc\\xf3\\x9c\\xc6", b"xyz"]
         ... }
         >>> decode_data(msg)
-        {'key1': 'Hello', 'key2': ['abcó\x9cÆ', 'xyz']}
+        {'key1': 'abc', 'key2': ['abcó\x9cÆ', 'xyz']}
 
-        >>> invalid_msg = {
+        >>> msg = {
         ...     'key1': 123,
-        ...     'key2': b'Hello'
+        ...     'key2': b'Hello',
+        ...     'key3': 'World',
         ... }
-        >>> decode_data(invalid_msg)
+        >>> decode_data(msg)
+        {'key1': '123', 'key2': 'Hello', 'key3': 'World'}
+
+        >>> msg = {'key1': type('UnsupportedClass', (), {'value': 42})()}
+        >>> decode_data(msg)
         Traceback (most recent call last):
         ...
-        ValueError: Invalid data in key1
-    """
-    for k, v in data.items():
-        if isinstance(v, bytes):
-            data[k] = v.decode('latin1')
-        elif isinstance(v, list):
-            data[k] = [s.decode("latin1") for s in v]
-        else:
-            raise ValueError(f"Invalid data in {k}")
-    return data
+        ValueError: Wrong type of data. Got <class '__main__.UnsupportedClass'>. Expected (bytes, list, dict).
+    """  # noqa: E501
+    if isinstance(data, dict):
+        for k, v in data.items():
+            data[k] = decode_data(v)
+        return data
+    elif isinstance(data, (list, tuple, range)):
+        data = [decode_data(s) for s in data]
+        return data
+    elif isinstance(data, bytes):
+        return data.decode('latin1')
+    elif isinstance(data, (int, float, complex)) or data is None:
+        return str(data)
+    elif isinstance(data, str):
+        return data
+    else:
+        raise ValueError(f"Wrong type of data. Got {type(data)}. "
+                         "Expected (bytes, list, dict).")
 
 
 def init_rsa_security(key_path):
@@ -351,6 +364,7 @@ def init_rsa_security(key_path):
                 os.path.exists(key_path + "/sender_pem.pub")
                 ):
             load_private_key(key_path + "/sender_pem", sender)
+            load_public_key(key_path + "/sender_pem.pub", receiver)
         else:
             save_private_key(key_path + "/sender_pem", sender)
             save_public_key(key_path + "/sender_pem.pub", sender)
@@ -359,8 +373,9 @@ def init_rsa_security(key_path):
                 os.path.exists(key_path + "/receiver_pem") and
                 os.path.exists(key_path + "/receiver_pem.pub")
                 ):
+            load_private_key(key_path + "/receiver_pem", receiver)
             load_public_key(key_path + "/receiver_pem.pub", sender)
         else:
             save_private_key(key_path + "/receiver_pem", receiver)
             save_public_key(key_path + "/receiver_pem.pub", receiver)
-    return sender
+    return sender, receiver

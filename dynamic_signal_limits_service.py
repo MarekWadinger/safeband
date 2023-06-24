@@ -345,7 +345,7 @@ def process_limits_streaming(
     === Debugging finished with success... ===
     """
     # TODO: Move to encryption.py
-    sender = init_rsa_security(key_path)
+    sender, _ = init_rsa_security(key_path)
 
     model = GaussianScorer(
         utils.TimeRolling(proba.Gaussian(), period=WINDOW),
