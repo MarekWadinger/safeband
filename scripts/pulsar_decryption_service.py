@@ -34,6 +34,7 @@ def decryption_service(
         producer = decrypter.to_pulsar(
             out_topic,
             producer_config={"service_url": service_url})
+        L = None
     else:
         L = decrypter.sink_to_list()
 
