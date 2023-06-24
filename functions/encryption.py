@@ -329,7 +329,7 @@ def decode_data(data):
         >>> decode_data(msg)
         Traceback (most recent call last):
         ...
-        ValueError: Wrong type of data. Got <class '__main__.UnsupportedClass'>. Expected (bytes, list, dict).
+        ValueError: Wrong type of data. Got <class 'encryption.UnsupportedClass'>. Expected (bytes, list, dict).
     """  # noqa: E501
     if isinstance(data, dict):
         for k, v in data.items():
