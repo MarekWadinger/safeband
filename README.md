@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/MarekWadinger/online_outlier_detection/branch/main/graph/badge.svg?token=BIS0A7CF1F)](https://codecov.io/gh/MarekWadinger/online_outlier_detection)
 [![Test Status](/reports/test-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/junit/report/index.html)
 [![Flake8 Status](/reports/flake8-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/flake8/report/index.html)
-[![DOI](https://img.shields.io/badge/DOI-arXiv.2301.13527-brightgreen)](https://doi.org/10.48550/arXiv.2301.13527)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8128206.svg)](https://doi.org/10.5281/zenodo.8128206)
 
 Online outlier detection service for existing real-time infrastructures for low-latency detection and change-point adaptation.
 The service provides dynamic process limits based on changing environmental conditions and sensors aging.
@@ -119,13 +119,14 @@ Feel free to contribute in any way you like, we're always open to new ideas and 
 If the service or the algorithm has been useful to you and you would like to cite it in an scientific publication, please refer to the [paper](https://arxiv.org/abs/2301.13527) currently under review:
 
 ```bibtex
-@under_review{wadinger_kvasnica_2023, 
-  title={Real-time outlier detection with dynamic process limits}, 
-  url={https://arxiv.org/abs/2301.13527}, 
-  journal={arXiv.org}, 
-  author={Wadinger, Marek and Kvasnica, Michal}, 
-  year={2023}
-} 
+@inproceedings{wadinger_pc_2023,
+  title={Real-Time Outlier Detection with Dynamic Process Limits},
+  DOI={10.5281/zenodo.8128206},
+  publisher={Zenodo},
+  author={Wadinger, Marek and Kvasnica, Michal},
+  year={2023},
+  month={Jun}
+}
 ```
 
 <!-- 
