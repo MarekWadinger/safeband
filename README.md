@@ -116,7 +116,7 @@ Feel free to contribute in any way you like, we're always open to new ideas and 
 
 ## 💬 Citation
 
-If the service or the algorithm has been useful to you and you would like to cite it in an scientific publication, please refer to the [paper](https://arxiv.org/abs/2301.13527) currently under review:
+If the service or the algorithm has been useful to you and you would like to cite it in an scientific publication, please refer to the [paper](https://doi.org/10.5281/zenodo.8128206) in Proceedings of the 2023 24th International Conference on Process Control, IEEE:
 
 ```bibtex
 @inproceedings{wadinger_pc_2023,
