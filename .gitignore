@@ -36,9 +36,9 @@ plots/
 *.html
 
 # Data
-data/*
-!data/input/
-!data/output/
+**/data/*
+!**/data/input/
+!**/data/output/
 
 # Misc
 legacy/
