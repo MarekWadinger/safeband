@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added DOI to final version of publication
+- Added file output to config.ini
+
+### Changed
+
+- Update project structure with procedure call convention
+  - dynamic_signal_limits_service.py &rarr; server.py; client.py
+  - query_signal_limits.py &rarr; consumer.py
+- Moved all notebooks to examples
+- Made consumer.py use config.ini
+- Aligned README.md
+
 ## [0.2.0] - 2023-06-23
 
 ### Added
