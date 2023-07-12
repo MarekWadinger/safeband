@@ -93,7 +93,9 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
     Gaussian scorer on time rolling window
     >>> import datetime as dt
     >>> from river.utils import TimeRolling
-    >>> scorer = GaussianScorer(TimeRolling(Gaussian(), period=dt.timedelta(hours=24*7)),
+    >>> scorer = GaussianScorer(
+    ...     TimeRolling(Gaussian(),
+    ...     period=dt.timedelta(hours=24*7)),
     ...     grace_period=2)
     >>> scorer.process_one(1, t=dt.datetime(2022,2,2))
     (0, nan, nan)
@@ -156,8 +158,12 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
-        thresh_high = norm.ppf(self.threshold, **kwargs)
-        thresh_low = norm.ppf(1-self.threshold, **kwargs)
+        if kwargs['scale'] > 0:
+            thresh_high = norm.ppf(self.threshold, **kwargs)
+            thresh_low = norm.ppf(1-self.threshold, **kwargs)
+        else:
+            thresh_high = float('nan')
+            thresh_low = float('nan')
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
