@@ -25,7 +25,7 @@ aging
 
 ## ⚡️ Quickstart
 
-Get your hand on the algorithm using this [notebook](https://github.com/MarekWadinger/online_outlier_detection/blob/main/online_outlier_detection.ipynb) to play around with example data.
+Get your hand on the algorithm using this [notebook](https://github.com/MarekWadinger/online_outlier_detection/blob/main/examples/01_univariate_pc_2023.ipynb) and play around with example data.
 
 ## 🏃 Run the services
 
@@ -34,24 +34,30 @@ Get your hand on the algorithm using this [notebook](https://github.com/MarekWad
 To start the service, run following line of code in your terminal:
 
 ```bash
-python3 dynamic_signal_limits_service.py -f config.ini -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
+python client.py -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
 ```
 
 Note: You can modify the source data stream using attributes:
 
-* `[-f | --config_file]` with path to `config.ini` (NOTE: first valid key value pair is used)
+* `[-f | --config-file]` with path to `config.ini`
+(NOTE: first valid key value pair is used)
 * `[-t | --topic]` to define topic to subscribe to or column in csv file
+* `[-k | --key-path]` with path to ssh keys of sender and receiver
+(NOTE: if empty, the keys are created)
 
-To start query service, run following command:
+To start consumer, run following command:
 
 ```bash
-python3 query_signal_limits.py -b "mqtt.cloud.uiam.sk" -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/dynamic_limits"
+python consumer.py -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/dynamic_limits"
 ```
 
 Note: You can modify the source data stream using attributes:
 
-* `[-b | --broker]` host or output file path.
+* `[-f | --config-file]` with path to `config.ini`
+(NOTE: first valid key value pair is used)
 * `[-t | --topic]` topic of MQTT or column of pd.DataFrame
+* `[-k | --key-path]` with path to ssh keys of sender and receiver
+(NOTE: if empty, the keys are created)
 
 Query service responds with printed messages as follows:
 
@@ -60,23 +66,25 @@ Received message: {"time": "1970-01-01 03:17:11", "anomaly": "0", "level_high": 
 ```
 
 ### Stream file messages
+
 If you want to stream example dataset use
 
 ```bash
-python3 dynamic_signal_limits_service.py -f config.ini -t "Average Cell Temperature" --debug True
+python client.py -t "Average Cell Temperature"
 ```
 
 where your `config.ini` shall contain
 
 ```ini
 [file]
-path=data/input/average_temperature.csv
+path=examples/data/input/average_temperature.csv
+output=examples/data/output/dynamic_limits.json
 ```
 
 Now, let's query the latest limits from data/output/dynamic_limits.json
 
 ```bash
-python3 query_signal_limits.py -b "data/output/dynamic_limits.json" -t "Average Cell Temperature"
+python consumer.py -t "Average Cell Temperature"
 ```
 
 The response is the latest date in `dynamic_limits.json`
@@ -95,7 +103,7 @@ Note: You can modify the attributes to retrieve thrasholds at any date:
 ## 🛠 Installation
 
 ```bash
-python3 -m venv .env
+python -m venv .env
 source .env/bin/activate
 pip install -r requirements.txt
 ```

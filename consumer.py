@@ -1,14 +1,16 @@
-import argparse
 import json
 import os
 
+from argparse import Namespace
 from datetime import datetime
 
 import paho.mqtt.client as mqtt
 
 from human_security import HumanRSA
+
 from functions.encryption import (
     load_public_key, load_private_key, verify_and_decrypt_data)
+from functions.parse import get_argparser, get_config
 
 PORT = 1883
 
@@ -25,7 +27,7 @@ def on_connect(self: mqtt.Client, userdata, flags, rc):
 
     Examples:
         >>> obj = mqtt.Client()
-        >>> usr = argparse.Namespace(topic="my_topic")
+        >>> usr = Namespace(topic="my_topic")
         >>> on_connect(mqtt.Client(), usr, None, 0)
         Connected with result code 0
     """
@@ -43,12 +45,12 @@ def on_message(self, userdata, msg):
 
     Examples:
         >>> obj = mqtt.Client()
-        >>> usr = argparse.Namespace(topic="my_topic")
+        >>> usr = Namespace(topic="my_topic")
         >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
         >>> on_message(obj, usr, msg)
         Received message: Hello
     """
-    if isinstance(userdata, argparse.Namespace) and 'receiver' in userdata:
+    if isinstance(userdata, Namespace) and 'receiver' in userdata:
         item = verify_and_decrypt_data(json.loads(msg.payload.decode()),
                                        userdata.receiver)
         item = json.dumps(item)
@@ -57,43 +59,24 @@ def on_message(self, userdata, msg):
     print("Received message: " + item)
 
 
-def parse_args():  # pragma: no cover
-    """
-    Parse command-line arguments and return the parsed namespace object.
-
-    Returns:
-        argparse.Namespace: Parsed command-line arguments.
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--broker", help="Host or output file path.",
-                        default="mqtt.eclipseprojects.io")
-    parser.add_argument('-k', '--key-path', help='Path to RSA keys',
-                        default='.security')
-    parser.add_argument("-t", "--topic",
-                        help="Topic of MQTT or Column of pd.DataFrame",
-                        default="test")
-    parser.add_argument("-d", "--date", help="Date as 'Y-m-d H:M:S'",
-                        default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    return parser.parse_args()
-
-
-def query_file(args):
+def query_file(config: dict, args: Namespace):
     """
     Query a JSON file based on the command-line arguments and print the
     closest past item.
 
     Args:
-        args (argparse.Namespace): Parsed command-line arguments.
+        config (dict): The configuration dictionary.
+        args (Namespace): Parsed command-line arguments.
 
     Examples:
-        >>> args = argparse.Namespace()
-        >>> args.broker = "tests/sample.json"
+        >>> config = {"output": "tests/sample.json"}
+        >>> args = Namespace()
         >>> args.date = "2023-01-01 00:00:00"
-        >>> query_file(args)  # doctest: +ELLIPSIS
+        >>> query_file(config, args)  # doctest: +ELLIPSIS
         {'time': datetime.datetime(2023, 1, 1, 0, 0), 'anomaly': 0, ...}
     """
     # Load the JSON file as a list of dictionaries
-    with open(args.broker, 'r') as f:
+    with open(config.get("output"), 'r') as f:
         data = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects
@@ -115,20 +98,21 @@ def query_file(args):
     print(closest_item)
 
 
-def query_mqtt(args):
+def query_mqtt(config: dict, args: Namespace):
     """
     Create an MQTT client instance and connect to the MQTT broker.
 
     Args:
-        args (argparse.Namespace): Parsed command-line arguments.
+        config (dict): The configuration dictionary.
+        args (Namespace): Parsed command-line arguments.
 
     Returns:
         mqtt.Client: MQTT client instance.
 
     Examples:
-        >>> args = argparse.Namespace()
-        >>> args.broker = "mqtt.eclipseprojects.io"
-        >>> client = query_mqtt(args)
+        >>> config = {"host": "mqtt.eclipseprojects.io"}
+        >>> args = Namespace()
+        >>> client = query_mqtt(config, args)
         >>> isinstance(client, mqtt.Client)
         True
     """
@@ -140,7 +124,7 @@ def query_mqtt(args):
     client.on_message = on_message
 
     # Connect to the MQTT broker
-    client.connect(args.broker, PORT, 60)
+    client.connect(config.get("host"), PORT, 60)
     return client
 
 
@@ -148,17 +132,24 @@ if __name__ == '__main__':
     import doctest
     # Run the doctests
     doctest.testmod()
-    # Parse command-line arguments
-    args = parse_args()
 
-    args.receiver = HumanRSA()
+    parser = get_argparser()
+    parser.add_argument("-d", "--date", help="Date as 'Y-m-d H:M:S'",
+                        default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    # Parse command-line arguments
+    args = parser.parse_args()
+
+    config = get_config(args.config_file)
+
     if not os.path.exists(args.key_path):
         raise RuntimeError('Cannot find key path.')
-    load_private_key(args.key_path + "/receiver_pem", args.receiver)
-    load_public_key(args.key_path + "/sender_pem.pub", args.receiver)
-
-    if args.broker.endswith(".json"):
-        query_file(args)
     else:
-        client = query_mqtt(args)
+        args.receiver = HumanRSA()
+        load_private_key(args.key_path + "/receiver_pem", args.receiver)
+        load_public_key(args.key_path + "/sender_pem.pub", args.receiver)
+
+    if config.get("output"):
+        query_file(config, args)
+    elif config.get("host"):
+        client = query_mqtt(config, args)
         client.loop_forever()
