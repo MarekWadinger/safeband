@@ -4,11 +4,28 @@ import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
+from pulsar.schema import JsonSchema, Record, String
 from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 from functions.encryption import (  # noqa: E402
-    init_rsa_security, decrypt_data)
+    init_rsa_security, decrypt_data, encode_data)
+from functions.safe_streamz import map  # noqa: E402, F401
+
+
+class Example(Record):
+    # keys and __getitem__ serve as minimum implementation of mapping protocol
+    def keys(self):
+        return self._fields.keys()
+
+    def __getitem__(self, key):
+        return {
+            k: v for k, v in self.__dict__.items()
+            if k not in ['_required', '_default', '_required_default']}[key]
+    time = String()
+    anomaly = String()
+    level_high = String()
+    level_low = String()
 
 
 def decryption_service(
@@ -20,20 +37,24 @@ def decryption_service(
     _, receiver = init_rsa_security(".security")
 
     source = Stream.from_pulsar(
+        service_url,
         in_topic,
         subscription_name=subscription_name,
-        consumer_params={'service_url': service_url})
-
+        consumer_params={"schema": JsonSchema(Example)}
+        )
     source.map(lambda x: x.decode())
     decrypter = (
         source
+        .map(dict)
+        .map(encode_data)
         .map(decrypt_data, receiver)
         )
 
     if args.out_topic is not None:
         producer = decrypter.to_pulsar(
+            service_url,
             out_topic,
-            producer_config={"service_url": service_url})
+            )
         L = None
     else:
         L = decrypter.sink_to_list()
@@ -41,6 +62,9 @@ def decryption_service(
     decrypter.start()
     while True:
         try:
+            if source.stopped:
+                print("Stopping decryption...")
+                break
             if L:
                 print(L.pop(0))
         except pulsar.Interrupted:
@@ -49,13 +73,15 @@ def decryption_service(
                 producer.stop()
                 producer.flush()
             break
+        except Exception as e:
+            raise e
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument(
         '-i', '--in-topic',
-        default="my-output",
+        default="dynamic_limits",
         help="The topic to consume messages from. Allows multiply defined.",
         nargs='*', type=str)
     parser.add_argument(

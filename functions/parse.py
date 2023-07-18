@@ -41,6 +41,10 @@ def get_config(config_file):  # pragma: no cover
           config_parser.has_option('kafka', 'bootstrap.servers') and
           config_parser.get('kafka', 'bootstrap.servers')):
         config = dict(config_parser['kafka'])
+    elif (config_parser.has_section('pulsar') and
+          config_parser.has_option('pulsar', 'service_url') and
+          config_parser.get('pulsar', 'service_url')):
+        config = dict(config_parser['pulsar'])
     else:
         # TODO: Handle possible errorous scenarios
         raise ValueError("Missing configuration.")

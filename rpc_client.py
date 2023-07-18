@@ -1,6 +1,7 @@
-from server import OutlierDetector
 from functions.parse import get_argparser, get_config
+from rpc_server import RpcOutlierDetector
 
+RPC_ENDPOINT = "rpc_online_outlier_detection"
 
 if __name__ == '__main__':
     parser = get_argparser()
@@ -11,6 +12,5 @@ if __name__ == '__main__':
 
     config = get_config(args.config_file)
 
-    client = OutlierDetector()
-
+    client: RpcOutlierDetector = RpcOutlierDetector()
     client.start(config, args.topic, args.key_path, args.debug)

@@ -2,6 +2,7 @@
 import textwrap
 
 from datetime import timedelta
+from typing import Union
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -36,10 +37,10 @@ FIG_LAYOUT = dict(
 def plot_limits(
         ser: pd.Series,
         anomalies: pd.Series,
-        ser_high: pd.Series | None = None,
-        ser_low: pd.Series | None = None,
-        window: timedelta | None = None,
-        file_name: str | None = None,
+        ser_high: Union[pd.Series, None] = None,
+        ser_low: Union[pd.Series, None] = None,
+        window: Union[timedelta, None] = None,
+        file_name: Union[str, None] = None,
         save: bool = True,
         **kwargs):
 
@@ -155,12 +156,12 @@ def set_invisible(fig, inv_lines: list):
 def plot_limits_3d(
         df: pd.DataFrame,
         anomalies: pd.Series,
-        ser_high: pd.Series | None = None,
-        ser_low: pd.Series | None = None,
-        signal_anomalies: pd.Series | None = None,
-        y: str | None = None,
-        z: str | None = None,
-        file_name: str | None = None,
+        ser_high: Union[pd.Series, None] = None,
+        ser_low: Union[pd.Series, None] = None,
+        signal_anomalies: Union[pd.Series, None] = None,
+        y: Union[str, None] = None,
+        z: Union[str, None] = None,
+        file_name: Union[str, None] = None,
         save: bool = False,
         **kwargs):
     from plotly.subplots import make_subplots
@@ -285,8 +286,8 @@ def add_thresholds(
 def plot_compare_anomalies(
         ser: pd.Series,
         anomalies: pd.DataFrame,
-        window: timedelta | None = None,
-        file_name: str | None = None,
+        window: Union[timedelta, None] = None,
+        file_name: Union[str, None] = None,
         save: bool = True,
         **kwargs):
 
@@ -343,12 +344,12 @@ def plot_compare_anomalies(
 def plot_limits_grid(
         df: pd.DataFrame,
         anomalies: pd.Series,
-        ser_high: pd.Series | None = None,
-        ser_low: pd.Series | None = None,
-        file_name: str | None = None,
+        ser_high: Union[pd.Series, None] = None,
+        ser_low: Union[pd.Series, None] = None,
+        file_name: Union[str, None] = None,
         save: bool = True,
-        changepoints: pd.Series | None = None,
-        samplings: pd.Series | None = None,
+        changepoints: Union[pd.Series, None] = None,
+        samplings: Union[pd.Series, None] = None,
         **kwargs):
 
     a = anomalies.astype(int).diff()

@@ -13,9 +13,9 @@ VAR_SMOOTHING = 1e-9
 
 @typing.runtime_checkable
 class Distribution(typing.Protocol):  # pragma: no cover
-    mu: typing.Optional[float | typing.Sequence[float]]
-    sigma: typing.Optional[float | typing.Sequence[float]]
-    n_samples: typing.Optional[float]
+    mu: typing.Union[float, typing.Sequence[float], None]
+    sigma: typing.Union[float, typing.Sequence[float], None]
+    n_samples: typing.Union[float, None]
 
     def _from_state(self, *args, **kwargs):
         ...

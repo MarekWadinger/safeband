@@ -9,6 +9,7 @@ from streamz import Stream
 sys.path.insert(1, str(Path(__file__).parent.parent))
 from functions.encryption import (  # noqa: E402
     init_rsa_security, encrypt_data, decode_data)
+from functions.safe_streamz import map  # noqa: E402, F401
 
 
 def encryption_service(
@@ -20,9 +21,9 @@ def encryption_service(
     sender, _ = init_rsa_security(".security")
 
     source = Stream.from_pulsar(
+        service_url,
         in_topic,
-        subscription_name=subscription_name,
-        consumer_params={"service_url": service_url})
+        subscription_name=subscription_name)
 
     encrypter = (
         source
@@ -32,8 +33,8 @@ def encryption_service(
 
     if args.out_topic is not None:
         producer = encrypter.to_pulsar(
-            out_topic,
-            producer_config={"service_url": service_url})
+            service_url,
+            out_topic)
         L = None
     else:
         L = encrypter.sink_to_list()
@@ -41,6 +42,9 @@ def encryption_service(
     encrypter.start()
     while True:
         try:
+            if source.stopped:
+                print("Stopping encryption...")
+                break
             if L:
                 print(L.pop(0))
         except pulsar.Interrupted:
@@ -49,6 +53,8 @@ def encryption_service(
                 producer.stop()
                 producer.flush()
             break
+        except Exception as e:
+            raise e
 
 
 if __name__ == '__main__':
@@ -60,7 +66,7 @@ if __name__ == '__main__':
         nargs='*', type=str)
     parser.add_argument(
         '-o', '--out-topic',
-        default="my-output",
+        default="dynamic_limits",
         help="The topic to produce messages to.",
         type=str)
     parser.add_argument(

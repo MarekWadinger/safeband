@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Union
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -102,11 +103,11 @@ def make_name(name, window, file_name):
 
 def plot_limits_(
     ser: pd.Series,
-    anomalies: pd.Series | None = None,
-    ser_high: pd.Series | None = None,
-    ser_low: pd.Series | None = None,
-    window: timedelta | None = None,
-    file_name: str | None = None,
+    anomalies: Union[pd.Series, None] = None,
+    ser_high: Union[pd.Series, None] = None,
+    ser_low: Union[pd.Series, None] = None,
+    window: Union[timedelta, None] = None,
+    file_name: Union[str, None] = None,
     save: bool = True,
     **kwargs
 ):
@@ -153,8 +154,8 @@ def plot_limits_(
 def plot_compare_anomalies_(
         ser: pd.Series,
         anomalies: pd.DataFrame,
-        window: timedelta | None = None,
-        file_name: str | None = None,
+        window: Union[timedelta, None] = None,
+        file_name: Union[str, None] = None,
         save: bool = True,
         **kwargs):
 
@@ -201,12 +202,12 @@ def plot_compare_anomalies_(
 def plot_limits_grid_(
         df: pd.DataFrame,
         anomalies: pd.Series,
-        ser_high: pd.Series | None = None,
-        ser_low: pd.Series | None = None,
-        file_name: str | None = None,
+        ser_high: Union[pd.Series, None] = None,
+        ser_low: Union[pd.Series, None] = None,
+        file_name: Union[str, None] = None,
         save: bool = True,
-        changepoints: pd.Series | None = None,
-        samplings: pd.Series | None = None,
+        changepoints: Union[pd.Series, None] = None,
+        samplings: Union[pd.Series, None] = None,
         **kwargs):
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
               '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']

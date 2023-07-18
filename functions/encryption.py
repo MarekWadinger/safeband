@@ -7,7 +7,7 @@ from human_security import HumanRSA
 LEN_LIMIT = 214
 
 
-def save_public_key(key_path, key):
+def save_public_key(key_path, key: HumanRSA):
     """
     Save the public key to a file.
 
@@ -25,7 +25,7 @@ def save_public_key(key_path, key):
         pub.write(key.public_pem())
 
 
-def save_private_key(key_path, key):
+def save_private_key(key_path, key: HumanRSA):
     """
     Save the private key to a file.
 
@@ -43,7 +43,7 @@ def save_private_key(key_path, key):
         private.write(key.private_pem())
 
 
-def load_public_key(key_path, key):
+def load_public_key(key_path, key: HumanRSA):
     """
     Load the public key from a file.
 
@@ -112,7 +112,7 @@ def generate_keys():
     return sender, receiver
 
 
-def encrypt_data(data, key):
+def encrypt_data(data, key: HumanRSA):
     """
     Encrypt data using the provided key.
 
@@ -143,7 +143,7 @@ def encrypt_data(data, key):
         return encrypt_data(str(data).encode('utf-8'), key)
 
 
-def decrypt_data(data, key):
+def decrypt_data(data, key: HumanRSA):
     """
     Decrypt data using the provided key.
 
@@ -175,7 +175,7 @@ def decrypt_data(data, key):
                          "Expected (bytes, list, dict).")
 
 
-def sign_data(data, key):
+def sign_data(data, key: HumanRSA):
     """
     Sign the provided data using the given key.
 
@@ -207,7 +207,7 @@ def sign_data(data, key):
         return key.sign(str(data).encode('utf-8'))
 
 
-def verify_signature(data, signature, key):
+def verify_signature(data, signature, key: HumanRSA):
     """
     Verify the provided signature against the given data and key.
 
@@ -238,7 +238,7 @@ def verify_signature(data, signature, key):
         return key.verify(data, signature)
 
 
-def verify_and_decrypt_data(item, key):
+def verify_and_decrypt_data(item, key: HumanRSA):
     """
     Verify the signature of the item, and return the decrypted data.
 
