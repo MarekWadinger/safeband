@@ -118,12 +118,16 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.grace_period = grace_period
         self.threshold = threshold
         self.log_threshold = log_threshold
+        if log_threshold is not None:
+            self.log_threshold_top = np.log1p(-np.exp(log_threshold))
 
     @property
     def name(self):
         return f"{self.__class__.__name__}"
 
     def learn_one(self, x, **kwargs):
+        if self._feature_names_in is None and isinstance(x, dict):
+            self._feature_names_in = list(x.keys())
         self.gaussian.update(x, **kwargs)
         return self
 
@@ -136,8 +140,13 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     def predict_one(self, x, t=None):
         score = self.score_one(x)
         if self.gaussian.n_samples > self.grace_period:
-            return 1 if ((1-self.threshold > score) or
-                         (score > self.threshold)) else 0
+            if self.log_threshold:
+                score = -np.inf if score <= 0 else np.log(score)
+                return 1 if ((score < self.log_threshold) or
+                             self.log_threshold_top < score) else 0
+            else:
+                return 1 if ((1-self.threshold > score) or
+                            (score > self.threshold)) else 0
         else:
             return 0
 
