@@ -27,7 +27,7 @@ class Distribution(typing.Protocol):  # pragma: no cover
         ...
 
 
-class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
+class GaussianScorer(anomaly.base.AnomalyDetector):
     """
     Gaussian Scorer for anomaly detection.
 
@@ -106,17 +106,22 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
     (0, nan, nan)
     """
     def __init__(self,
-                 obj: Distribution,
+                 gaussian: Distribution,
                  grace_period: int,
                  threshold: float = THRESHOLD,
-                 log_threshold: float = LOG_THRESHOLD
+                 log_threshold: float = None
                  ):
-        if not isinstance(obj, Distribution):
-            raise ValueError(f"{obj} does not satisfy the necessary protocol")
-        self.gaussian = obj
+        if not isinstance(gaussian, Distribution):
+            raise ValueError(
+                f"{gaussian} does not satisfy the necessary protocol")
+        self.gaussian = gaussian
         self.grace_period = grace_period
         self.threshold = threshold
         self.log_threshold = log_threshold
+
+    @property
+    def name(self):
+        return f"{self.__class__.__name__}"
 
     def learn_one(self, x, **kwargs):
         self.gaussian.update(x, **kwargs)
@@ -127,13 +132,6 @@ class GaussianScorer(anomaly.base.SupervisedAnomalyDetector):
             return 0.5
         # return 2 * abs(self.gaussian.cdf(x) - 0.5)
         return self.gaussian.cdf(x)
-
-    def score_log_one(self, x, t=None):
-        if self.gaussian.n_samples < self.grace_period:
-            return 0.5
-        # return 2 * abs(self.gaussian.cdf(x) - 0.5)
-        cdf_ = self.gaussian.cdf(x)
-        return -np.inf if cdf_ <= 0 else np.log(cdf_)
 
     def predict_one(self, x, t=None):
         score = self.score_one(x)
