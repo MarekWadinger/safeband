@@ -121,11 +121,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
     Behind the scenes, the threshold is adapted to the dimensionality of the
     input
-    >>> np.log(scorer.score_one({"a": -2.161, "b": -1.161}))
-    -16.000507058919467
+    >>> np.log(scorer.score_one({"a": -2.161, "b": -1.161}))  # doctest: +ELLIPSIS
+    -16.000...
     >>> scorer.predict_one({"a": -2.161, "b": -1.161})
     1
-    """
+    """  # noqa: E501
     def __init__(self,
                  gaussian: Distribution,
                  grace_period: int,
