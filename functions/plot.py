@@ -364,12 +364,11 @@ def plot_limits_grid(
             dict(height=180*3,
                  width=60*3,)))
 
-    for row, col_name in zip([2, 3, 4, 1], df.columns):
+    for row, col_name in enumerate(df.columns, start=1):
 
-        col = df.columns.get_loc(col_name)
         ser = df[col_name]
-        ser_high_ = ser_high.apply(lambda x: x[col][col])
-        ser_low_ = ser_low.apply(lambda x: x[col][col])
+        ser_high_ = ser_high.apply(lambda x: x[col_name])
+        ser_low_ = ser_low.apply(lambda x: x[col_name])
 
         text = "<br>".join(textwrap.wrap(f"{ser.name} [-]", 15))
         fig.update_yaxes(

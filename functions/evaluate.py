@@ -2,14 +2,15 @@ import inspect
 import time
 
 import pandas as pd
+from river.anomaly.base import AnomalyDetector
+from river.metrics.base import BinaryMetric
 
 
 def progressive_val_predict(  # noqa: C901
-        model,
+        model: AnomalyDetector,
         dataset,
-        metrics,
+        metrics: list[BinaryMetric],
         print_every: int = 0,
-        do_predict_log: bool = False,
         protect_anomaly_detector: bool = False,
         **kwargs):
     system_anomaly = []
@@ -25,10 +26,7 @@ def progressive_val_predict(  # noqa: C901
             y = None
 
     # Check anomaly in system
-        if do_predict_log:
-            is_anomaly = model.predict_log_one(x)
-        else:
-            is_anomaly = model.predict_one(x)
+        is_anomaly = model.predict_one(x)
         system_anomaly.append(is_anomaly)
 
         if metrics is not None:
