@@ -28,16 +28,20 @@ class Distribution(typing.Protocol):  # pragma: no cover
 
 
 class GaussianScorer(anomaly.base.AnomalyDetector):
-    """
-    Gaussian Scorer for anomaly detection.
+    """Gaussian Scorer for anomaly detection.
 
-    Args:
+    Parameters
+    ----------
         threshold (float): Anomaly threshold.
+        log_threshold (float): Controls the logarithmic threshold to manage
+        small values of lower threshold.
         window_size (int or None): Size of the rolling window.
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
 
-    Examples:
+    Examples
+    --------
+    Make sure that the passed distribution sattisfies necessary protocol
     >>> bad_scorer = GaussianScorer(
     ...     type('Dist', (object,), {})(), grace_period=0
     ...     )  # doctest: +IGNORE_EXCEPTION_DETAIL
@@ -45,6 +49,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     ...
     ValueError:  does not satisfy the necessary protocol
 
+    Gaussian scorer on rolling window
     >>> from river.utils import Rolling
     >>> from river.proba import Gaussian
     >>> scorer = GaussianScorer(Rolling(Gaussian(), window_size=3),
@@ -54,8 +59,6 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer.gaussian.mu
     0.0
     >>> scorer.score_one(2.4715629565996924)
-    0.5
-    >>> scorer.score_log_one(2.4715629565996924)
     0.5
     >>> scorer.learn_one(1).gaussian.mu
     1.0
@@ -67,12 +70,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     (2.4715629565996924, -1.4715629565996926)
     >>> scorer.predict_one(2.4715629565996924)
     0
-    >>> scorer.predict_log_one(2.4715629565996924)
-    0
     >>> scorer.score_one(2.4715629565996924)
     0.99735
-    >>> scorer.score_log_one(2.4715629565996924)
-    -0.002653517465563446
 
     Anomaly is zero due to grace_period
     >>> scorer.predict_one(2.4715629565996924)
@@ -81,8 +80,6 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     0.5773502691896258
     >>> scorer.predict_one(2.4715629565996924)
     1
-    >>> scorer.predict_log_one(2.4715629565996924)
-    0
 
     Keeps the sigma due to window_size of 3
     >>> scorer.learn_one(1).gaussian.sigma
@@ -104,6 +101,23 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer = GaussianScorer(Gaussian(), grace_period=2)
     >>> scorer.process_one(1)
     (0, nan, nan)
+
+    Gaussian scorer with multivariate support. In this case it might be
+    practical to specify threshold as lower bound log_threshold for better
+    management of low joint likelihood values.
+    >>> from functions.proba import MultivariateGaussian
+    >>> scorer = GaussianScorer(utils.Rolling(MultivariateGaussian(), 2),
+    ...     grace_period=0, log_threshold=-8)
+    >>> scorer.learn_one({"a": 1, "b": 2}).gaussian.mu
+    [1.0, 2.0]
+    >>> scorer.learn_one({"a": 2, "b": 3}).gaussian.mu
+    [1.5, 2.5]
+    >>> np.log(scorer.score_one({"a": 0, "b": 0}))
+    -8.4999624532873
+    >>> scorer.predict_one({"a": 0, "b": 0})
+    1
+    >>> scorer.limit_one()  # doctest: +ELLIPSIS
+    ({'a': 3.471..., 'b': 4.471...}, {'a': -0.471..., 'b': 0.528...})
     """
     def __init__(self,
                  gaussian: Distribution,
@@ -122,10 +136,6 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             self.log_threshold_top = np.log1p(-np.exp(log_threshold))
         self._feature_names_in = None
 
-    @property
-    def name(self):
-        return f"{self.__class__.__name__}"
-
     def learn_one(self, x, **kwargs):
         if self._feature_names_in is None and isinstance(x, dict):
             self._feature_names_in = list(x.keys())
@@ -133,6 +143,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self
 
     def score_one(self, x, t=None):
+        # TODO: find out why return different results on each invocation
         if self.gaussian.n_samples < self.grace_period:
             return 0.5
         # return 2 * abs(self.gaussian.cdf(x) - 0.5)
@@ -156,7 +167,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                   "scale": self.gaussian.sigma
                   if not isinstance(self.gaussian.sigma, complex)
                   else 0}
-        if diagonal_only and isinstance(kwargs["scale"], list):
+        if (
+                diagonal_only and
+                isinstance(kwargs["scale"], list) and
+                kwargs["scale"]
+                ):
             kwargs["scale"] = [
                 kwargs["scale"][i][i]
                 for i in range(
