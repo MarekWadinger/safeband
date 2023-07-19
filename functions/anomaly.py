@@ -120,6 +120,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.log_threshold = log_threshold
         if log_threshold is not None:
             self.log_threshold_top = np.log1p(-np.exp(log_threshold))
+        self._feature_names_in = None
 
     @property
     def name(self):
@@ -150,27 +151,26 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         else:
             return 0
 
-    def predict_log_one(self, x, t=None):
-        score = self.score_log_one(x)
-        if self.gaussian.n_samples > self.grace_period:
-            return 1 if score < self.log_threshold else 0
-        else:
-            return 0
-
-    def limit_one(self):
+    def limit_one(self, diagonal_only=True):
         kwargs = {"loc": self.gaussian.mu,
                   "scale": self.gaussian.sigma
                   if not isinstance(self.gaussian.sigma, complex)
                   else 0}
+        if diagonal_only and isinstance(kwargs["scale"], list):
+            kwargs["scale"] = [
+                kwargs["scale"][i][i]
+                for i in range(
+                    min(len(kwargs["scale"]), len(kwargs["scale"][0])))]
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
-        if kwargs['scale'] > 0:
-            thresh_high = norm.ppf(self.threshold, **kwargs)
-            thresh_low = norm.ppf(1-self.threshold, **kwargs)
-        else:
-            thresh_high = float('nan')
-            thresh_low = float('nan')
+        thresh_high = norm.ppf(self.threshold, **kwargs)
+        thresh_low = norm.ppf(1-self.threshold, **kwargs)
+        if (
+                self._feature_names_in is not None and
+                len(thresh_high) == len(self._feature_names_in)):
+            thresh_high = dict(zip(self._feature_names_in, thresh_high))
+            thresh_low = dict(zip(self._feature_names_in, thresh_low))
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
