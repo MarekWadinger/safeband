@@ -142,31 +142,34 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if log_threshold is not None:
             self.log_threshold_top = np.log1p(-np.exp(log_threshold))
         self._feature_names_in = None
-        self._feature_dim_in = 1
+        self._feature_dim_in = None
 
-    def learn_one(self, x, **kwargs):
-        if self._feature_names_in is None and isinstance(x, dict):
-            self._feature_names_in = list(x.keys())
+    def _get_feature_dim_in(self, x):
         if hasattr(x, '__len__'):
             self._feature_dim_in = len(x)
         else:
             self._feature_dim_in = 1
+
+    def learn_one(self, x, **kwargs):
+        if self._feature_names_in is None and isinstance(x, dict):
+            self._feature_names_in = list(x.keys())
+        self._get_feature_dim_in(x)
         self.gaussian.update(x, **kwargs)
         return self
 
     def score_one(self, x, t=None):
         # TODO: find out why return different results on each invocation
         if self.gaussian.n_samples < self.grace_period:
-            return 0.5
+            if self._feature_dim_in is None:
+                return 0.5
+            else:
+                return 0.5*self._feature_dim_in
         # return 2 * abs(self.gaussian.cdf(x) - 0.5)
         return self.gaussian.cdf(x)
 
     def predict_one(self, x, t=None):
         score = self.score_one(x)
-        if hasattr(x, '__len__'):
-            self._feature_dim_in = len(x)
-        else:
-            self._feature_dim_in = 1
+        self._get_feature_dim_in(x)
         if self.gaussian.n_samples > self.grace_period:
             if self.log_threshold:
                 score = -np.inf if score <= 0 else np.log(score)
@@ -204,17 +207,21 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
+        if self._feature_dim_in is None:
+            _feature_dim_in = 1
+        else:
+            _feature_dim_in = self._feature_dim_in
         if self.log_threshold:
             thresh_high = norm.ppf(
-                np.exp(self.log_threshold_top*self._feature_dim_in),
+                np.exp(self.log_threshold_top*_feature_dim_in),
                 **kwargs)
             thresh_low = norm.ppf(
-                np.exp(self.log_threshold*self._feature_dim_in), **kwargs)
+                np.exp(self.log_threshold*_feature_dim_in), **kwargs)
         else:
             thresh_high = norm.ppf(
-                self.threshold**self._feature_dim_in, **kwargs)
+                self.threshold**_feature_dim_in, **kwargs)
             thresh_low = norm.ppf(
-                (1-self.threshold)**self._feature_dim_in, **kwargs)
+                (1-self.threshold)**_feature_dim_in, **kwargs)
         if (
                 self._feature_names_in is not None and
                 len(thresh_high) == len(self._feature_names_in)):
