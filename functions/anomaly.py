@@ -115,9 +115,16 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> np.log(scorer.score_one({"a": 0, "b": 0}))
     -8.4999624532873
     >>> scorer.predict_one({"a": 0, "b": 0})
-    1
+    0
     >>> scorer.limit_one()  # doctest: +ELLIPSIS
-    ({'a': 3.471..., 'b': 4.471...}, {'a': -0.471..., 'b': 0.528...})
+    ({'a': 3.767..., 'b': 4.767...}, {'a': -2.160..., 'b': -1.160...})
+
+    Behind the scenes, the threshold is adapted to the dimensionality of the
+    input
+    >>> np.log(scorer.score_one({"a": -2.161, "b": -1.161}))
+    -16.000507058919467
+    >>> scorer.predict_one({"a": -2.161, "b": -1.161})
+    1
     """
     def __init__(self,
                  gaussian: Distribution,
@@ -135,10 +142,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if log_threshold is not None:
             self.log_threshold_top = np.log1p(-np.exp(log_threshold))
         self._feature_names_in = None
+        self._feature_dim_in = 1
 
     def learn_one(self, x, **kwargs):
         if self._feature_names_in is None and isinstance(x, dict):
             self._feature_names_in = list(x.keys())
+        if hasattr(x, '__len__'):
+            self._feature_dim_in = len(x)
+        else:
+            self._feature_dim_in = 1
         self.gaussian.update(x, **kwargs)
         return self
 
@@ -151,14 +163,27 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
     def predict_one(self, x, t=None):
         score = self.score_one(x)
+        if hasattr(x, '__len__'):
+            self._feature_dim_in = len(x)
+        else:
+            self._feature_dim_in = 1
         if self.gaussian.n_samples > self.grace_period:
             if self.log_threshold:
                 score = -np.inf if score <= 0 else np.log(score)
-                return 1 if ((score < self.log_threshold) or
-                             self.log_threshold_top < score) else 0
+                if (
+                        (score < self.log_threshold*self._feature_dim_in) or
+                        self.log_threshold_top*self._feature_dim_in < score
+                        ):
+                    return 1
+                else:
+                    return 0
             else:
-                return 1 if ((1-self.threshold > score) or
-                            (score > self.threshold)) else 0
+                if (
+                        ((1-self.threshold)**self._feature_dim_in > score) or
+                        (score > self.threshold**self._feature_dim_in)):
+                    return 1
+                else:
+                    return 0
         else:
             return 0
 
@@ -179,8 +204,17 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
-        thresh_high = norm.ppf(self.threshold, **kwargs)
-        thresh_low = norm.ppf(1-self.threshold, **kwargs)
+        if self.log_threshold:
+            thresh_high = norm.ppf(
+                np.exp(self.log_threshold_top*self._feature_dim_in),
+                **kwargs)
+            thresh_low = norm.ppf(
+                np.exp(self.log_threshold*self._feature_dim_in), **kwargs)
+        else:
+            thresh_high = norm.ppf(
+                self.threshold**self._feature_dim_in, **kwargs)
+            thresh_low = norm.ppf(
+                (1-self.threshold)**self._feature_dim_in, **kwargs)
         if (
                 self._feature_names_in is not None and
                 len(thresh_high) == len(self._feature_names_in)):
