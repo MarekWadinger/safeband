@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added DOI to final version of publication
 - Added file output to config.ini
+- Added ConditionalGaussianScorer [2023-07-26]
 
 ### Changed
 
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved all notebooks to examples
 - Made consumer.py use config.ini
 - Aligned README.md
+- Changed the way dynamic limits are computed (1/3 slower) [2023-07-25]
 
 ## [0.2.0] - 2023-06-23
 
