@@ -1,7 +1,7 @@
 paho-mqtt==1.6.1
 pandas==1.5.3
-#git+https://github.com/online-ml/river.git
-river==0.12.0
+git+https://github.com/MarekWadinger/river.git
+river
 scipy==1.10.0
 streamz==0.6.4
 streamz_pulsar==0.1.1
