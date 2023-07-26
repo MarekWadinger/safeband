@@ -26,6 +26,20 @@ class Distribution(typing.Protocol):  # pragma: no cover
     def cdf(self, *args, **kwargs):
         ...
 
+class ConditionableDistribution(typing.Protocol):  # pragma: no cover
+    mu: typing.Union[float, typing.Sequence[float], None]
+    sigma: typing.Union[float, typing.Sequence[float], None]
+    n_samples: typing.Union[float, None]
+
+    def _from_state(self, *args, **kwargs):
+        ...
+
+    def update(self, *args, **kwargs):
+        ...
+
+    def mv_conditional(self, *args, **kwargs):
+        ...
+
 
 class GaussianScorer(anomaly.base.AnomalyDetector):
     """Gaussian Scorer for anomaly detection.
@@ -60,6 +74,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     0.0
     >>> scorer.score_one(2.4715629565996924)
     0.5
+    >>> scorer.limit_one()
+    (nan, nan)
     >>> scorer.learn_one(1).gaussian.mu
     1.0
     >>> scorer.gaussian.sigma
@@ -105,7 +121,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     Gaussian scorer with multivariate support. In this case it might be
     practical to specify threshold as lower bound log_threshold for better
     management of low joint likelihood values.
-    >>> from functions.proba import MultivariateGaussian
+    >>> from river.proba import MultivariateGaussian
     >>> scorer = GaussianScorer(utils.Rolling(MultivariateGaussian(), 2),
     ...     grace_period=0, log_threshold=-8)
     >>> scorer.learn_one({"a": 1, "b": 2}).gaussian.mu
@@ -157,17 +173,17 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.gaussian.update(x, **kwargs)
         return self
 
-    def score_one(self, x, t=None):
+    def score_one(self, x) -> int:
         # TODO: find out why return different results on each invocation
         if self.gaussian.n_samples < self.grace_period:
             if self._feature_dim_in is None:
                 return 0.5
             else:
-                return 0.5*self._feature_dim_in
+                return 0.5**self._feature_dim_in
         # return 2 * abs(self.gaussian.cdf(x) - 0.5)
         return self.gaussian.cdf(x)
 
-    def predict_one(self, x, t=None):
+    def predict_one(self, x) -> int:
         score = self.score_one(x)
         self._get_feature_dim_in(x)
         if self.gaussian.n_samples > self.grace_period:
@@ -245,3 +261,162 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 self = self.learn_one(x)
 
         return is_anomaly, thresh_high, thresh_low
+
+
+class ConditionalGaussianScorer(GaussianScorer):
+    """Conditional Gaussian Scorer for anomaly detection.
+
+    Parameters
+    ----------
+        threshold (float): Anomaly threshold.
+        window_size (int or None): Size of the rolling window.
+        period (int or None): Time period for time rolling.
+        grace_period (int): Grace period before scoring starts.
+
+    Examples
+    --------
+    Make sure that the passed distribution sattisfies necessary protocol
+    >>> bad_scorer = ConditionalGaussianScorer(
+    ...     type('Dist', (object,), {})(), grace_period=0
+    ...     )  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+    ...
+    ValueError:  does not satisfy the necessary protocol
+
+    Gaussian scorer on rolling window
+    >>> from river.utils import Rolling
+    >>> from functions.proba import MultivariateGaussian
+    >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 2),
+    ...     grace_period=1)
+    >>> isinstance(scorer, ConditionalGaussianScorer)
+    True
+    >>> scorer.gaussian.mu
+    []
+    >>> scorer.limit_one({"a": 1, "b": 2})
+    ({'a': 0.0, 'b': 0.0}, {'a': 0.0, 'b': 0.0})
+    >>> scorer.learn_one({"a": 0, "b": 0}).gaussian.mu
+    [0.0, 0.0]
+    >>> scorer.score_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
+    0.5
+    >>> scorer.predict_one({"a": 1, "b": 2})
+    0
+    >>> scorer.limit_one({"a": 1, "b": 2})
+    ({'a': 0.0, 'b': 0.0}, {'a': 0.0, 'b': 0.0})
+    >>> scorer.learn_one({"a": 1, "b": 1}).gaussian.mu
+    [0.5, 0.5]
+    >>> scorer.gaussian.mu
+    [0.5, 0.5]
+    >>> scorer.gaussian.var
+    array([[0.5, 0.5],
+           [0.5, 0.5]])
+    >>> scorer.learn_one({"a": 0, "b": 1}).gaussian.mu
+    [0.5, 1.0]
+    >>> scorer.score_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
+    0.760...
+    >>> scorer.limit_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
+    ({'a': 2.625..., 'b': 1.0}, {'a': -1.625..., 'b': 1.0})
+    >>> scorer.predict_one({"a": 2.626, "b": 1.0})
+    1
+    >>> scorer.score_one({"a": 2.626, "b": 1.0})  # doctest: +ELLIPSIS
+    0.998...
+    >>> scorer.predict_one({"a": 2.620, "b": 1.0})
+    0
+    >>> scorer.score_one({"a": 2.500, "b": 1.0})  # doctest: +ELLIPSIS
+    0.997...
+    """  # noqa: E501
+    def __init__(self,
+                 gaussian: ConditionableDistribution,
+                 grace_period: int,
+                 threshold: float = THRESHOLD
+                 ):
+        super().__init__(
+            gaussian,
+            grace_period,
+            threshold)
+        self.alpha = (1  - threshold) / 2
+
+    def _farthest_from_center(self, input_list):
+        # Initialize variables to keep track of the farthest element and its difference
+        farthest_element = None
+        max_difference = float('-inf')
+
+        for value in input_list:
+            # Calculate the absolute difference between the current value and 0.5
+            difference = abs(value - 0.5)
+
+            # Check if the current difference is greater than the current maximum difference
+            if difference > max_difference:
+                farthest_element = value
+                max_difference = difference
+
+        return farthest_element
+
+    def score_one(self, x) -> int:
+        # TODO: find out why return different results on each invocation
+        if self.gaussian.n_samples > self.grace_period:
+            if isinstance(x, dict):
+                x = np.fromiter(x.values(), dtype=float)
+            scores = []
+            mean = np.array(self.gaussian.mu)
+            covariance = np.array(self.gaussian.var)
+            for var_idx in range(len(x)):
+                cond_mean, _, cond_std = self.gaussian.mv_conditional(
+                    x, var_idx, mean, covariance)
+                scores.append(
+                    norm.cdf(x[var_idx], loc=cond_mean[0], scale=cond_std[0]))
+            return self._farthest_from_center(scores)
+        else:
+            return 0.5
+
+    def predict_one(self, x) -> int:
+        score = self.score_one(x)
+        self._get_feature_dim_in(x)
+        if self.gaussian.n_samples > self.grace_period:
+            if (self.alpha > score) or (score > 1 - self.alpha):
+                return 1
+            else:
+                return 0
+        else:
+            return 0
+
+    def _get_limits(
+            self,
+            confidence_level: float,
+            c_mean: np.array,
+            c_std: np.array):
+        z_critical = norm.ppf(1 - self.alpha)
+
+        lower_bound = c_mean - z_critical * c_std
+        upper_bound = c_mean + z_critical * c_std
+
+        return lower_bound[0], upper_bound[0]
+
+    def limit_one(self, x):
+        ths, tls = [], []
+        mean = np.array(self.gaussian.mu)
+        covariance = np.array(self.gaussian.var)
+        if isinstance(x, dict):
+            if self._feature_names_in is None:
+                self._feature_names_in = list(x.keys())
+            x = np.fromiter(x.values(), dtype=float)
+        if covariance.shape[0] != 0:
+            for var_idx in range(len(x)):
+                cond_mean, _, cond_std = self.gaussian.mv_conditional(
+                    x, var_idx, mean, covariance)
+                tl, th = self._get_limits(self.threshold, cond_mean, cond_std)
+                ths.append(th)
+                tls.append(tl)
+        else:
+            ths = [0.] * len(x) if hasattr(x, '__len__') else 0.
+            tls = [0.] * len(x) if hasattr(x, '__len__') else 0.
+        if (
+                self._feature_names_in is not None and
+                len(ths) == len(self._feature_names_in)):
+            ths = dict(zip(self._feature_names_in, ths))
+            tls = dict(zip(self._feature_names_in, tls))
+        return ths, tls
+    
+    
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
