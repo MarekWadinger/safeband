@@ -351,7 +351,7 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         return farthest_element
 
-    def score_one(self, x) -> int:
+    def score_one(self, x) -> float:
         # TODO: find out why return different results on each invocation
         if self.gaussian.n_samples > self.grace_period:
             if isinstance(x, dict):
@@ -370,7 +370,6 @@ class ConditionalGaussianScorer(GaussianScorer):
 
     def predict_one(self, x) -> int:
         score = self.score_one(x)
-        self._get_feature_dim_in(x)
         if self.gaussian.n_samples > self.grace_period:
             if (self.alpha > score) or (score > 1 - self.alpha):
                 return 1

@@ -79,6 +79,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
             conditional_covariance = (
                 cov_ZZ - np.dot(regression_coefficients, cov_XZ)
                 )
+            # TODO: handle very small negative covariance using tolerance
             conditional_std = np.sqrt(np.diag(conditional_covariance))
         return conditional_mean, conditional_covariance, conditional_std
     
