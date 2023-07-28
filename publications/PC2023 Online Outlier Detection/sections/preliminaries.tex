@@ -7,7 +7,7 @@ Streaming data analytics restricts the uncontrolled growth of memory usage by ke
 The algorithm with a single access to the data items in the order of their occurrence, i.e., \(x_1,x_2,x_3,...\) is called one-pass algorithm \cite{Schw09}
 \end{definition}
 
-Welford's method represents a numerically stable one-pass solution for the online computation of mean and variance \cite{Wel62}. 
+Welford's method represents a numerically stable one-pass solution for the online computation of mean and variance \cite{Wel62}.
 Given \(x_i\) where \(i=1,...,n\) is the sample index in given population  \(n\), the corrected sum of squares is defined as
 \begin{equation}
 S_n = \sum_{i=1}^n (x_i - \bar x_n)^2\text{,}\label{eq:sumsquares}
@@ -28,7 +28,7 @@ s^2_n = \frac{S_{n}}{n-1}\text{.}\label{eq:runvar}
 As we can see in \eqref{eq:upsumsquares}, we do access only current data sample \(x_n\) and previous value of \(\bar x_{n-1}\) which is updated in \eqref{eq:runmean} using the same data sample and the size of seen population \(n\).
 
 \subsection{Inverse Welford's Method}\label{AA:InvWelford}
-Let the incoming stream of data be subject to the concept drift. Such alternation in statistical properties has a negative influence on prediction accuracy. An adaptation of any machine learning model is crucial for successful long-term operation. 
+Let the incoming stream of data be subject to the concept drift. Such alternation in statistical properties has a negative influence on prediction accuracy. An adaptation of any machine learning model is crucial for successful long-term operation.
 
 \begin{definition}[Concept drift]
 Concept drift is a change in the statistical properties that occur in a sub-region of the feature space.
@@ -46,7 +46,7 @@ then reverting the sum of squares follows as
 S_{n-1} = S_n - (x_{n-t_e} - \bar x_{n-1})(x_{n-t_e} - \bar x_n)\text{,}\label{eq:revrunmean}
 \end{equation}
 
-which allows the computation of variance 
+which allows the computation of variance
 
 \begin{equation}
 s^2_{n-1} = \frac{S_{n-1}}{n-2}\text{.}\label{eq:revvar}
@@ -81,7 +81,7 @@ PPF returns the threshold value for random variable \(X\) under which it takes a
  \renewcommand{\algorithmicensure}{\textbf{Output:}}
  \REQUIRE quantile $q$, sample mean $\bar x_n$ \eqref{eq:runmean}, sample variance $s^2_n$ \eqref{eq:runvar}
  \ENSURE  threshold value $x_{n,q}$
- \\ \textit{Initialisation} : 
+ \\ \textit{Initialisation} :
   \STATE $f \leftarrow 10$; $l \leftarrow -f $; $r \leftarrow f;$
  \\ \textit{LOOP Process}
   \WHILE {$F_X(l)-q > 0$}
@@ -100,9 +100,9 @@ PPF returns the threshold value for random variable \(X\) under which it takes a
 
 \subsection{Gaussian Anomaly Detection}\label{AA:Anomaly}
 Anomalies come in various kinds and flavors. Commonly denoted types are point (spatial), contextual, and collective (temporal) anomalies \cite{Chandola2009}.
-Spatial anomalies take on a value that particularly deviates from the sample mean \(\bar x_n\). From a statistical viewpoint, spatial anomalies can be considered values \(x\) that significantly differ from the data distribution. 
+Spatial anomalies take on a value that particularly deviates from the sample mean \(\bar x_n\). From a statistical viewpoint, spatial anomalies can be considered values \(x\) that significantly differ from the data distribution.
 
-In empirical fields, such as machine learning, the three-sigma rule defines a region of distribution where normal values are expected to occur with near certainty. This assumption makes approximately 0.27\% of values in the given distribution considered anomalous. 
+In empirical fields, such as machine learning, the three-sigma rule defines a region of distribution where normal values are expected to occur with near certainty. This assumption makes approximately 0.27\% of values in the given distribution considered anomalous.
 
 \begin{definition}[Three-Sigma Rule of Thumb (3\(\sigma\) rule)]
 3\(\sigma\) rule represents a probability, that any value \(x_i\) of random variable \(X\) will lie within a region of values of normal distribution at the distance from the sample mean \(\mu_n\) of at most 3 sample standard deviations \(\sigma_n\).
@@ -117,14 +117,14 @@ Anomalous values occur on both tails of the distribution. In order to discrimina
 y_i = 2 \left|{F_X(x_i)_n - \frac{1}{2}}\right|\text{,}\label{eq:score}
 \end{equation}
 
-where 
+where
 \begin{subequations}
 
 \begin{align}
 y_i \in [0,P\{|x_i-\mu_n|<3\sigma_n\})\text{,}\label{eq:score_norm}
 \end{align}
 
-applies for normal observations and 
+applies for normal observations and
 
 \begin{align}
 y_i \in [P\{|x_i-\mu_n|<3\sigma_n\},1]\text{,}\label{eq:score_anomaly}

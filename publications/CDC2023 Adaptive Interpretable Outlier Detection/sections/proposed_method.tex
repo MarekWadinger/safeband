@@ -6,7 +6,7 @@ The model initialization is governed by specifying tunable hyperparameters of th
 As a general rule of thumb, expiration period $t_e$ shall be chosen based on the slowest dynamics of the multivariate system. The existence of two tunable and easy-to-interpret hyper-parameters makes it very easy to adapt the solution to any multivariate system.
 
 \subsection{Online training}\label{train}
-Training on the data stream requires an incremental learning scheme, i.e., one sample at a time at the moment of its arrival. Incremental learning allows online adaptation, which refers to an ability to update the model's parameters on new observations. Such ability comes at the cost of computational delay, which may pose challenges concerning the latency of the detector's response. 
+Training on the data stream requires an incremental learning scheme, i.e., one sample at a time at the moment of its arrival. Incremental learning allows online adaptation, which refers to an ability to update the model's parameters on new observations. Such ability comes at the cost of computational delay, which may pose challenges concerning the latency of the detector's response.
 
 In the case of a dynamic joint probability distribution, the parameters are $\boldsymbol{\mu_i}$ and $\boldsymbol{\Sigma_i}$ at time instance \(i\). Update of the mean vector $\boldsymbol{\mu_i}$ and covariance matrix $\boldsymbol{\Sigma_i}$ is governed by Welford's online algorithm using equation \eqref{eq:runmean} and \eqref{eq:runvar} respectively. Samples after the expiration period $t_e$ are forgotten in the second pass. The effect of expired samples is reverted using inverse Welford's algorithm for mean \eqref{eq:revmean} and variance \eqref{eq:revvar}, accessing the data in the buffer. The expired samples are dropped in this second pass. For details, refer to Subsection \ref{AA:InvWelford}.
 
@@ -18,9 +18,9 @@ It is important to note that adaptation is performed in a self-supervised fashio
 where \(n(\boldsymbol{y_i})\) represents dimensionality of \(\boldsymbol{y_i}\). The logic of the \eqref{eq:condition} follows the probabilistic approach to anomalies that assumes a number of anomalies are lower or equal to the conditional probability at both tails of the distribution
 
 \subsection{Online prediction}\label{predict}
-In the prediction phase, multiple metrics are evaluated to assess the state of the modeled system. 
+In the prediction phase, multiple metrics are evaluated to assess the state of the modeled system.
 
-Global log-CDF of multivariate Gaussian distribution computed, using the numerical algorithm proposed in \cite{Genz2000}, for process observation vector $\boldsymbol{x_i}$ at time instance $i$, serves for the establishment of anomalous/normal behavior of the system as whole. The interactions between input signals and features are inherently considered. 
+Global log-CDF of multivariate Gaussian distribution computed, using the numerical algorithm proposed in \cite{Genz2000}, for process observation vector $\boldsymbol{x_i}$ at time instance $i$, serves for the establishment of anomalous/normal behavior of the system as whole. The interactions between input signals and features are inherently considered.
 
 For root cause isolation, inputs are tested against the interval given by lower and upper threshold values, $\boldsymbol{x_l}$ from \eqref{eq:thresh_low} and $\boldsymbol{x_u}$ from \eqref{eq:thresh_high} respectively. Algorithm \ref{alg:ppf} is used to compute PPF for input at every time instance using updated parameters of the model. Lower and upper thresholds alone can be interpreted as dynamic process limits, updating conservative process limits provided by the sensor documentation, anticipating aging as well as environmental conditions influencing its operation.
 
@@ -34,8 +34,8 @@ Change points are isolated when adaptation test from \eqref{eq:condition} hold t
   \renewcommand{\algorithmicrequire}{\textbf{Input:}}
   \renewcommand{\algorithmicensure}{\textbf{Output:}}
   \REQUIRE expiration period $t_e$
-  \ENSURE  system anomaly $y^g_i$, signal anomalies $\boldsymbol{y^s_i}$, sampling anomaly $y^t_i$, change-point $y^c_i$, lower thresholds $\boldsymbol{x_{l,i}}$, upper thresholds $\boldsymbol{x_{u,i}}$, 
- \\ \textit{Initialisation} : 
+  \ENSURE  system anomaly $y^g_i$, signal anomalies $\boldsymbol{y^s_i}$, sampling anomaly $y^t_i$, change-point $y^c_i$, lower thresholds $\boldsymbol{x_{l,i}}$, upper thresholds $\boldsymbol{x_{u,i}}$,
+ \\ \textit{Initialisation} :
   \STATE $i \leftarrow 1;~ n \leftarrow 1;~ q \leftarrow 0.9973;~ \boldsymbol{\mu}  \leftarrow \boldsymbol{x_0};~  \boldsymbol{\Sigma} \leftarrow \mathbf{1}_{k \times k}$;
   \STATE compute $F(\boldsymbol{x_0}; \boldsymbol{\mu}, \boldsymbol{\Sigma})$ using algorithm in \cite{Genz2000};
  \\ \textit{LOOP Process}

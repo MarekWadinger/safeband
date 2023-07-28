@@ -8,7 +8,7 @@ import matplotlib.dates as mdates
 # mpl.use('macOsX')
 
 plt.rcParams.update({
-    "text.usetex": True,
+    "text.usetex": False,
     "font.family": "Times New Roman",
     "axes.labelsize": 10,
     "axes.grid": True,

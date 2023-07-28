@@ -62,7 +62,7 @@ The cumulative distribution function (CDF) of a multivariate Gaussian distributi
 F(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma}) = \int_{-\infty}^{\boldsymbol{x}} f(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma})  \text{d}\boldsymbol{x}\text{,}\label{eq:cdf}
 \end{equation}
 
-where $\text{d}\boldsymbol{x}$ denotes the integration over all $k$ dimensions of $\boldsymbol{x}$. 
+where $\text{d}\boldsymbol{x}$ denotes the integration over all $k$ dimensions of $\boldsymbol{x}$.
 
 As the equation \eqref{eq:cdf} cannot be integrated explicitly, an algorithm for numerical computation was proposed in \cite{Genz2000}.
 
@@ -76,7 +76,7 @@ Given the PDF, we can also determine the value of \(\boldsymbol{x}\) that corres
  \renewcommand{\algorithmicensure}{\textbf{Output:}}
  \REQUIRE quantile $q$, sample mean $\bar x_n$ \eqref{eq:runmean}, sample variance $s^2_n$ \eqref{eq:runvar}
  \ENSURE  threshold value $x_{n,q}$
- \\ \textit{Initialisation} : 
+ \\ \textit{Initialisation} :
   \STATE $f \leftarrow 10$; $l \leftarrow -f $; $r \leftarrow f;$
  \\ \textit{LOOP Process}
   \WHILE {$F(l; \bar x_n, s^2_n) > 0$}
@@ -95,10 +95,10 @@ Given the PDF, we can also determine the value of \(\boldsymbol{x}\) that corres
 The Algorithm \ref{alg:ppf} for PPF computation is solved using an iterative root-finding algorithm such as Brent's method \cite{Brent72}.
 
 \subsection{Multivariate Gaussian Anomaly Detection}\label{AA:Anomaly}
-From a statistical viewpoint, outliers can be denoted 
+From a statistical viewpoint, outliers can be denoted
 as values that significantly deviate from the mean. Assuming that the spatial and temporal characteristics of the system over the moving window can be encoded as normally distributed features, we can claim, that any anomaly may be detected as an outlier.
 
-In empirical fields, such as machine learning, the three-sigma rule ($3\sigma$) defines a region of distribution where normal values are expected to occur with near certainty. This assumption makes approximately 0.27\% of values in the given distribution considered anomalous. 
+In empirical fields, such as machine learning, the three-sigma rule ($3\sigma$) defines a region of distribution where normal values are expected to occur with near certainty. This assumption makes approximately 0.27\% of values in the given distribution considered anomalous.
 
 The \(3\sigma\) rule establishes the probability that any sample \(\boldsymbol{x_i}\) of a random variable \(\boldsymbol{X}\) lies within a given CDF over a semi-closed interval as the distance from the sample mean \(\boldsymbol{\mu}\) of 3 sample standard deviations \(\boldsymbol{\Sigma}\) and gives an approximate value of $q$ as
 \begin{equation}
@@ -123,7 +123,7 @@ However, the problem of computing CDF of a multivariate normal distribution is t
 \begin{equation}
 y_i =
   \begin{cases}
-     0 & \text{ if } T \leq \log{F(\boldsymbol{x_i}; \boldsymbol{\mu}, \boldsymbol{\Sigma})} \\ 
+     0 & \text{ if } T \leq \log{F(\boldsymbol{x_i}; \boldsymbol{\mu}, \boldsymbol{\Sigma})} \\
      1 & \text{ if }  T > \log{F(\boldsymbol{x_i}; \boldsymbol{\mu}, \boldsymbol{\Sigma})}\text{,}\label{eq:anomaly}
   \end{cases}
 \end{equation}

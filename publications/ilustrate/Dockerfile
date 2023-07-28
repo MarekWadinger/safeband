@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1
 # Install system requirements
 RUN apt-get -qq update && apt-get install -y tini gcc
 #  g++ curl
-RUN apt -qq install -y --fix-missing texlive texlive-latex-extra texlive-fonts-recommended dvipng cm-super 
+RUN apt -qq install -y --fix-missing texlive texlive-latex-extra texlive-fonts-recommended dvipng cm-super
 
 # Get Rust
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y

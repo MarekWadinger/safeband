@@ -1,4 +1,4 @@
-We suggest a novel approach to provide dynamic process limits using an online outlier detection algorithm capable of handling concept drifts in real-time. Our main contribution is based on using an inverse cumulative distribution function (ICDF) to supply a dynamic real-valued threshold for anomaly detection, i.e., to find the values of the signal which corresponds to the alert-triggering process limits. Therefore, in the context of machine learning, we are tackling an inverse problem, i.e., calculating the input that produced the observation. To utilize an adaptive ICDF-based threshold system, the univariate Gaussian distribution has to be fitted to the data in online training and ICDF evaluated on the fly. It is important to note that the analysis is based on the assumption that the data collected over moving windows follow a Gaussian normal distribution, rather than assuming that the data over the entire observed period follows this distribution. Thus, the influence of trends in the data can be mitigated by selecting the appropriate window size. 
+We suggest a novel approach to provide dynamic process limits using an online outlier detection algorithm capable of handling concept drifts in real-time. Our main contribution is based on using an inverse cumulative distribution function (ICDF) to supply a dynamic real-valued threshold for anomaly detection, i.e., to find the values of the signal which corresponds to the alert-triggering process limits. Therefore, in the context of machine learning, we are tackling an inverse problem, i.e., calculating the input that produced the observation. To utilize an adaptive ICDF-based threshold system, the univariate Gaussian distribution has to be fitted to the data in online training and ICDF evaluated on the fly. It is important to note that the analysis is based on the assumption that the data collected over moving windows follow a Gaussian normal distribution, rather than assuming that the data over the entire observed period follows this distribution. Thus, the influence of trends in the data can be mitigated by selecting the appropriate window size.
 This method is divided into four parts and described in the following lines. For a simplified representation of the method see Algorithm \ref{alg:detector}.
 
 \subsection{Model Initialization}\label{init}
@@ -26,9 +26,9 @@ Normal process operation is constrained online using ICDF. The constant value of
   \renewcommand{\algorithmicrequire}{\textbf{Input:}}
   \renewcommand{\algorithmicensure}{\textbf{Output:}}
   \REQUIRE expiration period $t_e$, time constant $t_c$
-  % sample mean $\bar x_0$, sample variance $s^2_0$, 
+  % sample mean $\bar x_0$, sample variance $s^2_0$,
   \ENSURE  score $y_i$, threshold $x_{i,q}$
- \\ \textit{Initialisation} : 
+ \\ \textit{Initialisation} :
   \STATE $i \leftarrow 1;~ n \leftarrow 1;~ q \leftarrow 0.9973;~ \bar x  \leftarrow x_0;~  s^2 \leftarrow 1$;
   \STATE compute $F_X(x_0)$ using \eqref{eq:zscore};
  \\ \textit{LOOP Process}
