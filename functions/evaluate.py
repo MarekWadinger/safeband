@@ -15,6 +15,7 @@ def progressive_val_predict(  # noqa: C901
         **kwargs):
     system_anomaly = []
     change_point = []
+    ths, tls = [], []
 
     start = time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
@@ -41,6 +42,11 @@ def progressive_val_predict(  # noqa: C901
                 raise ValueError("Dataset must contain column 'anomaly' to "
                                  "use metrics.")
 
+        if hasattr(model, 'limit_one'):
+            thresh_high, thresh_low = model.limit_one(x)
+            ths.append(thresh_high)
+            tls.append(thresh_low)
+
         if (i != 0) and kwargs.get("t_a"):
             is_change = (sum(system_anomaly[-kwargs["t_a"]:-1]) /
                          len(system_anomaly[-kwargs["t_a"]:-1]) >
@@ -66,7 +72,10 @@ def progressive_val_predict(  # noqa: C901
         for metric in metrics:
             print(metric)
 
-    return system_anomaly, change_point
+    if hasattr(model, 'limit_one'):
+        return system_anomaly, change_point, ths, tls
+    else:
+        return system_anomaly, change_point
 
 
 def print_stats(df, y_pred, change_point):
