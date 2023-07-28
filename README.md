@@ -1,13 +1,17 @@
 # Real-Time Outlier Detection with Dynamic Process Limits
 
+<!-- markdownlint-disable MD013 -->
 [![Python application](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml/badge.svg)](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml)
 [![codecov](https://codecov.io/gh/MarekWadinger/online_outlier_detection/branch/main/graph/badge.svg?token=BIS0A7CF1F)](https://codecov.io/gh/MarekWadinger/online_outlier_detection)
 [![Test Status](/reports/test-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/junit/report/index.html)
 [![Flake8 Status](/reports/flake8-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/flake8/report/index.html)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8128206.svg)](https://doi.org/10.5281/zenodo.8128206)
+<!-- markdownlint-enable MD013 -->
 
-Online outlier detection service for existing real-time infrastructures for low-latency detection and change-point adaptation.
-The service provides dynamic process limits based on changing environmental conditions and sensors aging.
+Online outlier detection service for existing real-time infrastructures for
+low-latency detection and change-point adaptation.
+The service provides dynamic process limits based on changing environmental
+conditions and sensors aging.
 
 The main benefits of the  solution are that it:
 
@@ -25,7 +29,9 @@ aging
 
 ## ⚡️ Quickstart
 
-Get your hand on the algorithm using this [notebook](https://github.com/MarekWadinger/online_outlier_detection/blob/main/examples/01_univariate_pc_2023.ipynb) and play around with example data.
+Get your hand on the algorithm using this
+[notebook](https://github.com/MarekWadinger/online_outlier_detection/blob/main/examples/01_univariate_pc_2023.ipynb)
+and play around with example data.
 
 ## 🏃 Run the services
 
@@ -47,9 +53,11 @@ Note: You can modify the source data stream using attributes:
 
 To start consumer, run following command:
 
+<!-- markdownlint-disable MD013 -->
 ```bash
 python consumer.py -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/dynamic_limits"
 ```
+<!-- markdownlint-enable MD013 -->
 
 Note: You can modify the source data stream using attributes:
 
@@ -61,9 +69,11 @@ Note: You can modify the source data stream using attributes:
 
 Query service responds with printed messages as follows:
 
+<!-- markdownlint-disable MD013 -->
 ```bash
-Received message: {"time": "1970-01-01 03:17:11", "anomaly": "0", "level_high": "658.396223558289", "level_low": "635.8731097750442"}
+Received message: {"time": "1970-01-01 03:17:11", "anomaly": "0", "level_high":"658.396223558289", "level_low": "635.8731097750442"}
 ```
+<!-- markdownlint-enable MD013 -->
 
 ### Stream file messages
 
@@ -110,9 +120,12 @@ pip install -r requirements.txt
 
 ## 👐 Contributing
 
-Feel free to contribute in any way you like, we're always open to new ideas and approaches.
+Feel free to contribute in any way you like, we're always open to new ideas and
+approaches.
 
-* Feel welcome to [open an issue](https://github.com/MarekWadinger/online_outlier_detection/issues/new/choose) if you think you've spotted a bug or a performance issue.
+* Feel welcome to
+[open an issue](https://github.com/MarekWadinger/online_outlier_detection/issues/new/choose)
+if you think you've spotted a bug or a performance issue.
 
 <!--
 ## 🤝 Affiliations
@@ -124,7 +137,11 @@ Feel free to contribute in any way you like, we're always open to new ideas and 
 
 ## 💬 Citation
 
-If the service or the algorithm has been useful to you and you would like to cite it in an scientific publication, please refer to the [paper](https://doi.org/10.5281/zenodo.8128206) in Proceedings of the 2023 24th International Conference on Process Control, IEEE:
+If the service or the algorithm has been useful to you and you would like to
+cite it in an scientific publication, please refer to the
+[paper](https://doi.org/10.5281/zenodo.8128206)
+in Proceedings of the 2023 24th International Conference on Process Control,
+IEEE:
 
 ```bibtex
 @inproceedings{wadinger_pc_2023,
@@ -140,5 +157,5 @@ If the service or the algorithm has been useful to you and you would like to cit
 <!--
 ## 📝 License
 
-This algorithm is free and open-source software licensed under the [3-clause BSD license](https://github.com/online-ml/river/blob/main/LICENSE).
+This algorithm is free and open-source software licensed under the []().
   -->
