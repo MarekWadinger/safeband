@@ -26,6 +26,7 @@ class Distribution(typing.Protocol):  # pragma: no cover
     def cdf(self, *args, **kwargs):
         ...
 
+
 class ConditionableDistribution(typing.Protocol):  # pragma: no cover
     mu: typing.Union[float, typing.Sequence[float], None]
     sigma: typing.Union[float, typing.Sequence[float], None]
@@ -333,18 +334,20 @@ class ConditionalGaussianScorer(GaussianScorer):
             gaussian,
             grace_period,
             threshold)
-        self.alpha = (1  - threshold) / 2
+        self.alpha = (1 - threshold) / 2
 
     def _farthest_from_center(self, input_list):
-        # Initialize variables to keep track of the farthest element and its difference
+        # Initialize variables to keep track of the farthest element and its
+        #  difference
         farthest_element = None
         max_difference = float('-inf')
 
         for value in input_list:
-            # Calculate the absolute difference between the current value and 0.5
+            # Calculate the abs difference between the current value and 0.5
             difference = abs(value - 0.5)
 
-            # Check if the current difference is greater than the current maximum difference
+            # Check if the current difference is greater than the current
+            #  maximum difference
             if difference > max_difference:
                 farthest_element = value
                 max_difference = difference

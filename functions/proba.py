@@ -1,9 +1,7 @@
-import warnings
-
 import numpy as np
-from scipy.stats import multivariate_normal
 
-from river import covariance, proba
+from river import proba
+
 
 class MultivariateGaussian(proba.MultivariateGaussian):
     """Multivariate normal distribution with parameters mu and var.
@@ -46,7 +44,6 @@ class MultivariateGaussian(proba.MultivariateGaussian):
 
     def __init__(self, seed=None):
         super().__init__(seed=seed)
-
 
     # TODO: allow any iterable
     def mv_conditional(
