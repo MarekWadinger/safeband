@@ -8,7 +8,7 @@ python3 -m venv --upgrade-deps .venv
 source .venv/bin/activate
 cd online_outlier_detection
 pip install -r requirements.txt
-docker-compose up -d pulsar 
+docker-compose up -d pulsar
 ```
 
 ## Run Services

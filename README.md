@@ -90,9 +90,9 @@ python consumer.py -t "Average Cell Temperature"
 The response is the latest date in `dynamic_limits.json`
 
 ```python
-{'time': datetime.datetime(1970, 1, 1, 14, 52, 42), 
- 'anomaly': 0, 
- 'level_high': 1180.92, 
+{'time': datetime.datetime(1970, 1, 1, 14, 52, 42),
+ 'anomaly': 0,
+ 'level_high': 1180.92,
  'level_low': 1151.15}
 ```
 
@@ -114,7 +114,7 @@ Feel free to contribute in any way you like, we're always open to new ideas and 
 
 * Feel welcome to [open an issue](https://github.com/MarekWadinger/online_outlier_detection/issues/new/choose) if you think you've spotted a bug or a performance issue.
 
-<!-- 
+<!--
 ## 🤝 Affiliations
 
 <p align="center">
@@ -137,7 +137,7 @@ If the service or the algorithm has been useful to you and you would like to cit
 }
 ```
 
-<!-- 
+<!--
 ## 📝 License
 
 This algorithm is free and open-source software licensed under the [3-clause BSD license](https://github.com/online-ml/river/blob/main/LICENSE).

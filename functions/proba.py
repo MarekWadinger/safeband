@@ -39,14 +39,14 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     ...     p = p.update(x)
     >>> p.mv_conditional(X.iloc[0].values, 0, np.array(p.mu), p.var)
     (array([0.51220852]), array([[0.07246737]]), array([0.26919764]))
-    
+
     >>> p.mv_conditional([0.], 0, np.array([0.]), np.array([[1.]]))
     (array([0.]), array([[1.]]), array([1.]))
     """
 
     def __init__(self, seed=None):
         super().__init__(seed=seed)
-        
+
 
     # TODO: allow any iterable
     def mv_conditional(
@@ -82,7 +82,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
             # TODO: handle very small negative covariance using tolerance
             conditional_std = np.sqrt(np.diag(conditional_covariance))
         return conditional_mean, conditional_covariance, conditional_std
-    
+
 
 if __name__ == '__main__':
     import doctest
