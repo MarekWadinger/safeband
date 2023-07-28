@@ -364,7 +364,11 @@ class ConditionalGaussianScorer(GaussianScorer):
                     x, var_idx, mean, covariance)
                 scores.append(
                     norm.cdf(x[var_idx], loc=cond_mean[0], scale=cond_std[0]))
-            return self._farthest_from_center(scores)
+            score = self._farthest_from_center(scores)
+            # TODO: generally score is None when the
+            #  conditional covariance is maldefined. This
+            #  case should be handled differently.
+            return score if score else 1
         else:
             return 0.5
 
@@ -414,8 +418,8 @@ class ConditionalGaussianScorer(GaussianScorer):
             ths = dict(zip(self._feature_names_in, ths))
             tls = dict(zip(self._feature_names_in, tls))
         return ths, tls
-    
-    
+
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
