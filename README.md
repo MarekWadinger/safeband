@@ -11,7 +11,12 @@
 Online outlier detection service for existing real-time infrastructures for
 low-latency detection and change-point adaptation.
 The service provides dynamic process limits based on changing environmental
-conditions and sensors aging.
+conditions and sensors aging. This implementation is built upon a robust
+foundation, leveraging the power of the open-source libraries
+**[river](https://github.com/online-ml/river)**
+and **[streamz](https://github.com/python-streamz/streamz)** and
+**[human_security](https://github.com/mdipierro/human_security)**, among the
+others. Make sure to check out their great work!
 
 The main benefits of the  solution are that it:
 
@@ -126,14 +131,6 @@ approaches.
 * Feel welcome to
 [open an issue](https://github.com/MarekWadinger/online_outlier_detection/issues/new/choose)
 if you think you've spotted a bug or a performance issue.
-
-<!--
-## 🤝 Affiliations
-
-<p align="center">
-  <img width="70%" src="" alt="affiliations">
-</p>
--->
 
 ## 💬 Citation
 
