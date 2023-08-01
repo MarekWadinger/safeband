@@ -1,6 +1,7 @@
 import typing
 
 import numpy as np
+import pandas as pd
 from river import anomaly, utils
 from scipy.stats import norm
 
@@ -17,9 +18,6 @@ class Distribution(typing.Protocol):  # pragma: no cover
     sigma: typing.Union[float, typing.Sequence[float], None]
     n_samples: typing.Union[float, None]
 
-    def _from_state(self, *args, **kwargs):
-        ...
-
     def update(self, *args, **kwargs):
         ...
 
@@ -31,9 +29,6 @@ class ConditionableDistribution(typing.Protocol):  # pragma: no cover
     mu: typing.Union[float, typing.Sequence[float], None]
     sigma: typing.Union[float, typing.Sequence[float], None]
     n_samples: typing.Union[float, None]
-
-    def _from_state(self, *args, **kwargs):
-        ...
 
     def update(self, *args, **kwargs):
         ...
@@ -126,9 +121,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer = GaussianScorer(utils.Rolling(MultivariateGaussian(), 2),
     ...     grace_period=0, log_threshold=-8)
     >>> scorer.learn_one({"a": 1, "b": 2}).gaussian.mu
-    [1.0, 2.0]
+    {'a': 1.0, 'b': 2.0}
     >>> scorer.learn_one({"a": 2, "b": 3}).gaussian.mu
-    [1.5, 2.5]
+    {'a': 1.5, 'b': 2.5}
     >>> np.log(scorer.score_one({"a": 0, "b": 0}))
     -8.4999624532873
     >>> scorer.predict_one({"a": 0, "b": 0})
@@ -208,19 +203,18 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             return 0
 
     def limit_one(self, diagonal_only=True):
-        kwargs = {"loc": self.gaussian.mu,
-                  "scale": self.gaussian.sigma
-                  if not isinstance(self.gaussian.sigma, complex)
-                  else 0}
+        if isinstance(self.gaussian.mu, dict):
+            loc_value = [*self.gaussian.mu.values()]
+        else:
+            loc_value = self.gaussian.mu
+        kwargs = {"loc": loc_value,
+                  "scale": self.gaussian.sigma}
         if (
                 diagonal_only and
-                isinstance(kwargs["scale"], list) and
-                kwargs["scale"]
-                ):
+                isinstance(kwargs["scale"], pd.DataFrame)):
             kwargs["scale"] = [
                 kwargs["scale"][i][i]
-                for i in range(
-                    min(len(kwargs["scale"]), len(kwargs["scale"][0])))]
+                for i in kwargs["scale"].columns]
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
@@ -292,11 +286,11 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> isinstance(scorer, ConditionalGaussianScorer)
     True
     >>> scorer.gaussian.mu
-    []
+    {}
     >>> scorer.limit_one({"a": 1, "b": 2})
     ({'a': 0.0, 'b': 0.0}, {'a': 0.0, 'b': 0.0})
     >>> scorer.learn_one({"a": 0, "b": 0}).gaussian.mu
-    [0.0, 0.0]
+    {'a': 0.0, 'b': 0.0}
     >>> scorer.score_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
     0.5
     >>> scorer.predict_one({"a": 1, "b": 2})
@@ -304,14 +298,15 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> scorer.limit_one({"a": 1, "b": 2})
     ({'a': 0.0, 'b': 0.0}, {'a': 0.0, 'b': 0.0})
     >>> scorer.learn_one({"a": 1, "b": 1}).gaussian.mu
-    [0.5, 0.5]
+    {'a': 0.5, 'b': 0.5}
     >>> scorer.gaussian.mu
-    [0.5, 0.5]
+    {'a': 0.5, 'b': 0.5}
     >>> scorer.gaussian.var
-    array([[0.5, 0.5],
-           [0.5, 0.5]])
+         a    b
+    a  0.5  0.5
+    b  0.5  0.5
     >>> scorer.learn_one({"a": 0, "b": 1}).gaussian.mu
-    [0.5, 1.0]
+    {'a': 0.5, 'b': 1.0}
     >>> scorer.score_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
     0.760...
     >>> scorer.limit_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
@@ -360,8 +355,8 @@ class ConditionalGaussianScorer(GaussianScorer):
             if isinstance(x, dict):
                 x = np.fromiter(x.values(), dtype=float)
             scores = []
-            mean = np.array(self.gaussian.mu)
-            covariance = np.array(self.gaussian.var)
+            mean = np.array([*self.gaussian.mu.values()])
+            covariance = self.gaussian.var
             for var_idx in range(len(x)):
                 cond_mean, _, cond_std = self.gaussian.mv_conditional(
                     x, var_idx, mean, covariance)
@@ -399,8 +394,8 @@ class ConditionalGaussianScorer(GaussianScorer):
 
     def limit_one(self, x):
         ths, tls = [], []
-        mean = np.array(self.gaussian.mu)
-        covariance = np.array(self.gaussian.var)
+        mean = np.array([*self.gaussian.mu.values()])
+        covariance = self.gaussian.var
         if isinstance(x, dict):
             if self._feature_names_in is None:
                 self._feature_names_in = list(x.keys())

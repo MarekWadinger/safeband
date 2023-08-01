@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from river import proba
 
@@ -35,7 +36,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     0.0
     >>> for x in X.to_dict(orient="records"):
     ...     p = p.update(x)
-    >>> p.mv_conditional(X.iloc[0].values, 0, np.array(p.mu), p.var)
+    >>> p.mv_conditional(X.iloc[0].values, 0, p.mu, p.var)
     (array([0.51220852]), array([[0.07246737]]), array([0.26919764]))
 
     >>> p.mv_conditional([0.], 0, np.array([0.]), np.array([[1.]]))
@@ -52,6 +53,10 @@ class MultivariateGaussian(proba.MultivariateGaussian):
             var_idx: int,
             mean: np.array,
             covariance: np.array):
+        if isinstance(mean, dict):
+            mean = np.array([*mean.values()])
+        if isinstance(covariance, pd.DataFrame):
+            covariance = covariance.values
         var_idx = [var_idx]
         if len(mean) == 1:  # Univariate case
             conditional_mean = mean
