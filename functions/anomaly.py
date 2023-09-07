@@ -1,3 +1,4 @@
+import collections
 import typing
 
 import numpy as np
@@ -323,13 +324,18 @@ class ConditionalGaussianScorer(GaussianScorer):
     def __init__(self,
                  gaussian: ConditionableDistribution,
                  grace_period: int,
-                 threshold: float = THRESHOLD
+                 t_a: int,
+                 threshold: float = THRESHOLD,
+                 protect_anomaly_detector: bool = True
                  ):
         super().__init__(
             gaussian,
             grace_period,
             threshold)
         self.alpha = (1 - threshold) / 2
+        self.protect_anomaly_detector = protect_anomaly_detector
+        self.t_a: int = t_a
+        self.buffer = collections.deque(maxlen=self.t_a)
 
     def _farthest_from_center(self, input_list):
         # Initialize variables to keep track of the farthest element and its
@@ -349,8 +355,21 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         return farthest_element
 
+    def learn_one(self, x, **learn_kwargs):
+        if self.protect_anomaly_detector:
+            is_anomaly = self.predict_one(x)
+            self.buffer.append(is_anomaly)
+            is_change = (sum(self.buffer) / len(self.buffer) >
+                         (1 - self.threshold))
+            if not is_anomaly or is_change:
+                super().learn_one(x, **learn_kwargs)
+        else:
+            super().learn_one(x, **learn_kwargs)
+        return self
+
     def score_one(self, x) -> float:
         # TODO: find out why return different results on each invocation
+        #  Possibly due to scipy's cdf function
         if self.gaussian.n_samples > self.grace_period:
             if isinstance(x, dict):
                 x = np.fromiter(x.values(), dtype=float)
@@ -416,6 +435,39 @@ class ConditionalGaussianScorer(GaussianScorer):
             ths = dict(zip(self._feature_names_in, ths))
             tls = dict(zip(self._feature_names_in, tls))
         return ths, tls
+
+
+class ThresholdChangeFilter(anomaly.ThresholdFilter):
+    # TODO: this method is prefered way of handling protected learning
+    #  Nevertheless, it has an error when combined with pipeline.py, which
+    #  tries to handle the protection by itself. Need to fix pipeline to make
+    #  it work.
+    def __init__(
+            self,
+            anomaly_detector,
+            threshold: float,
+            t_a: int,
+            protect_anomaly_detector: bool = True):
+        super().__init__(
+            anomaly_detector=anomaly_detector,
+            threshold=threshold,
+            protect_anomaly_detector=protect_anomaly_detector,
+        )
+        self.t_a = t_a
+        self.buffer = collections.deque(
+            maxlen=self.t_a)
+
+    def learn_one(self, *args, **learn_kwargs):
+        is_anomaly = self.predict_one(*args)
+        self.buffer.append(is_anomaly)
+        is_change = (sum(self.buffer) / len(self.buffer) >
+                     (1 - self.threshold))
+        if not is_anomaly or is_change:
+            self.anomaly_detector.learn_one(*args, **learn_kwargs)
+        return self
+
+    def predict_one(self, *args, **kwargs):
+        return self.anomaly_detector.predict_one(*args, **kwargs)
 
 
 if __name__ == "__main__":
