@@ -314,6 +314,8 @@ class ConditionalGaussianScorer(GaussianScorer):
     ({'a': 2.625..., 'b': 1.0}, {'a': -1.625..., 'b': 1.0})
     >>> scorer.predict_one({"a": 2.626, "b": 1.0})
     1
+    >>> scorer.get_root_cause()
+    'a'
     >>> scorer.score_one({"a": 2.626, "b": 1.0})  # doctest: +ELLIPSIS
     0.998...
     >>> scorer.predict_one({"a": 2.620, "b": 1.0})
@@ -332,6 +334,7 @@ class ConditionalGaussianScorer(GaussianScorer):
             gaussian,
             grace_period,
             threshold)
+        self.root_cause = None
         self.alpha = (1 - threshold) / 2
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
@@ -347,9 +350,10 @@ class ConditionalGaussianScorer(GaussianScorer):
         # Initialize variables to keep track of the farthest element and its
         #  difference
         farthest_element = None
+        farthest_index = None
         max_difference = float('-inf')
 
-        for value in input_list:
+        for index, value in enumerate(input_list):
             # Calculate the abs difference between the current value and 0.5
             difference = abs(value - 0.5)
 
@@ -357,9 +361,31 @@ class ConditionalGaussianScorer(GaussianScorer):
             #  maximum difference
             if difference > max_difference:
                 farthest_element = value
+                farthest_index = index
                 max_difference = difference
 
-        return farthest_element
+        return farthest_element, farthest_index
+
+    def _scores_one(self, x) -> list:
+        if isinstance(x, dict):
+            x = np.fromiter(x.values(), dtype=float)
+        scores = []
+        mean = np.array([*self.gaussian.mu.values()])
+        covariance = self.gaussian.var
+        for var_idx in range(len(x)):
+            cond_mean, _, cond_std = self.gaussian.mv_conditional(
+                x, var_idx, mean, covariance)
+            scores.append(
+                norm.cdf(x[var_idx], loc=cond_mean[0], scale=cond_std[0]))
+        return scores
+
+    def _score_one(self, x):
+        scores = self._scores_one(x)
+        score, idx = self._farthest_from_center(scores)
+        return score, idx
+
+    def get_root_cause(self):
+        return self.root_cause
 
     def learn_one(self, x, **learn_kwargs):
         if self.protect_anomaly_detector:
@@ -377,32 +403,29 @@ class ConditionalGaussianScorer(GaussianScorer):
         # TODO: find out why return different results on each invocation
         #   Due to scipy's cdf function
         if self.gaussian.n_samples > self.grace_period:
-            if isinstance(x, dict):
-                x = np.fromiter(x.values(), dtype=float)
-            scores = []
-            mean = np.array([*self.gaussian.mu.values()])
-            covariance = self.gaussian.var
-            for var_idx in range(len(x)):
-                cond_mean, _, cond_std = self.gaussian.mv_conditional(
-                    x, var_idx, mean, covariance)
-                scores.append(
-                    norm.cdf(x[var_idx], loc=cond_mean[0], scale=cond_std[0]))
-            score = self._farthest_from_center(scores)
+            score, _ = self._score_one(x)
             # TODO: generally score is None when the
             #  conditional covariance is maldefined. This
             #  case should be handled differently.
             return score if score else 1
         else:
+            self.root_cause = None
             return 0.5
 
     def predict_one(self, x) -> int:
-        score = self.score_one(x)
+        score, idx = self._score_one(x)
         if self.gaussian.n_samples > self.grace_period:
             if (self.alpha > score) or (score > 1 - self.alpha):
+                if self._feature_names_in:
+                    self.root_cause = self._feature_names_in[idx]
+                else:
+                    self.root_cause = None
                 return 1
             else:
+                self.root_cause = None
                 return 0
         else:
+            self.root_cause = None
             return 0
 
     def _get_limits(
