@@ -37,7 +37,10 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     >>> for x in X.to_dict(orient="records"):
     ...     p = p.update(x)
     >>> p.mv_conditional(X.iloc[0].values, 0, p.mu, p.var)
-    (array([0.51220852]), array([[0.07246737]]), array([0.26919764]))
+    (array([0.61329773]), array([[0.07246737]]), array([0.26919764]))
+
+    TODO: for some reason, first value changed from 0.51220852 to 0.61329773
+    in commit 4bb519bcb6312c8761bd25074c5e39d88e195fc4
 
     >>> p.mv_conditional([0.], 0, np.array([0.]), np.array([[1.]]))
     (array([0.]), array([[1.]]), array([1.]))

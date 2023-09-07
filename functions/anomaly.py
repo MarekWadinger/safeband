@@ -273,7 +273,7 @@ class ConditionalGaussianScorer(GaussianScorer):
     --------
     Make sure that the passed distribution sattisfies necessary protocol
     >>> bad_scorer = ConditionalGaussianScorer(
-    ...     type('Dist', (object,), {})(), grace_period=0
+    ...     type('Dist', (object,), {})(), grace_period=0, t_a=0
     ...     )  # doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
     ...
@@ -283,7 +283,7 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> from river.utils import Rolling
     >>> from functions.proba import MultivariateGaussian
     >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 2),
-    ...     grace_period=1)
+    ...     grace_period=1, protect_anomaly_detector=False)
     >>> isinstance(scorer, ConditionalGaussianScorer)
     True
     >>> scorer.gaussian.mu
@@ -324,7 +324,7 @@ class ConditionalGaussianScorer(GaussianScorer):
     def __init__(self,
                  gaussian: ConditionableDistribution,
                  grace_period: int,
-                 t_a: int,
+                 t_a: typing.Union[int, None] = None,
                  threshold: float = THRESHOLD,
                  protect_anomaly_detector: bool = True
                  ):
@@ -334,8 +334,14 @@ class ConditionalGaussianScorer(GaussianScorer):
             threshold)
         self.alpha = (1 - threshold) / 2
         self.protect_anomaly_detector = protect_anomaly_detector
-        self.t_a: int = t_a
-        self.buffer = collections.deque(maxlen=self.t_a)
+        if self.protect_anomaly_detector:
+            if t_a:
+                self.t_a: int = t_a
+                self.buffer = collections.deque(maxlen=self.t_a)
+            else:
+                raise ValueError("When protect_anomaly_detector == True, "
+                                 "t_a must be integer specifying adaptation "
+                                 "constant")
 
     def _farthest_from_center(self, input_list):
         # Initialize variables to keep track of the farthest element and its
@@ -369,7 +375,7 @@ class ConditionalGaussianScorer(GaussianScorer):
 
     def score_one(self, x) -> float:
         # TODO: find out why return different results on each invocation
-        #  Possibly due to scipy's cdf function
+        #   Due to scipy's cdf function
         if self.gaussian.n_samples > self.grace_period:
             if isinstance(x, dict):
                 x = np.fromiter(x.values(), dtype=float)
