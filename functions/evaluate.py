@@ -66,7 +66,12 @@ def progressive_val_predict(  # noqa: C901
                 else:
                     model = model.learn_one(x)
         else:
-            model = model.learn_one(x)
+            if (hasattr(model, 'gaussian') and
+                inspect.signature(
+                    model.gaussian.update).parameters.get("t")):
+                model = model.learn_one(x, **{'t': t})
+            else:
+                model = model.learn_one(x)
 
     end = time.time()
     if print_final:
