@@ -15,6 +15,7 @@ from functions.anomaly import GaussianScorer
 from functions.encryption import (decode_data, encrypt_data, init_rsa_security,
                                   sign_data)
 from functions.safe_streamz import map  # noqa: E402, F401
+from functions.utils import common_prefix
 
 # CONSTANTS
 GRACE_PERIOD = 60*24
@@ -137,14 +138,14 @@ class RpcOutlierDetector(object):
     def preprocess(
             self,
             x,
-            col):
+            topics: list):
         """Preprocess the input data.
 
         Args:
             x (Union[pd.Series, tuple, dict, MQTTMessage, bytes]): The input
             data
             to be preprocessed.
-            col (Union[str, List[str]]): The column(s) to be extracted from the
+            topics (list): The topics to be extracted from the
             input data.
 
         Returns:
@@ -154,11 +155,11 @@ class RpcOutlierDetector(object):
         >>> series = pd.Series([1.], name=pd.to_datetime('2023-01-01'),
         ...                    index=["sensor_1"])
         >>> obj = RpcOutlierDetector()
-        >>> obj.preprocess(series, 'sensor_1')
+        >>> obj.preprocess(series, ['sensor_1'])
         {'time': Timestamp('2023-01-01 00:00:00'), 'data': {'sensor_1': 1.0}}
 
         >>> series_tuple = (pd.to_datetime('2023-01-01'), series)
-        >>> obj.preprocess(series_tuple, 'sensor_1')
+        >>> obj.preprocess(series_tuple, ['sensor_1'])
         {'time': Timestamp('2023-01-01 00:00:00'), 'data': {'sensor_1': 1.0}}
 
         >>> data_dict = {'time': pd.to_datetime('2023-01-01'), 'sensor_1': 1.}
@@ -170,28 +171,26 @@ class RpcOutlierDetector(object):
         >>> mqtt_message.timestamp = 1672527600.0
         >>> mqtt_message.payload = b'1.'
         >>> mqtt_message.topic = b'sensors/sensor_1'
-        >>> out = obj.preprocess(mqtt_message, '1')
+        >>> out = obj.preprocess(mqtt_message, ['1'])
         >>> out.keys(), out['data'].keys()
         (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
 
         >>> binary_data = b'1.0'
-        >>> out = obj.preprocess(binary_data, 'sensor_1')
+        >>> out = obj.preprocess(binary_data, ['sensor_1'])
         >>> out.keys(), out['data'].keys()
         (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
         """
         if isinstance(x, pd.Series):
-            col = [col] if not isinstance(col, list) else col
             return {"time": x.name.tz_localize(None),
-                    "data": x[col].to_dict()
+                    "data": x[topics].to_dict()
                     }
         elif isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
-            col = [col] if not isinstance(col, list) else col
             return {"time": x[0].tz_localize(None),
-                    "data": x[1][col].to_dict()
+                    "data": x[1][topics].to_dict()
                     }
         elif isinstance(x, dict):
             return {"time": dt.datetime.now().replace(microsecond=0),
-                    "data": {k: v for k, v in x.items() if k in col}
+                    "data": {k: v for k, v in x.items() if k in topics}
                     }
         elif isinstance(x, MQTTMessage):
             return {"time": dt.datetime
@@ -200,7 +199,7 @@ class RpcOutlierDetector(object):
                     }
         elif isinstance(x, bytes):
             return {"time": dt.datetime.now().replace(microsecond=0),
-                    "data": {col: float(x.decode("utf-8"))}
+                    "data": {topics[0]: float(x.decode("utf-8"))}
                     }
 
     def fit_transform(
@@ -254,7 +253,7 @@ class RpcOutlierDetector(object):
     def get_source(
             self,
             config: dict,
-            topic: str,
+            topics: list,
             debug: bool = False):
         """Get the data source based on the provided configuration.
 
@@ -263,14 +262,14 @@ class RpcOutlierDetector(object):
         If the 'path' key is present in the config, it returns a stream from an
         iterable of
         rows in the 'data' dictionary. If the 'host' key is present, it
-        returns a stream from MQTT messages with the specified topic. If the
+        returns a stream from MQTT messages with the specified topics. If the
         'bootstrap.servers' key is present, it returns a stream from Kafka
-        messages with the specified topic. If none of the expected keys are
+        messages with the specified topics. If none of the expected keys are
         found, it raises a RuntimeError.
 
         Args:
             config (dict): The configuration dictionary.
-            topic (str): The topic to subscribe to for MQTT or Kafka sources.
+            topics (list): The topics to subscribe to for MQTT or Kafka sources.
             debug (bool, optional): Enable debug mode. Defaults to False.
 
         Returns:
@@ -283,38 +282,38 @@ class RpcOutlierDetector(object):
         >>> config = {
         ...     "path": "path/to/input/data.csv",
         ...     "data": pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})}
-        >>> topic = "test"
+        >>> topics = ["test"]
         >>> obj = RpcOutlierDetector()
-        >>> source = obj.get_source(config, topic)
+        >>> source = obj.get_source(config, topics)
         >>> type(source)
         <class 'streamz.sources.from_iterable'>
 
-        >>> source = obj.get_source(config, topic, debug=True)
+        >>> source = obj.get_source(config, topics, debug=True)
         >>> type(source)
         <class 'streamz.core.Stream'>
 
         >>> config = {"host": "mqtt.server", "port": 1883}
-        >>> topic = "test"
-        >>> source = obj.get_source(config, topic)
+        >>> topics = ["test"]
+        >>> source = obj.get_source(config, topics)
         >>> type(source)
         <class 'streamz.sources.from_mqtt'>
 
         >>> config = {"bootstrap.servers": "kafka.server:9092",
         ...           "group.id": "consumer-group"}
-        >>> topic = "kafka-topic"
-        >>> source = obj.get_source(config, topic)
+        >>> topics = ["kafka-topics"]
+        >>> source = obj.get_source(config, topics)
         >>> type(source)
         <class 'streamz.sources.from_kafka'>
 
         >>> config = {"service_url": "pulsar://localhost:6650"}
-        >>> topic = "pulsar-topic"
-        >>> source = obj.get_source(config, topic)
+        >>> topics = ["pulsar-topics"]
+        >>> source = obj.get_source(config, topics)
         >>> type(source)
         <class 'streamz_pulsar.sources.from_pulsar.from_pulsar'>
 
         >>> config = {"invalid": "config"}
-        >>> topic = "test"
-        >>> source = obj.get_source(config, topic)  # doctest: +IGNORE_EXCEPTION_DETAIL
+        >>> topics = ["test"]
+        >>> source = obj.get_source(config, topics)  # doctest: +IGNORE_EXCEPTION_DETAIL
         Traceback (most recent call last):
         ...
         RuntimeError: Wrong data format.
@@ -325,14 +324,15 @@ class RpcOutlierDetector(object):
             else:
                 source = Stream.from_iterable(config['data'].iterrows())
         elif config.get("host"):
-            source = Stream.from_mqtt(**config, topic=topic)
+            source = Stream.from_mqtt(
+                **config, topic=[(topic, 0) for topic in topics])
         elif config.get("bootstrap.servers"):
             source = Stream.from_kafka(
-                [topic], {**config, 'group.id': 'detection_service'})
+                topics, {**config, 'group.id': 'detection_service'})
         elif config.get("service_url"):
             source = Stream.from_pulsar(
                 config.get("service_url"),
-                [topic],
+                topics,
                 subscription_name='detection_service')
         else:
             raise (RuntimeError("Wrong data format."))
@@ -341,33 +341,33 @@ class RpcOutlierDetector(object):
     def get_sink(
             self,
             config: dict,
-            topic: str,
+            topics: list,
             detector):
         """Get the data sink based on the provided configuration.
 
         Args:
             config (dict): The configuration dictionary.
-            topic (str): The topic to subscribe to for MQTT or Kafka sources.
+            topics (list): The topics to subscribe to.
             detector (streamz.core.map): Upstream streamz pipeline.
 
         Returns:
             streamz.core.map: streamz pipeline with sink
         """
+        prefix: str = common_prefix(topics)
+        topic: str = f"{prefix}dynamic_limits"
+        print(f"Sinking to '{topic}'\n")
         if config.get("path") and config.get("output"):
             f = open(config.get("output"), 'a')
             open_files.append(f)
             detector.sink(self.dump_to_file, f)
         elif config.get("host"):  # pragma: no cover
-            topic = f"{topic.rsplit('/', 1)[0]}/dynamic_limits"
             detector.map(lambda x: json.dumps(x)).to_mqtt(
                 **config, topic=topic, publish_kwargs={"retain": True})
         # TODO: add coverage test
         elif config.get("bootstrap.servers"):  # pragma: no cover
-            topic = "dynamic_limits"
             detector.map(lambda x: (str(x), "dynamic_limits")
                          ).to_kafka(topic, config)
         elif config.get("service_url"):  # pragma: no cover
-            topic = "dynamic_limits"
             from pulsar.schema import JsonSchema, Record, String
 
             class Example(Record):
@@ -377,7 +377,7 @@ class RpcOutlierDetector(object):
                 level_low = String()
             detector.map(lambda x: Example(**x)).to_pulsar(
                 config.get("service_url"),
-                "dynamic_limits",
+                topic,
                 producer_config={"schema": JsonSchema(Example)})
 
         return detector
@@ -385,7 +385,7 @@ class RpcOutlierDetector(object):
     def start(
             self,
             config: dict,
-            topic: str,
+            topics: list,
             key_path: str,
             debug: bool = False):
         """Process the limits in a streaming manner.
@@ -399,15 +399,15 @@ class RpcOutlierDetector(object):
 
         Args:
             config (dict): The configuration dictionary.
-            topic (str): The topic to subscribe to for MQTT or Kafka sources.
+            topics (list): The topics to subscribe to for sources.
             key_path (str): The path to the RSA keys
             debug (bool, optional): Enable debug mode. Defaults to False.
 
         Examples:
         >>> config = {"path": "tests/test.csv", "output": "tests/output.json"}
-        >>> topic = "A"
+        >>> topics = ["A"]
         >>> obj = RpcOutlierDetector()
-        >>> obj.start(config, topic, key_path=".temp", debug=True)
+        >>> obj.start(config, topics, key_path=".temp", debug=True)
         === Debugging started... ===
         === Debugging finished with success... ===
         """
@@ -423,17 +423,17 @@ class RpcOutlierDetector(object):
             data.index = pd.to_datetime(data.index, utc=True)
             config['data'] = data
 
-        source = self.get_source(config, topic, debug)
+        source = self.get_source(config, topics, debug)
 
         detector = (source
-                    .map(self.preprocess, topic)
+                    .map(self.preprocess, topics)
                     .map(self.fit_transform, model)
                     .map(sign_data, sender)
                     .map(encrypt_data, sender)
                     .map(decode_data)
                     )
 
-        detector = self.get_sink(config, topic, detector)
+        detector = self.get_sink(config, topics, detector)
 
         # TODO: handle combination of debug and remote broker
         if debug and config.get("path"):

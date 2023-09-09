@@ -27,12 +27,12 @@ def on_connect(self: mqtt.Client, userdata, flags, rc):
 
     Examples:
         >>> obj = mqtt.Client()
-        >>> usr = Namespace(topic="my_topic")
+        >>> usr = Namespace(topic=["my_topic"])
         >>> on_connect(mqtt.Client(), usr, None, 0)
         Connected with result code 0
     """
     print("Connected with result code " + str(rc))
-    self.subscribe(userdata.topic)
+    self.subscribe([(topic, 0) for topic in userdata.topic])
 
 
 def on_message(self, userdata, msg):
@@ -45,7 +45,7 @@ def on_message(self, userdata, msg):
 
     Examples:
         >>> obj = mqtt.Client()
-        >>> usr = Namespace(topic="my_topic")
+        >>> usr = Namespace(topic=["my_topic"])
         >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
         >>> on_message(obj, usr, msg)
         Received message: Hello
