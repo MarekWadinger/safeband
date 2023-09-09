@@ -81,6 +81,22 @@ class to_mqtt(Sink):
         super().destroy()
 
 
+def _filt(msgs: dict, topics: list) -> bool:
+    return all(topic in msgs for topic in topics)
+
+
+def _func(previous_state, new_value, topics: list):
+    if new_value.topic in topics:
+        if not _filt(previous_state, topics):
+            previous_state[new_value.topic] = new_value.payload
+            state = previous_state.copy()
+        else:
+            state = {new_value.topic: new_value.payload}
+    else:
+        state = {}
+    return state
+
+
 def print_summary(df):
     """Print a summary of the given DataFrame.
 
@@ -190,7 +206,7 @@ class RpcOutlierDetector(object):
                     }
         elif isinstance(x, dict):
             return {"time": dt.datetime.now().replace(microsecond=0),
-                    "data": {k: v for k, v in x.items() if k in topics}
+                    "data": {k: float(v) for k, v in x.items() if k in topics}
                     }
         elif isinstance(x, MQTTMessage):
             return {"time": dt.datetime
@@ -237,8 +253,10 @@ class RpcOutlierDetector(object):
         >>> isinstance(result["level_low"], float)
         True
         """
-        # TODO: replace x_ for multidimensional implementation
-        x_ = next(iter(x["data"].values()))
+        if isinstance(model.gaussian.obj, proba.MultivariateGaussian):
+            x_ = x["data"]
+        else:
+            x_ = next(iter(x["data"].values()))
         is_anomaly, thresh_high, thresh_low = model.process_one(x_, x["time"])
         return {"time": str(x["time"]),
                 # **x["data"], # Comment out to lessen the size of payload
@@ -296,7 +314,7 @@ class RpcOutlierDetector(object):
         >>> topics = ["test"]
         >>> source = obj.get_source(config, topics)
         >>> type(source)
-        <class 'streamz.sources.from_mqtt'>
+        <class 'streamz.core.filter'>
 
         >>> config = {"bootstrap.servers": "kafka.server:9092",
         ...           "group.id": "consumer-group"}
@@ -326,6 +344,8 @@ class RpcOutlierDetector(object):
         elif config.get("host"):
             source = Stream.from_mqtt(
                 **config, topic=[(topic, 0) for topic in topics])
+            source = source.accumulate(
+                _func, start={}, **{"topics": topics}).filter(_filt, topics)
         elif config.get("bootstrap.servers"):
             source = Stream.from_kafka(
                 topics, {**config, 'group.id': 'detection_service'})
@@ -408,14 +428,20 @@ class RpcOutlierDetector(object):
         >>> topics = ["A"]
         >>> obj = RpcOutlierDetector()
         >>> obj.start(config, topics, key_path=".temp", debug=True)
+        Sinking to 'dynamic_limits'
+        <BLANKLINE>
         === Debugging started... ===
         === Debugging finished with success... ===
         """
         # TODO: Move to encryption.py
         sender, _ = init_rsa_security(key_path)
 
+        if len(topics) > 1:
+            obj = proba.MultivariateGaussian()
+        else:
+            obj = proba.Gaussian()
         model = GaussianScorer(
-            utils.TimeRolling(proba.Gaussian(), period=WINDOW),
+            utils.TimeRolling(obj, period=WINDOW),
             grace_period=GRACE_PERIOD)
 
         if config.get("path"):
@@ -424,7 +450,7 @@ class RpcOutlierDetector(object):
             config['data'] = data
 
         source = self.get_source(config, topics, debug)
-
+        source.visualize('my.png')
         detector = (source
                     .map(self.preprocess, topics)
                     .map(self.fit_transform, model)
@@ -432,9 +458,9 @@ class RpcOutlierDetector(object):
                     .map(encrypt_data, sender)
                     .map(decode_data)
                     )
-
+        detector.visualize('myd.png')
         detector = self.get_sink(config, topics, detector)
-
+        detector.visualize('mydd.png')
         # TODO: handle combination of debug and remote broker
         if debug and config.get("path"):
             print("=== Debugging started... ===")
@@ -444,7 +470,8 @@ class RpcOutlierDetector(object):
                 file.close()
             print("=== Debugging finished with success... ===")
         else:  # pragma: no cover
-            source.start()
+            detector.start()
+            print("=== Service started ===")
 
             signal.signal(
                 signal.SIGINT, lambda signalnum,
@@ -453,6 +480,11 @@ class RpcOutlierDetector(object):
                 )
 
             while True:
-                if source.stopped:
-                    break
+                try:
+                    if source.stopped:
+                        break
+                except AttributeError:
+                    if source.upstreams[0].upstreams[0].stopped:
+                        break
+                print("=== Service running... ===")
                 time.sleep(2)
