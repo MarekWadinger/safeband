@@ -380,9 +380,17 @@ class ConditionalGaussianScorer(GaussianScorer):
         return scores
 
     def _score_one(self, x):
-        scores = self._scores_one(x)
-        score, idx = self._farthest_from_center(scores)
-        return score, idx
+        # TODO: find out why return different results on each invocation
+        #   Due to scipy's cdf function
+        if self.gaussian.n_samples > self.grace_period:
+            # TODO: generally score is None when the
+            #  conditional covariance is maldefined. This
+            #  case should be handled differently.
+            scores = self._scores_one(x)
+            score, idx = self._farthest_from_center(scores)
+            return score if score else 1, idx
+        else:
+            return 0.5, None
 
     def get_root_cause(self):
         return self.root_cause
@@ -400,17 +408,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         return self
 
     def score_one(self, x) -> float:
-        # TODO: find out why return different results on each invocation
-        #   Due to scipy's cdf function
-        if self.gaussian.n_samples > self.grace_period:
-            score, _ = self._score_one(x)
-            # TODO: generally score is None when the
-            #  conditional covariance is maldefined. This
-            #  case should be handled differently.
-            return score if score else 1
-        else:
-            self.root_cause = None
-            return 0.5
+        score, _ = self._score_one(x)
+        return score
 
     def predict_one(self, x) -> int:
         score, idx = self._score_one(x)
