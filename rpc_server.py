@@ -450,7 +450,7 @@ class RpcOutlierDetector(object):
             config['data'] = data
 
         source = self.get_source(config, topics, debug)
-        source.visualize('my.png')
+
         detector = (source
                     .map(self.preprocess, topics)
                     .map(self.fit_transform, model)
@@ -458,9 +458,9 @@ class RpcOutlierDetector(object):
                     .map(encrypt_data, sender)
                     .map(decode_data)
                     )
-        detector.visualize('myd.png')
+
         detector = self.get_sink(config, topics, detector)
-        detector.visualize('mydd.png')
+
         # TODO: handle combination of debug and remote broker
         if debug and config.get("path"):
             print("=== Debugging started... ===")
