@@ -1,7 +1,10 @@
+import textwrap
+
 from datetime import timedelta
 from typing import Union
 
 import pandas as pd
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 # import matplotlib as mpl
@@ -10,13 +13,13 @@ import matplotlib.dates as mdates
 plt.rcParams.update({
     "text.usetex": False,
     "font.family": "Times New Roman",
-    "axes.labelsize": 10,
+    "axes.labelsize": 8,
     "axes.grid": True,
-    "font.size": 10,
+    "font.size": 8,
     "legend.fontsize": 8,
     "xtick.labelsize": 8,
     "ytick.labelsize": 8,
-    "figure.figsize": plt.rcParamsDefault["figure.figsize"],
+    "figure.figsize": mpl.rcParamsDefault["figure.figsize"],
     "figure.subplot.left": 0.1,
     "figure.subplot.bottom": 0.2,
     "figure.subplot.right": 0.95,
@@ -30,10 +33,10 @@ locator = mdates.AutoDateLocator()
 formatter = mdates.ConciseDateFormatter(
     locator,
     formats=['%Y', '%d %b', '%d %b', '%H:%M', '%H:%M', '%S.%f'],
-    offset_formats=['', '%Y', '', '%Y-%b-%d', '%Y-%b-%d', '%Y-%b-%d %H:%M'])
+    offset_formats=['', '%Y', '', '', '', '%Y-%b-%d %H:%M'])
 
 
-def set_size(width=307.28987, fraction=1.4, subplots=(1, 1)):
+def set_size(width=307.28987, fraction=1, subplots=(1, 1)):
     """Set figure dimensions to avoid scaling in LaTeX.
 
     Parameters
@@ -73,10 +76,12 @@ def set_size(width=307.28987, fraction=1.4, subplots=(1, 1)):
     return (fig_width_in, fig_height_in)
 
 
-def set_axis_style(ax, ser, xlabel='', ylabel=''):
+def set_axis_style(ax: plt.Axes, ser, xlabel='', ylabel=''):
+    ylabel = '\n'.join(textwrap.wrap(ylabel, 11))
     ax.set_xlabel(xlabel)
-    ax.set_ylabel(f"{ylabel}")
-    ax.set_xlim([ser.index.min(), ser.index.max()])
+    ax.set_ylabel(f"{ylabel}", rotation=0, horizontalalignment='left',)
+    ax.yaxis.set_label_position("right")
+    ax.set_xlim(left=ser.index.min(), right=ser.index.max())
     ax.set_ylim(ser.min(), ser.max())
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
@@ -201,80 +206,100 @@ def plot_compare_anomalies_(
 
 def plot_limits_grid_(
         df: pd.DataFrame,
-        anomalies: pd.Series,
+        *args,
         ser_high: Union[pd.Series, None] = None,
         ser_low: Union[pd.Series, None] = None,
+        signal_anomaly: Union[pd.Series, None] = None,
         file_name: Union[str, None] = None,
         save: bool = True,
-        changepoints: Union[pd.Series, None] = None,
-        samplings: Union[pd.Series, None] = None,
+        # anomalies: pd.Series,
+        # changepoints: Union[pd.Series, None] = None,
+        # samplings: Union[pd.Series, None] = None,
+        # ground_truth: Union[pd.Series, None] = None,
         **kwargs):
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
               '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
     # file_name = make_name(ser.name, window, file_name)
 
-    a = anomalies.astype(int).diff()
-    b = a[a == 1].resample('1d').sum()
-
     n_rows = len(df.columns)
-    fig, axs = plt.subplots(nrows=n_rows, ncols=1,
-                            figsize=set_size(subplots=(1, 1)),
-                            sharex=True)
-    fig.subplots_adjust(left=0.10, bottom=0.15, right=0.95, top=0.90)
-    fig.subplots_adjust(hspace=0.05)
+    # Count number of non nan args for subplots
+    n_bar_plots = 0
+    for i in args:
+        if i is not None:
+            n_bar_plots += 1
 
-    # TODO: drop if ordering is corrected before plotting
-    y_labels = [r"$T_{-}~[-]$", r"$T_{\uparrow}~[-]$",
-                r"$e_P~[-]$", r"$T_{\downarrow} [-]$", ]
-    j = [1, 0, 3, 2]
+    fig, axs = plt.subplots(
+        nrows=n_rows+n_bar_plots, ncols=1,
+        figsize=set_size('thesis', subplots=((n_rows+n_bar_plots)/6, 1)),
+        sharex='col', sharey='row',
+        gridspec_kw={
+            # 'width_ratios': [3, 1],
+            'height_ratios': [*(n_rows*[1]), *(n_bar_plots*[0.2])],
+            }
+        )
+
+    axs = axs.T.flatten()
+    fig.subplots_adjust(left=0.05, bottom=0.08, right=0.85, top=0.95)
+    fig.subplots_adjust(hspace=0.15)
 
     for i, col_name in enumerate(df.columns):
-        ser = df[col_name]
+        ser: pd.Series[float] = df[col_name]
+        if kwargs.get('resample'):
+            ser_ = ser.resample(
+                rule=kwargs['resample']).fillna(None)
+        else:
+            ser_ = ser
 
-        ax: plt.Axes = axs[j[i]]
-        ax.plot(ser.resample('1t').fillna(None),
+        ax: plt.Axes = axs[i]
+        ax.plot(ser_,
                 linewidth=0.7, label='Signal')
-        set_axis_style(ax, ser, ylabel=y_labels[i])
-        ax.scatter(ser[anomalies == 1].index, ser[anomalies == 1],
-                   color=colors[5], s=3, label='System Anomalies')
-
-        if samplings is not None:
-            ax.scatter(ser[samplings == 1].index, ser[samplings == 1],
-                       color=colors[1], s=2, label='Sampling Anomalies')
-
-            a = samplings.astype(int).diff()
-            for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
-                ax.axvspan(x0, x1, color=colors[1], alpha=1)
-
-        if changepoints is not None:
-            c = changepoints.astype(int).diff()
-            ax.scatter(ser[c == 1].index, ser[c == 1],
-                       color=colors[2], s=2, label='Changepoint')
-
-            for x0 in c[c == 1].index:
-                x1 = c.index[c.index.get_loc(x0) + 1]
-                ax.axvspan(x0, x1, color=colors[2], alpha=1)
-
+        if kwargs.get('grace_period'):
+            ax.axvspan(
+                ser.index[0],  # type: ignore
+                ser.index[int(kwargs['grace_period'])],  # type: ignore
+                color='0.8', alpha=0.9, label='Grace Period')
+        set_axis_style(ax, ser, ylabel=col_name)
+        if signal_anomaly is not None:
+            a = signal_anomaly.apply(lambda x: x[col_name])
+            ax.scatter(ser[a].index, ser[a],
+                       color=colors[3], s=3, label='Signal Anomalies')
         ser_high_ = ser_high.apply(
-            lambda x: x[i][i]) if ser_high is not None else None
+            lambda x: x[col_name]) if ser_high is not None else None
         ser_low_ = ser_low.apply(
-            lambda x: x[i][i]) if ser_low is not None else None
-        ax: plt.Axes = axs[j[i]]
+            lambda x: x[col_name]) if ser_low is not None else None
+
         if ser_high_ is not None and ser_low_ is not None:
             ax.fill_between(ser_high_.index, ser_high_, ser.max(),
                             label=r'Limits',
-                            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.5),
+                            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.25),
                             linestyle="-", linewidth=0.7,)
             ax.fill_between(ser_low_.index, ser_low_, ser.min(),
-                            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.5),
+                            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.25),
                             linestyle="-", linewidth=0.7,)
 
-        ax.tick_params(axis='both', which='major', labelsize=9)
+        ax.tick_params(axis='both', which='major', labelsize=8)
+
+    for i, a in enumerate(args, start=1):
+        if isinstance(a, pd.Series):
+            ax: plt.Axes = axs[-i]
+            a = a.astype(int).diff()
+            for s_idx, (x0, x1) in enumerate(
+                    zip(a[a == 1].index, a[a == -1].index)):
+                ax.axvspan(x0, x1, color=colors[i], alpha=1,
+                           label="_"*s_idx + a.name, linewidth=2)
+            ylabel = '\n'.join(textwrap.wrap(a.name, 11))
+            ax.set_ylabel(f"{ylabel}", rotation=0, horizontalalignment='left',)
+            ax.yaxis.set_label_position("right")
+            ax.set_yticks([])
+            if a.name == "Ground Truth":
+                a = a.astype(int).diff()
+                b = a[a == 1].resample('1d').sum()
+                axs[-1].set_xticks(b[b > 0].index.map(str))
 
     axs[0].legend(bbox_to_anchor=(0., 1.05, 1., .102),
-                  loc='lower left', ncols=3, mode="expand", borderaxespad=0.)
+                  loc='lower left', ncols=4, mode="expand", borderaxespad=0.)
 
-    ax.set_xticks(b[b > 0].index.map(str))
+    axs[-1].tick_params(axis='x', labelrotation=50, labelsize=8)
 
     if save:
         plt.savefig(f"plots/{file_name}_thresh.pdf")
