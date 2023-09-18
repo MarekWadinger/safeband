@@ -191,8 +191,7 @@ for the upper limit. These lower and upper limits together form vectors $\boldsy
 
 Such threshold is computed for each feature of the system, resulting in a vector of lower and upper limits. The vector of limits is used to define the region of normal operation of the system. The region is defined as a hypercube in the feature space, where each dimension is defined by the limits of the corresponding feature.
 
-%TODO: reformulate
-The predicted state of the system $y_i$ and anomalies in signals $\uis{\boldsymbol{y}}{s}{i}$ at time $i$ is established based on the maximum distance of the observation from the center of the hypercube. The center of the hypercube is defined as the vector of conditional means $\mu_{a \mid \boldsymbol{b}}$ w.r.t other features. The distance is computed as the CDF of observations and the conditional distributions as follows:
+The predicted state of the system, denoted as $y_i$, and the presence of anomalies in signals $\uis{\boldsymbol{y}}{s}{i}$ at time $i$ are determined based on the maximum distance of observations from the center of the hypercube. The center of the hypercube corresponds to the vector of conditional means $\mu_{a \mid \boldsymbol{b}}$ with respect to other features. The calculation of this distance involves the cumulative distribution function (CDF) of observations and conditional distributions, as  follows:
 \begin{equation}
  {F(x_a; \mu_{a \mid \boldsymbol{b}}, \sigma_{a \mid \boldsymbol{b}}^2)}:a = 1,...,k;~ \boldsymbol{b} = \{1, 2, \ldots, k\} \text{ where }a \notin \boldsymbol{b} \text{.}\label{eq:max_score}
 \end{equation}
