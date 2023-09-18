@@ -170,7 +170,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.gaussian.update(x, **kwargs)
         return self
 
-    def score_one(self, x) -> int:
+    def score_one(self, x) -> float:
         # TODO: find out why return different results on each invocation
         if self.gaussian.n_samples < self.grace_period:
             if self._feature_dim_in is None:
@@ -325,11 +325,25 @@ class ConditionalGaussianScorer(GaussianScorer):
     """  # noqa: E501
     def __init__(self,
                  gaussian: ConditionableDistribution,
-                 grace_period: int,
+                 grace_period: typing.Union[int, None] = None,
                  t_a: typing.Union[int, None] = None,
                  threshold: float = THRESHOLD,
                  protect_anomaly_detector: bool = True
                  ):
+        if hasattr(gaussian, 'window_size'):
+            self.t_e = gaussian.window_size
+        elif hasattr(gaussian, 'period'):
+            self.t_e = int(gaussian.period.total_seconds()/60)
+        else:
+            self.t_e = 0
+        if grace_period is None:
+            grace_period = self.t_e
+        else:
+            if grace_period > self.t_e or grace_period < 1:
+                # import warnings
+                # warnings.warn(f"Grace period must be between 1 and"
+                #               f"{self.t_e} minutes or None.")
+                grace_period = self.t_e
         super().__init__(
             gaussian,
             grace_period,
@@ -382,7 +396,12 @@ class ConditionalGaussianScorer(GaussianScorer):
     def _score_one(self, x):
         # TODO: find out why return different results on each invocation
         #   Due to scipy's cdf function
-        if self.gaussian.n_samples > self.grace_period:
+        if (
+                not self.grace_period or
+                self.gaussian.n_samples > self.grace_period
+                ):
+            # Deactivate grace period after first invocation
+            self.grace_period = None
             # TODO: generally score is None when the
             #  conditional covariance is maldefined. This
             #  case should be handled differently.
@@ -413,16 +432,12 @@ class ConditionalGaussianScorer(GaussianScorer):
 
     def predict_one(self, x) -> int:
         score, idx = self._score_one(x)
-        if self.gaussian.n_samples > self.grace_period:
-            if (self.alpha > score) or (score > 1 - self.alpha):
-                if self._feature_names_in:
-                    self.root_cause = self._feature_names_in[idx]
-                else:
-                    self.root_cause = None
-                return 1
+        if (self.alpha > score) or (score > 1 - self.alpha):
+            if self._feature_names_in is not None and idx is not None:
+                self.root_cause = self._feature_names_in[idx]
             else:
                 self.root_cause = None
-                return 0
+            return 1
         else:
             self.root_cause = None
             return 0
