@@ -1,0 +1,67 @@
+In this section, we propose an adaptive and interpretable detection framework for multivariate systems with streaming IoT devices. This approach models the system as a dynamic joint normal distribution, enabling it to effectively adapt to pervasive nonstationary effects on processes. Our method handles various factors, including change points, concept drift, and seasonal effects. Our primary contribution lies in the fusion of an adaptable self-supervised system with root cause identification capabilities. This combination empowers the online statistical model to diagnose anomalies through two distinct avenues. Firstly, it employs conditional probability calculations to assess the system's operating conditions' normality. Secondly, it identifies outliers within individual signal measurements and features based on dynamic alert-triggering process limits. In the following sections, we describe our proposed methodology across three subsections. The initial subsection delves into the process of initializing the model's parameters. The subsequent section describes online training and adaptation, while the final subsection expounds upon the model's detection and diagnostic capabilities. For a concise representation of the proposed method, Algorithm \ref{alg:detector} is provided.
+
+\subsection{Model Parameters Initialization}\label{init}
+The model initialization is governed by defining two tunable hyperparameters of the model: the expiration period ($\ui{t}{e}$) and the threshold ($T$). The expiration period determines the window size for time-rolling computations, impacting the proportion of outliers within a given timeframe, and directly influencing the relaxation (with a longer expiration period) or tightening (with a shorter expiration period) of dynamic signal limits. Additionally, we introduce a grace period, which defaults to $3/4 \ui{t}{e}$, allowing for model calibration. During this grace period, system anomalies are not flagged to prevent false positives and speed up self-supervised learning in Subsection \ref{train}. The length of the expiration period inversely correlates with the model's ability to adapt to sudden changes. The adaptation to shifts in the data-generating process, such as changes in mean or variance, is managed through the adaptation period $\ui{t}{a}$. A longer $\ui{t}{a}$ results in slower adaptation but potentially longer alerts, which can be valuable during extended outlier periods. In most cases, $\ui{t}{a} = 1/4 \ui{t}{e}$ offers optimal performance.
+
+As a general rule of thumb, expiration period $\ui{t}{e}$ should be determined based on the slowest observed dynamics within the multivariate system. The threshold $T$ defaults to the three-sigma probability of $q$ in \eqref{eq:q}. Adjusting this threshold can fine-tune the trade-off between precision and recall. A higher threshold boosts recall but may lower precision, while a lower threshold enhances precision at the cost of recall. The presence of one non-default easily interpretable hyperparameter facilitates adaptability to various scenarios. We recommend starting with the default values of other parameters and making adjustments based on real-time model performance.
+
+\subsection{Online training}\label{train}
+Training in RAID follows an incremental learning approach, processing each new sample upon arrival. Incremental learning allows online parameter updates, albeit with a potential computational delay affecting response latency.
+
+In the case of a dynamic joint probability distribution, the parameters are $\boldsymbol{\mu_i}$ and $\boldsymbol{\Sigma_i}$ at time instance \(i\). Update of the mean vector $\boldsymbol{\mu_i}$ and covariance matrix $\boldsymbol{\Sigma_i}$ is governed by Welford's online algorithm using equation \eqref{eq:runmean} and \eqref{eq:runvar} respectively. Samples beyond the expiration period $\ui{t}{e}$ are disregarded during the second pass. The effect of expired samples is reverted using inverse Welford's algorithm for mean \eqref{eq:revmean} and variance \eqref{eq:revvar}, accessing the data in the buffer. For details, refer to Subsection \ref{AA:InvWelford}.
+
+It's worth noting that adaptation relies on two self-supervised methods. Adaptation routine runs if the observation at time instance \(i\) is considered normal. Adaptation period $\ui{t}{a}$ allows the model to update the distribution on outliers as well. Given the predicted system anomaly state from \eqref{eq:anomaly} as $y_i$ over the window of past observations \(\boldsymbol{y}_i=\{y_{i-\ui{t}{a}},...,y_{i}\}\), the following test holds when adaptation is performed on outlier:
+
+\begin{equation}
+  {\frac{\sum_{y\in \boldsymbol{y}_i}y}{n(\boldsymbol{y}_i)}} > 2*(T-0.5)\text{.}\label{eq:condition}
+\end{equation}
+Here \(n(\boldsymbol{y}_i)\) denotes the dimensionality of \(\boldsymbol{y}_i\). The logic of the \eqref{eq:condition} follows the probabilistic approach to anomalies that assumes a number of anomalies are lower or equal to the conditional probability at both tails of the distribution
+
+\subsection{Online prediction}\label{predict}
+In the prediction phase, multiple metrics are evaluated to assess the state of the modeled system.
+
+Firstly, we calculate the parameters of the conditional distribution concerning the dynamic multivariate Gaussian distribution. These calculations are performed for the process observation vector $\boldsymbol{x}_i$ at time instance $i$. Specifically, we compute the conditional mean using \eqref{eq:cond_mean} and the conditional variance using \eqref{eq:cond_var}. These computations yield univariate conditional distributions for individual signals and features. These conditional distributions play a crucial role in assessing the abnormality of signals and features concerning other observed values. This assessment relies on the strength of relationships defined by the covariance matrix of the dynamic multivariate Gaussian distribution. Consequently, our approach inherently considers the interactions between input signals and features. The determination of anomalous behavior is governed by \eqref{eq:anomaly_signal}.
+
+Any anomaly detected within one of the features triggers an alert at the system level. The decision regarding the overall system's anomalous behavior is guided by \eqref{eq:anomaly}. Nevertheless, individual determinations of anomalies serve as a diagnostic tool for isolating the root cause of anomalies.
+
+To assist operators in their assessments, we establish a hypercube defined by lower and upper threshold values, denoted as $\ui{\boldsymbol{x}}{l}$ and $\ui{\boldsymbol{x}}{u}$, respectively. These thresholds are derived from \eqref{eq:thresh_low} and \eqref{eq:thresh_high}, incorporating updated model parameters. Lower and upper thresholds play a pivotal role as dynamic process limits. They replace the conservative process limits provided in sensor documentation, accounting for factors such as aging and actual environmental conditions that influence sensor operation.
+
+Our framework anticipates unexpected novel behavior, including signal loss. This anticipation involves calculating the cumulative distribution function (CDF) over the univariate normal distribution of sampling, focusing on the differences between subsequent timestamps. We operate under the assumption that, over the long term, the distribution of sampling times remains stable. As a result, we employ a one-pass update mechanism utilizing \eqref{eq:runmean} and \eqref{eq:runvar}. To proactively detect subtle changes in sampling patterns, self-supervised learning is employed, leveraging anomalies weighted by the deviation from $(1 - F(x_i; \mu, \sigma^2))$ for training.
+
+The system is vigilant in identifying change points. When the adaptation test specified in \eqref{eq:condition} is satisfied, change points are flagged and isolated. This initiation of change points triggers updates to the model, ensuring it adapts to evolving data patterns effectively.
+
+\begin{algorithm}[H]
+  \caption{{Online Detection and Identification Workflow}} \label{alg:detector}
+  \begin{algorithmic}[1]
+    \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+    \renewcommand{\algorithmicensure}{\textbf{Output:}}
+    \REQUIRE expiration period $\ui{t}{e}$
+    \ENSURE system anomaly $y_i$, signal anomalies $\uis{\boldsymbol{y}}{s}{i}$, sampling anomaly $\uis{y}{t}{i}$, change-point $\uis{y}{c}{i}$, lower thresholds $\uis{\boldsymbol{x}}{l}{i}$, upper thresholds $\uis{\boldsymbol{x}}{u}{i}$,
+    \\ \textit{Initialisation} :
+    \STATE $i \leftarrow 1;~ n \leftarrow 1;~ T \leftarrow \eqref{eq:q};~ \boldsymbol{\mu} \leftarrow \boldsymbol{x_0};~ \boldsymbol{\Sigma} \leftarrow \mathbf{1}_{k \times k};~ \ui{\mu}{t} \leftarrow 0;~ \ui{\sigma}{t}^2 \leftarrow 1$;
+    \STATE compute $F(\boldsymbol{x_0}; \boldsymbol{\mu}, \boldsymbol{\Sigma})$ using algorithm in \cite{Genz2000};
+    \\ \textit{LOOP Process}
+    \LOOP
+    \STATE {$\boldsymbol{x}_i, t_i \leftarrow$ RECEIVE()};
+    \STATE $\uis{\boldsymbol{y}}{s}{i} \leftarrow$ PREDICT($\boldsymbol{x}_i, T$) using \eqref{eq:anomaly_signal};
+    \STATE $y_i \leftarrow$ PREDICT($\uis{\boldsymbol{y}}{s}{i}$) using \eqref{eq:anomaly};
+    \STATE $\uis{\boldsymbol{x}}{l}{i}\text{, }\uis{\boldsymbol{x}}{u}{i} \leftarrow$ GET($T, \boldsymbol{\mu}, \boldsymbol{\Sigma}$) using Algorithm \ref{alg:ppf};
+    \STATE $\uis{y}{t}{i} \leftarrow$ PREDICT($t_i - t_{i-1}$) using \eqref{eq:anomaly_signal};
+    \STATE {$\ui{\mu}{t}, \ui{\sigma}{t}^2 \leftarrow$ UPDATE($t_i - t_{i-1}, \ui{\mu}{t}, \ui{\sigma}{t}^2$) using \eqref{eq:runmean}, \eqref{eq:runvar}};
+    \IF {not \eqref{eq:anomaly} \OR \eqref{eq:condition}}
+    \STATE {$\boldsymbol{\mu}, \boldsymbol{\Sigma} \leftarrow$ UPDATE($\boldsymbol{x}_i, \boldsymbol{\mu}, \boldsymbol{\Sigma}, n$) using \eqref{eq:runmean}, \eqref{eq:runvar}};
+    \IF {\eqref{eq:condition}}
+    \STATE $\uis{y}{c}{i} \leftarrow 1$;
+    \ELSE
+    \STATE $\uis{y}{c}{i} \leftarrow 0$;
+    \ENDIF
+    \STATE $n \leftarrow n + 1$;
+    \FOR {$\boldsymbol{x}_{i-\ui{t}{e}}$}
+    \STATE {$\boldsymbol{\mu}, \boldsymbol{\Sigma} \leftarrow$ REVERT($\boldsymbol{x}_{i-\ui{t}{e}}, \boldsymbol{\mu}, \boldsymbol{\Sigma}, n$) using \eqref{eq:revmean}, \eqref{eq:revvar}};
+    \STATE $n \leftarrow n - 1$;
+    \ENDFOR
+    \ENDIF
+    \STATE $i \leftarrow i + 1$;
+    \ENDLOOP
+  \end{algorithmic}
+\end{algorithm}

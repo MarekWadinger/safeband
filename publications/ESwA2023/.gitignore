@@ -1,0 +1,39 @@
+# LaTeX output files
+*.aux
+*.log
+*.synctex.gz
+*.toc
+
+# Bibliography files
+*.bbl
+*.blg
+
+# Compiled files
+*.dvi
+
+# LaTeX editor files
+*.bak
+*.swp
+*.synctex(busy)
+
+# Other temporary files
+*.out
+*.fdb_latexmk
+*.fls
+*.gz
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
+# Auxiliary files
+*.spl
+
+# Misc
+elsarticle
+studies
+figures/*.png
+
+# Exceptions
+!*.pdf
