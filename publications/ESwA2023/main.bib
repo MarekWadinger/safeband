@@ -66,6 +66,34 @@
   doi       = {10.1109/SRDS.2012.3}
 }
 
+@article{ZHANG2024121506,
+  title    = {An unsupervised spatiotemporal fusion network augmented with random mask and time-relative information modulation for anomaly detection of machines with multiple measuring points},
+  journal  = {Expert Systems with Applications},
+  volume   = {237},
+  pages    = {121506},
+  year     = {2024},
+  issn     = {0957-4174},
+  doi      = {https://doi.org/10.1016/j.eswa.2023.121506},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0957417423020080},
+  author   = {Kaiyu Zhang and Jinglong Chen and Chi-Guhn Lee and Shuilong He},
+  keywords = {Anomaly detection, Spatiotemporal fusion, Signal modulation, Graph neural network, Transformer},
+  abstract = {In industrial environments, individual sensor is easily affected by background noise, etc. In order to improve the reliability of anomaly detections, sensors are arranged at multiple measuring points to collect monitoring data of machines. However, under the coupling of vibration responses of multiple components of machines, the complex nonlinear relationship between monitoring data of multiple measuring points makes it difficult to achieve the best feature extraction and fusion effect, which reduces the accuracy of anomaly detection. To solve this problem, an unsupervised spatiotemporal fusion network augmented with random mask and time-relative information modulation is proposed. Firstly, we creatively propose random mask and modulated signal generation method based on mask index to learn the dependence of waveform and time dimension and achieve temporal dimension fusion of signals. Based on end-to-end training, modulated signals are also more conducive to spatial fusion. Then, to fully exploit the correlation between monitoring data of multiple measuring points and obtain the best spatial dimension fusion effect, a multi-head graph neural network based on self-attention weight matrix is carried out. Finally, we use transformer encoder to reconstruct the signal of each measuring point and obtain reconstruction error. Based on exponentially weighted moving average, anomaly detection threshold is obtained. Two anomaly detection experiments are conducted, and accuracy of 99.78\%, 99\% are achieved.}
+}
+
+@article{HUANG2023120799,
+  title    = {A novel outlier detecting algorithm based on the outlier turning points},
+  journal  = {Expert Systems with Applications},
+  volume   = {231},
+  pages    = {120799},
+  year     = {2023},
+  issn     = {0957-4174},
+  doi      = {https://doi.org/10.1016/j.eswa.2023.120799},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0957417423013015},
+  author   = {Jinlong Huang and Dongdong Cheng and Sulan Zhang},
+  keywords = {Outlier detection, Local outliers, Outlier clusters, Outlier turning points},
+  abstract = {Outlier detection is one of the hot research in data mining, and has been applied to various fields such as network anomaly detection, image abnormal analysis, etc. In recent years, many outlier detecting algorithms have been proposed. However, these outlier detecting algorithms are hard to effectively detect global outliers, local outliers and outlier clusters at the same time. In this paper, we propose a novel outlier detecting algorithm based on the following ideas: (1) the density distribution should not be changed dramatically on local area; (2) the ratio of the number of k nearest neighbors and the number of reverse k nearest neighbors should not be very big. Based on above ideas, the proposed algorithm aims to find outlier turning points, then regards all outlier turning points and its sparse neighbors as outliers. Furthermore, the proposed algorithm use natural neighbors to obtain the neighborhood parameter k adaptively. The formal analysis and extensive experiments demonstrate that this technique can detect global outliers, local outliers and outlier clusters without neighborhood parameter k.}
+}
+
 @article{Fan2019,
   title    = {Deep learning-based feature engineering methods for improved building energy prediction},
   journal  = {Applied Energy},
@@ -97,6 +125,33 @@
 
                https://doi.org/10.1080/10618600.2020.1807997
                }
+}
+
+@article{LI2024121304,
+  title    = {Attribute-weighted outlier detection for mixed data based on parallel mutual information},
+  journal  = {Expert Systems with Applications},
+  volume   = {236},
+  pages    = {121304},
+  year     = {2024},
+  issn     = {0957-4174},
+  doi      = {https://doi.org/10.1016/j.eswa.2023.121304},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0957417423018067},
+  author   = {Junli Li and Zhanfeng Liu},
+  keywords = {Attribute weighting, Outlier detection, Mixed data, Parallel mutual information},
+  abstract = {Outlier detection plays an important role in data mining because it can improve the performance of data analysis. Most outlier detection algorithms focus on numerical or categorical attributes; however, data typically have a mixture of numerical and categorical attributes. We addressed this problem by developing an attribute-weighted outlier detection algorithm, PMIOD, for high-dimensional and massive mixed data. The PMIOD algorithm adopts mutual information to measure attribute correlations and provides an attribute-weighting method for mixed data. Based on this, an attribute-weighted outlier detection method for mixed data was developed. Moreover, to improve the efficiency of mutual information computing for high-dimensional mixed data, the mutual information computing was parallelized on the Spark platform. We evaluated the proposed algorithm using ten UCI datasets and four synthetic datasets in comparison with widely used algorithms. Experiments were conducted to demonstrate the superiority of the results produced by the proposed algorithm.}
+}
+
+@article{DU2024121161,
+  title    = {Generative adversarial nets for unsupervised outlier detection},
+  journal  = {Expert Systems with Applications},
+  volume   = {236},
+  pages    = {121161},
+  year     = {2024},
+  issn     = {0957-4174},
+  doi      = {https://doi.org/10.1016/j.eswa.2023.121161},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0957417423016639},
+  author   = {Xusheng Du and Jiaying Chen and Jiong Yu and Shu Li and Qiyin Tan},
+  abstract = {Outlier detection, also known as anomaly detection, has been a persistent and active research area for decades due to its wide range of applications in various fields. Many well-established methods have difficulty fitting the distribution of high-dimensional and complex data, making it difficult to detect outliers that have a low degree of deviation. To address this problem, we combine the distribution fitting capability of generative adversarial nets (GANs) with the specificity of the outlier detection problem and propose a GAN-based unsupervised outlier detection (GUOD) method. In a real dataset mixed with normal objects and outliers, the generator of GANs prefers to fit the distribution of the majority of normal objects to minimize the error; as a result, the generated fake data can be used as an augmentation of normal objects. Next, fake “normal objects” are used to train the autoencoder. Finally, the real data are fed into the autoencoder for one forward propagation, and the reconstruction error of the object is used as its own outlier factor. The top-n objects with the largest reconstruction errors are considered outliers. Extensive experiments are conducted on eight real-world datasets, and the results show that the GUOD method performs better than ten other state-of-the-art algorithms.}
 }
 
 @article{Salehi2018,
@@ -233,6 +288,20 @@
   month     = {July}
 }
 
+@article{ZHANG2023120542,
+  title    = {Towards deep probabilistic graph neural network for natural gas leak detection and localization without labeled anomaly data},
+  journal  = {Expert Systems with Applications},
+  volume   = {231},
+  pages    = {120542},
+  year     = {2023},
+  issn     = {0957-4174},
+  doi      = {https://doi.org/10.1016/j.eswa.2023.120542},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0957417423010448},
+  author   = {Xinqi Zhang and Jihao Shi and Xinyan Huang and Fu Xiao and Ming Yang and Jiawei Huang and Xiaokang Yin and Asif {Sohail Usmani} and Guoming Chen},
+  keywords = {Variation Bayesian Inference, Graph deep learning, Leakage detection, Leakage localization, Digital twin},
+  abstract = {Deep learning has been widely applied to automated leakage detection and location of natural gas pipe networks. Prevalent deep learning approaches do not consider the spatial dependency of sensors, which limits leakage detection performance. Graph deep learning is a promising alternative to prevailing approaches as it can model spatial dependency. However, the challenge of collecting real-world anomaly data for training limits the accuracy and robustness of currently used graph deep learning approaches. This study proposes a deep probabilistic graph neural network in which attention-based graph neural network is built to model spatial sensor dependency. Variational Bayesian inference is integrated to model the posterior distribution of sensor dependency so that the leakage can be localized. An urban natural gas pipe network experiment is employed to construct the benchmark dataset, in which normal time-series data is applied to develop our proposed model while anomaly leakage data is used for performance comparison between our model and other state-of-the-art models. The results demonstrate that our model exhibits competitive detection accuracy (AUC) = 0.9484, while the additional uncertainty interval provides more comprehensive leakage detection information compared to state-of-the-art deep learning models. In addition, our model's posterior distribution enhances the leakage localization with the accuracy of positioning (PAc) = 0.8, which is higher than that of other state-of-the-art graph deep learning models. This study provides a comprehensive and robust alternative for subsequent decision-making to mitigate natural gas leakage from pipe networks.}
+}
+
 @article{Yang2022,
   title    = {An interpretable unsupervised Bayesian network model for fault detection and diagnosis},
   journal  = {Control Engineering Practice},
@@ -245,6 +314,34 @@
   author   = {Wei-Ting Yang and Marco S. Reis and Valeria Borodin and Michel Juge and Agnès Roussy},
   keywords = {Bayesian Network (BN), eXplanatory Artificial Intelligence (XAI), Fault detection, Fault diagnosis, Interpretable machine learning},
   abstract = {Process monitoring is a critical activity in manufacturing industries. A wide variety of data-driven approaches have been developed and employed for fault detection and fault diagnosis. Analyzing the existing process monitoring schemes, prediction accuracy of the process status is usually the primary focus while the explanation (diagnosis) of a detected fault is relegated to a secondary role. In this paper, an interpretable unsupervised machine learning model based on Bayesian Networks (BN) is proposed to be the fundamental model supporting the process monitoring scheme. The proposed methodology is aligned with the recent efforts of eXplanatory Artificial Intelligence (XAI) for knowledge induction and decision making, now brought to the scope of advanced process monitoring. A BN is capable of combining data-driven induction with existing domain knowledge about the process and to display the underlying causal interactions of a process system in an easily interpretable graphical form. The proposed fault detection scheme consists of two levels of monitoring. In the first level, a global index is computed and monitored to detect any deviation from normal operation conditions. In the second level, two local indices are proposed to examine the fine structure of the fault, once it is signaled at the first level. These local indices support the diagnosis of the fault, and are based on the individual unconditional and conditional distributions of the monitored variables. A new labeling procedure is also proposed to narrow down the search and identify the fault type. Unlike many existing diagnosis methods that require access to faulty data (supervised diagnosis methods), the proposed diagnosis methodology belongs to the class that only requires data under normal conditions (unsupervised diagnosis methods). The effectiveness of the proposed monitoring scheme is demonstrated and validated through simulated datasets and an industrial dataset from semiconductor manufacturing.}
+}
+
+@article{BRITO2023120860,
+  title    = {Fault Diagnosis using eXplainable AI: A transfer learning-based approach for rotating machinery exploiting augmented synthetic data},
+  journal  = {Expert Systems with Applications},
+  volume   = {232},
+  pages    = {120860},
+  year     = {2023},
+  issn     = {0957-4174},
+  doi      = {https://doi.org/10.1016/j.eswa.2023.120860},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0957417423013623},
+  author   = {Lucas Costa Brito and Gian Antonio Susto and Jorge Nei Brito and Marcus Antonio Viana Duarte},
+  keywords = {Data augmentation, Explainable artificial intelligence, Fault diagnosis, Rotating machinery, Synthetic data, Transfer learning},
+  abstract = {Due to the growing interest for increasing productivity and cost reduction in industrial environment, new techniques for monitoring rotating machinery are emerging. Artificial Intelligence (AI) is one of the approaches that has been proposed to analyze the collected data (e.g., vibration signals) providing a diagnosis of the asset’s operating condition. Three major problems hinder the application of AI models in industrial environments, being the motivation for the research: (i) impossibility or long time to obtain a sample of all operational conditions (since faults rarely happen), (ii) high cost of experts to label all acquired data (in a supervised scenario) and (iii) lack of interpretability of the models (black-boxes). To overcome these problems, a new generic and interpretable approach for classifying faults in rotating machinery based on transfer learning from augmented synthetic data to real rotating machinery is here proposed, namely FaultD-XAI (Fault Diagnosis using eXplainable AI). To provide scalability using transfer learning, synthetic vibration signals are created mimicking the characteristic behavior of failures in operation. The application of Gradient-weighted Class Activation Mapping (Grad-CAM) with 1D Convolutional Neural Network (1D CNN) allows the post hoc interpretation of results, supporting the user in decision making and increasing diagnostic confidence. The proposed approach not only obtained promising diagnostic performance but was also able to learn characteristics used by experts to identify conditions in a source domain and apply them in another target domain. The experimental results obtained on three datasets containing different mechanical faults suggest the method offers a promising approach on exploiting transfer learning, synthetic data and explainable artificial intelligence for fault diagnosis. Lastly, to guarantee reproducibility and foster research in the field, the developed dataset is made publicly available.}
+}
+
+@article{WU2024121539,
+  title    = {A self-supervised anomaly detection algorithm with interpretability},
+  journal  = {Expert Systems with Applications},
+  volume   = {237},
+  pages    = {121539},
+  year     = {2024},
+  issn     = {0957-4174},
+  doi      = {https://doi.org/10.1016/j.eswa.2023.121539},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0957417423020419},
+  author   = {Zhichao Wu and Xin Yang and Xiaopeng Wei and Peijun Yuan and Yuanping Zhang and Jianming Bai},
+  keywords = {Anomaly detection, Self-supervised learning, Wrapped feature selection, LOF, Interpretability},
+  abstract = {Identifying the abnormal samples from a data set and determining their type are two key tasks of anomaly detection. However, the existing anomaly detection algorithms are generally faced with the defects of weak generalization ability and insufficient interpretation, the core reason of which is that they cannot mine specific features for different abnormal types. In this paper, a new anomaly detection algorithm aiming at feature selection for different abnormal types is developed. Inspired by self-supervised learning, we take the stationarity of variance changes of abnormal score similarity as a pretext task and combine it with wrapped search method. Then, the features and the corresponding parameters for different abnormal types can be screened to apply to the downstream task of anomaly integration detection. To verify the efficiency of the new algorithm, we conduct two sets of experiments to compare the new algorithm with 11 classical anomaly detection and 3 clustering anomaly detection algorithms on the data sets WDBC, WPBC and Wilt from DAMI database with the evaluation measures P@n, Adj-P@n, AP, Adj-AP and AUC. The experiment results show that, both in the identification and classification on abnormal samples, all performance measures of the new algorithm are explicitly better than that of the contrastive algorithms. Also, we apply the new algorithm to the Chinese auto insurance market, and find that the results can help managers to identify the main patterns of fraudulent claims and to summarize the feature combinations of fraud behaviors. In general, the new algorithm developed in this paper has the following advantages compared with traditional algorithms: 1) It can directly capture abnormal features and realize effective recognition of abnormal types, which effectively bridge the gap between abnormal judgement and feature screening. 2) Automatic screening of abnormal features can be completed under the condition of self-updating learning optimal strategy. 3) Only a few features are extracted from all features to reveal the abnormal characteristics, which significantly improves the interpretability and generalization ability of the algorithm and its results. In a word, through the novel self-supervised design method, feature screening is skillfully integrated into the anomaly detection task, which may provide a new way for anomaly detection research.}
 }
 
 @inproceedings{Wadinger2023,
