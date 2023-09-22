@@ -20,17 +20,15 @@ others. Make sure to check out their great work!
 
 The main benefits of the  solution are that it:
 
-* Keeps existing IT infrastructure, saving costs, and does
-not require operator retraining
-* Automates alerting thresholds setup for a high number of
-signals
-* Automates alerting for signals with no a priori knowledge
-of process limits
-* Assesses changing environmental conditions and device
-aging
-* Uses self-learning approach on streamed data
+* Enriches interpretable anomaly detection with adaptive capabilities
+* Isolates root cause of anomalies while considering interactions
+* Uses self-learning approach on streamed IoT data
+* Demonstrates interpretability by providing process limits for signals
+* Provides comparable detection accuracy to established general methods
 
-![Average_Cell_Temperature_sliding_thresh](https://github.com/MarekWadinger/online_outlier_detection/assets/50716630/427586d8-9858-4cf2-9aaa-1ee5407416bd)
+![ESwA23 - Graphical Abstract](https://github.com/MarekWadinger/online_outlier_detection/assets/50716630/68049357-9fdf-43db-8144-ef86403606ef)
+
+![BESS_thresh](https://github.com/MarekWadinger/online_outlier_detection/assets/50716630/6c2da80b-ee2b-46f0-8aa1-3bdace9f3229)
 
 ## ⚡️ Quickstart
 
