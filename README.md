@@ -1,11 +1,11 @@
-# Real-Time Outlier Detection with Dynamic Process Limits
+# Adaptable and Interpretable Framework for Anomaly Detection
 
 <!-- markdownlint-disable MD013 -->
 [![Python application](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml/badge.svg)](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml)
 [![codecov](https://codecov.io/gh/MarekWadinger/online_outlier_detection/branch/main/graph/badge.svg?token=BIS0A7CF1F)](https://codecov.io/gh/MarekWadinger/online_outlier_detection)
 [![Test Status](/reports/test-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/junit/report/index.html)
 [![Flake8 Status](/reports/flake8-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/flake8/report/index.html)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8128206.svg)](https://doi.org/10.5281/zenodo.8128206)
+[![DOI](https://zenodo.org/badge/DOI/10.1109/PC58330.2023.10217717.svg)](https://doi.org/10.1109/PC58330.2023.10217717)
 <!-- markdownlint-enable MD013 -->
 
 Online outlier detection service for existing real-time infrastructures for
@@ -141,13 +141,13 @@ in Proceedings of the 2023 24th International Conference on Process Control,
 IEEE:
 
 ```bibtex
-@inproceedings{wadinger_pc_2023,
-  title={Real-Time Outlier Detection with Dynamic Process Limits},
-  DOI={10.5281/zenodo.8128206},
-  publisher={Zenodo},
-  author={Wadinger, Marek and Kvasnica, Michal},
-  year={2023},
-  month={Jun}
+@inproceedings{Wadinger2023,
+  author    = {Wadinger, Marek and Kvasnica, Michal},
+  booktitle = {2023 24th International Conference on Process Control (PC)},
+  title     = {Real-Time Outlier Detection with Dynamic Process Limits},
+  year      = {2023},
+  doi       = {10.1109/PC58330.2023.10217717},
+  month     = {June}
 }
 ```
 
