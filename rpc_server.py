@@ -402,6 +402,44 @@ class RpcOutlierDetector(object):
 
         return detector
 
+    def run(
+            self,
+            config,
+            source,
+            detector,
+            debug
+    ):
+        # TODO: handle combination of debug and remote broker
+        if debug and config.get("path"):
+            print("=== Debugging started... ===")
+            data = pd.read_csv(config['path'], index_col=0)
+            data.index = pd.to_datetime(data.index, utc=True)
+            config['data'] = data
+            for row in data.head().iterrows():
+                source.emit(row)
+            for file in open_files:
+                file.close()
+            print("=== Debugging finished with success... ===")
+        else:  # pragma: no cover
+            detector.start()
+            print("=== Service started ===")
+
+            signal.signal(
+                signal.SIGINT, lambda signalnum,
+                frame: signal_handler(
+                    signalnum, frame, detector, config)
+                )
+
+            while True:
+                try:
+                    if source.stopped:
+                        break
+                except AttributeError:
+                    if source.upstreams[0].upstreams[0].stopped:
+                        break
+                print("=== Service running... ===")
+                time.sleep(2)
+
     def start(
             self,
             config: dict,
@@ -444,11 +482,6 @@ class RpcOutlierDetector(object):
             utils.TimeRolling(obj, period=WINDOW),
             grace_period=GRACE_PERIOD)
 
-        if config.get("path"):
-            data = pd.read_csv(config['path'], index_col=0)
-            data.index = pd.to_datetime(data.index, utc=True)
-            config['data'] = data
-
         source = self.get_source(config, topics, debug)
 
         detector = (source
@@ -461,30 +494,4 @@ class RpcOutlierDetector(object):
 
         detector = self.get_sink(config, topics, detector)
 
-        # TODO: handle combination of debug and remote broker
-        if debug and config.get("path"):
-            print("=== Debugging started... ===")
-            for row in data.head().iterrows():
-                source.emit(row)
-            for file in open_files:
-                file.close()
-            print("=== Debugging finished with success... ===")
-        else:  # pragma: no cover
-            detector.start()
-            print("=== Service started ===")
-
-            signal.signal(
-                signal.SIGINT, lambda signalnum,
-                frame: signal_handler(
-                    signalnum, frame, detector, config)
-                )
-
-            while True:
-                try:
-                    if source.stopped:
-                        break
-                except AttributeError:
-                    if source.upstreams[0].upstreams[0].stopped:
-                        break
-                print("=== Service running... ===")
-                time.sleep(2)
+        self.run(config, source, detector, debug)

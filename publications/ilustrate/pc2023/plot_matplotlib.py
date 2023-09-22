@@ -204,6 +204,25 @@ def plot_compare_anomalies_(
     plt.show()
 
 
+def plot_anomaly_bars(args, colors, axs):
+    for i, a in enumerate(args, start=1):
+        if isinstance(a, pd.Series):
+            ax: plt.Axes = axs[-i]
+            a = a.astype(int).diff()
+            for s_idx, (x0, x1) in enumerate(
+                    zip(a[a == 1].index, a[a == -1].index)):
+                ax.axvspan(x0, x1, color=colors[i], alpha=1,
+                           label="_"*s_idx + a.name, linewidth=2)
+            ylabel = '\n'.join(textwrap.wrap(a.name, 11))
+            ax.set_ylabel(f"{ylabel}", rotation=0, horizontalalignment='left',)
+            ax.yaxis.set_label_position("right")
+            ax.set_yticks([])
+            if a.name == "Ground Truth":
+                a = a.astype(int).diff()
+                b = a[a == 1].resample('1d').sum()
+                axs[-1].set_xticks(b[b > 0].index.map(str))
+
+
 def plot_limits_grid_(
         df: pd.DataFrame,
         *args,
@@ -279,22 +298,7 @@ def plot_limits_grid_(
 
         ax.tick_params(axis='both', which='major', labelsize=8)
 
-    for i, a in enumerate(args, start=1):
-        if isinstance(a, pd.Series):
-            ax: plt.Axes = axs[-i]
-            a = a.astype(int).diff()
-            for s_idx, (x0, x1) in enumerate(
-                    zip(a[a == 1].index, a[a == -1].index)):
-                ax.axvspan(x0, x1, color=colors[i], alpha=1,
-                           label="_"*s_idx + a.name, linewidth=2)
-            ylabel = '\n'.join(textwrap.wrap(a.name, 11))
-            ax.set_ylabel(f"{ylabel}", rotation=0, horizontalalignment='left',)
-            ax.yaxis.set_label_position("right")
-            ax.set_yticks([])
-            if a.name == "Ground Truth":
-                a = a.astype(int).diff()
-                b = a[a == 1].resample('1d').sum()
-                axs[-1].set_xticks(b[b > 0].index.map(str))
+    plot_anomaly_bars(args, colors, axs)
 
     axs[0].legend(bbox_to_anchor=(0., 1.05, 1., .102),
                   loc='lower left', ncols=4, mode="expand", borderaxespad=0.)
