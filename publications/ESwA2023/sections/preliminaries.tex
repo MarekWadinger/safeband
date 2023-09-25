@@ -15,7 +15,7 @@ Throughout this paper, we consider the following formulation of an update to the
 \begin{equation}
 S_n = S_{n-1} + (x_n - \bar x_{n-1})(x_n - \bar x_n)\text{,}\label{eq:upsumsquares}
 \end{equation}
-as it is less prone to numerical instability due to catastrophic cancellation. Finally, the corresponding unbiased variance is
+as it is less prone to numerical instability due to catastrophic cancellation, significant loss of precision due to subtracting two nearly equal numbers. Finally, the corresponding unbiased variance is
 \begin{equation}
 s^2_n = \frac{S_{n}}{n-1}\text{.}\label{eq:runvar}
 \end{equation}
@@ -45,7 +45,7 @@ s^2_{n-1} = \frac{S_{n-1}}{n-2}\text{.}\label{eq:revvar}
 Notably, inversion allows the algorithm to keep constant rate of adaptation at cost of storing a bounded data buffer.
 
 \subsection{Statistical Model of Multivariate System}\label{AA:Distribution}
-Multivariate normal distribution generalizes the multivariate systems to the model where the degree to which variables are related is represented by the covariance matrix. Gaussian normal distribution of variables is a reasonable assumption for process measurements, as it is a common distribution that arises from stable physical processes measured with noise. The general notation of multivariate normal distribution is:
+Multivariate normal distribution generalizes the multivariate systems to the model where the degree to which variables are related is represented by the covariance matrix. Gaussian normal distribution of variables is a reasonable assumption for process measurements, as it is a common distribution that arises from stable physical processes measured with noise (\cite{Mishra201831}). The general notation of multivariate normal distribution is:
 \begin{equation}
  \mathbf{X}\ \sim\ \mathcal{N}_k(\boldsymbol\mu,\, \boldsymbol\Sigma)\text{,}\label{eq:distribution}
 \end{equation}
@@ -59,43 +59,17 @@ f(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma}) = \frac{1}{(2\pi)^{k/2}
 
 where $\boldsymbol{x}$ is a $k$-dimensional vector of measurements $x_i$ at time $i$, $|\boldsymbol{\Sigma}|$ denotes the determinant of $\boldsymbol{\Sigma}$, and $\boldsymbol{\Sigma}^{-1}$ is the inverse of $\boldsymbol{\Sigma}$.
 
-The cumulative distribution function (CDF) of a multivariate Gaussian distribution describes the probability that all components of the random matrix \(\boldsymbol{X}\) take on a value less than or equal to a particular point \(\boldsymbol{x}\) in space, and can be used to evaluate the likelihood of observing a particular set of measurements or data points. The CDF is often used in statistical applications to calculate confidence intervals, perform hypothesis tests, and make predictions based on observed data. In other words, it gives the probability of observing a random vector that falls within a certain region of space. The standard notation of CDF is as follows:
+The cumulative distribution function (CDF) of a multivariate Gaussian distribution describes the probability that all components of the random vector \(\boldsymbol{X}\) take on a value less than or equal to a particular point \(q\) in space, and can be used to evaluate the likelihood of observing a particular set of measurements or data points. In other words, it gives the probability of observing a random vector that falls within a certain region of space. The standard notation of CDF is as follows:
 
 \begin{equation}
-F(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma}) = \int_{-\infty}^{\boldsymbol{x}} f(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma}) \text{d}\boldsymbol{x}\text{,}\label{eq:cdf}
+F(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma}) = \int_{-\infty}^{q} f(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma}) \text{d}\boldsymbol{x}\text{,}\label{eq:cdf}
 \end{equation}
 
 where $\text{d}\boldsymbol{x}$ denotes the integration over all $k$ dimensions of $\boldsymbol{x}$.
 
 As the equation \eqref{eq:cdf} cannot be integrated explicitly, an algorithm for numerical computation was proposed in \cite{Genz2000}.
 
-
-Given the PDF, we can also determine the value of \(\boldsymbol{x}\) that corresponds to a given quantile $q$ using a numerical method for inversion of CDF (ICDF) often denoted as percent point function (PPF) or $F(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma})^{-1}$. An algorithm that calculates the value of the PPF for univariate normal distribution is reported below as Algorithm \ref{alg:ppf}.
-
-\begin{algorithm}[H]
-\caption{{Percent-Point Function for Normal Distribution}} \label{alg:ppf}
- \begin{algorithmic}[1]
- \renewcommand{\algorithmicrequire}{\textbf{Input:}}
- \renewcommand{\algorithmicensure}{\textbf{Output:}}
- \REQUIRE quantile $q$, sample mean $\bar x_n$ \eqref{eq:runmean}, sample variance $s^2_n$ \eqref{eq:runvar}
- \ENSURE threshold value $\uis{\tilde{x}}{q}{n}$
- \\ \textit{Initialisation} :
- \STATE $f \leftarrow 10$; $l \leftarrow -f $; $r \leftarrow f;$
- \\ \textit{LOOP Process}
- \WHILE {$F(l; \bar x_n, s^2_n) > 0$}
- \STATE $r \leftarrow l $;
- \STATE $l \leftarrow lf $;
- \ENDWHILE
- \WHILE {$F_X(r)-q < 0$}
- \STATE $l \leftarrow r $;
- \STATE $r \leftarrow rf $;
- \ENDWHILE
- \STATE {$\uis{\tilde{x}}{q}{n} = \text{arg} \min_{x_n} \| F(x_n; \bar x_n, s^2_n) - q \| ~ \text{s.t.} ~ l \le x_n \le r$}
- \RETURN $\uis{\tilde{x}}{q}{n} \sqrt{s^2_n} + \bar x_n $
- \end{algorithmic}
-\end{algorithm}
-
-The Algorithm \ref{alg:ppf} for PPF computation is solved using an iterative root-finding algorithm such as Brent's method (\cite{Brent72}).
+Given the PDF, we can also determine the value of \(\boldsymbol{x}\) that corresponds to a given quantile $q$ using a numerical method for inversion of CDF (ICDF) often denoted as percent point function (PPF) or $F(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma})^{-1}$. An algorithm that calculates the value of the PPF is part of standard statistical software tools.
 
 \subsection{Conditional Probability Distribution}\label{AA:Conditional}
 % https://statproofbook.github.io/P/mvn-cond.html
@@ -108,7 +82,6 @@ The Algorithm \ref{alg:ppf} for PPF computation is solved using an iterative roo
 % year = {2020},
 % copyright = {Open Access}
 % }
-% https://en.wikipedia.org/wiki/Multivariate_normal_distribution
 Considering that we observe particular vector $\boldsymbol{x}_i$, we can update probability distributions, calculated according to the rules of conditional probability, of individual measurements within the vector given the rest of the measurements in $\boldsymbol{x_{i}}$.
 Let's assume multivariate normal distribution \eqref{eq:distribution} and without loss of generality, that the vector $\boldsymbol{x}_i$ can be partitioned into subset variable $x_a$, and complement vector $\boldsymbol{x_b}$ as follows
 
@@ -127,51 +100,32 @@ and
  \text{with dimensions} \begin{bmatrix}1\times 1 & 1\times (k - 1) \\ (k - 1) \times 1 & (k - 1) \times (k - 1)\end{bmatrix} \text{.} \label{eq:sigma}
 \end{equation}
 
-where $a$ and $\boldsymbol{b}$ represent distinct components within the vector.
-
 Subsequently, we can derive the conditional distribution of any subset variable $x_a$, given the complementary vector $\boldsymbol{x_b}$. This conditional distribution conforms to a univariate normal distribution, characterized by:
 
 \begin{equation}
   X_a \mid \mathbf{X}_{\boldsymbol{b}} \sim\ \mathcal{N}(\mu_{a \mid \boldsymbol{b}},\, \sigma_{a \mid \boldsymbol{b}}^2)\text{.}\label{eq:cond_distribution}
 \end{equation}
 
-where $\mu_{a \mid \boldsymbol{b}}$ denotes the conditional mean and $\sigma_{a \mid \boldsymbol{b}}^2$ represents the conditional variance. These crucial parameters can be computed using the Schur complement.
-
-% https://en.wikipedia.org/wiki/Schur_complement
-For a general matrix $M$ expressed as:
-
-\begin{equation}
-  M = \begin{bmatrix}A & B \\ C & D \end{bmatrix} \text{,}
-\end{equation}
-
-the Schur complement of the block matrix $M$ is denoted as:
-
-\begin{equation}
-  M \mid D = A - BD^{-1}C \text{.} \label{eq:shur}
-\end{equation}
-
-Applying Equation \eqref{eq:shur}, we can calculate the conditional variance $\sigma_{a \mid \boldsymbol{b}}^2$ using the covariance matrix notation from Equation \eqref{eq:sigma} as follows:
+where $\mu_{a \mid \boldsymbol{b}}$ denotes the conditional mean and $\sigma_{a \mid \boldsymbol{b}}^2$ represents the conditional variance. These crucial parameters can be computed applying the Schur complement as follows:
 
 \begin{equation}
   \sigma_{a \mid \boldsymbol{b}}^2 = \sigma_{aa}^2 - \boldsymbol\Sigma_{a\boldsymbol{b}} \boldsymbol\Sigma_{\boldsymbol{bb}}^{-1} \boldsymbol\Sigma_{\boldsymbol{b}a}\text{,}\label{eq:cond_var}
 \end{equation}
 
-while the conditional mean, denoted as $\mu_{a \mid \boldsymbol{b}}$, is determined by:
+for the conditional variance $\sigma_{a \mid \boldsymbol{b}}^2$, while the conditional mean, denoted as $\mu_{a \mid \boldsymbol{b}}$, is determined by:
 
 \begin{equation}
   \mu_{a \mid \boldsymbol{b}} = \mu_a + \boldsymbol\Sigma_{a\boldsymbol{b}} \boldsymbol\Sigma_{\boldsymbol{bb}}^{-1} (\boldsymbol{x_b} - \boldsymbol\mu_b)\text{.}\label{eq:cond_mean}
 \end{equation}
 
-It is important to note that $\boldsymbol\Sigma_{\boldsymbol{bb}}^{-1}$ in Equations \eqref{eq:cond_var} and \eqref{eq:cond_mean} signifies the inverse of the covariance matrix $\boldsymbol\Sigma_{\boldsymbol{bb}}$. Thus, the conditional variance $\sigma_{a \mid \boldsymbol{b}}^2$ essentially represents the Schur complement of $\boldsymbol\Sigma_{\boldsymbol{bb}}$ within the overall covariance matrix $\boldsymbol\Sigma$.
+The conditional variance $\sigma_{a \mid \boldsymbol{b}}^2$ essentially represents the Schur complement of $\boldsymbol\Sigma_{\boldsymbol{bb}}$ within the overall covariance matrix $\boldsymbol\Sigma$.
 
 \subsection{Gaussian Anomaly Detection}\label{AA:Anomaly}
 From a viewpoint of statistics, outliers are commonly denoted as values that significantly deviate from the mean. Under the assumption that the spatial and temporal characteristics of a system, observed over a moving window, can be suitably represented as normally distributed features, we assert that any anomaly can be identified as an outlier.
 
-From a statistical viewpoint, outliers can be denoted as values that significantly deviate from the mean. Assuming that the spatial and temporal characteristics of the system over the moving window can be encoded as normally distributed features, we can claim, that any anomaly may be detected as an outlier.
-
 In empirical fields like machine learning, the three-sigma rule ($3\sigma$) provides a framework for characterizing the region of a distribution within which normal values are expected to fall with high confidence. This rule renders approximately 0.265\% of values in the distribution as anomalous.
 
-The \(3\sigma\) rule establishes the probability that any sample \(x_a\) of a random vector \({X}\) lies within a given CDF over a semi-closed interval as the distance from the conditional mean \(\mu_{a \mid \boldsymbol{b}} \) of 3 conditional variances \(\sigma_{a \mid \boldsymbol{b}}^2\) and gives an approximate value of $q$ as
+The \(3\sigma\) rule establishes the probability that any sample \(x_a\) of a random vector \({X}\) falls within a given CDF over a semi-closed interval as the distance from the conditional mean \(\mu_{a \mid \boldsymbol{b}} \) of 3 conditional variances \(\sigma_{a \mid \boldsymbol{b}}^2\) and gives an approximate value of $q$ as
 \begin{equation}
 q=P\{|x_a-\mu_{a \mid \boldsymbol{b}} |<3\sigma_{a \mid \boldsymbol{b}}^2\}=0.99735
 \text{.}\label{eq:q}
@@ -189,11 +143,12 @@ for the lower limit, and
 {\ui{x}{u}} = F((P\{|x_a-\mu_{a \mid \boldsymbol{b}}|<3\sigma_{a \mid \boldsymbol{b}}^2\}); \mu_{a \mid \boldsymbol{b}}, \sigma_{a \mid \boldsymbol{b}}^2)^{-1}\text{,}\label{eq:thresh_high}
 \end{equation}
 
-for the upper limit. These lower and upper limits together form vectors $\boldsymbol{\ui{x}{l}}$ and $\boldsymbol{\ui{x}{u}}$, respectively, defining the region of normal system operation. This region is conceptualized as a hypercube in the feature space, with each dimension bounded by the corresponding feature limits, as computed using Equations \eqref{eq:thresh_low} and \eqref{eq:thresh_high} for all $a = 1,...,k;~ \boldsymbol{b} = \{1, 2, \ldots, k\}$ where $a \notin \boldsymbol{b}$.
-
-Such threshold is computed for each feature of the system, resulting in a vector of lower and upper limits. The vector of limits is used to define the region of normal operation of the system. The region is defined as a hypercube in the feature space, where each dimension is defined by the limits of the corresponding feature.
+for the upper limit. These lower and upper limits together form vectors $\boldsymbol{\ui{x}{l}}$ and $\boldsymbol{\ui{x}{u}}$, respectively, defining the region of normal system operation. This region is conceptualized as a hypercube in the feature space, with each dimension bounded by the corresponding feature limits, as computed using Equations \eqref{eq:thresh_low} and \eqref{eq:thresh_high} for all $a = 1,...,k;~ \boldsymbol{b} = \{1, 2, \ldots, k\}$ where $a \notin \boldsymbol{b}$. The approximation of a confidence ellipse as a hypercube can be employed to represent the region of normal system operation for individual variables of a multivariate system, rendering it as an aid for visual representation.
 
 The predicted state of the system, denoted as $y_i$, and the normality of signals $\uis{\boldsymbol{y}}{s}{i}$ at time $i$ are determined based on the maximum distance of observations from the center of the probabilistic density. The center of the probabilistic density corresponds to the vector of conditional means $\mu_{a \mid \boldsymbol{b}}$ with respect to other features. The calculation of this distance involves the cumulative distribution function (CDF) of observations and conditional distributions, as  follows:
+
+% https://stats.stackexchange.com/questions/186402/expressing-conditional-covariance-matrix-in-terms-of-covariance-matrix
+
 \begin{equation}
  {F(x_a; \mu_{a \mid \boldsymbol{b}}, \sigma_{a \mid \boldsymbol{b}}^2)}:a = 1,...,k;~ \boldsymbol{b} = \{1, 2, \ldots, k\} \text{ where }a \notin \boldsymbol{b} \text{.}\label{eq:max_score}
 \end{equation}
@@ -228,6 +183,8 @@ For the overall abnormality of the system, any anomaly in signals $\uis{\boldsym
 defining the discrimination boundary between system operation where $y_i = 0$ indicates normal system operation, and $y_i = 1$ indicates anomalous operation.
 
 \subsection{Anomaly Definition}\label{AA:AnomalyDefinition}
+This subsection provides an overview of the definition of anomalies in data analysis and their categorization, setting convention for this paper.
+
 In the realm of data analysis, anomalies are conspicuous deviations from the anticipated patterns within a dataset. Traditionally, the task of anomaly detection has relied upon unsupervised methodologies, wherein the identification of "outliers" entails the comparison of data points in both temporal and spatial contexts. This approach, often referred to as point-wise anomaly detection, classifies a data point as an anomaly when it exhibits significant dissimilarity from its neighboring data points (\cite{IGLESIASVAZQUEZ2023120994}).
 
 The concept of point anomalies, influenced by factors such as temporal and spatial aspects, can be further categorized into conditional and contextual anomalies (\cite{Ruff2021}).
