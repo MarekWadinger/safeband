@@ -209,6 +209,8 @@ def plot_anomaly_bars(args, colors, axs):
         if isinstance(a, pd.Series):
             ax: plt.Axes = axs[-i]
             a = a.astype(int).diff()
+            if a[a != 0].iloc[-1] == 1:
+                a[-1] = -1
             for s_idx, (x0, x1) in enumerate(
                     zip(a[a == 1].index, a[a == -1].index)):
                 ax.axvspan(x0, x1, color=colors[i], alpha=1,
