@@ -3,26 +3,63 @@ This section provides a benchmark and two case studies that showcase the effecti
 The case studies were realized using Python 3.10.1 on a machine employing an 8-core Apple M1 CPU and 8 GB RAM.
 
 \subsection{Benchmark}\label{AA:Benchmark}
-In this subsection, we compare the proposed method with adaptive unsupervised detection methods without an interpretability layer. Two of the well-established methods, providing iterative learning capabilities over multivariate time-series data are One-Class Support Vector Machine (OC-SVM) and Half Spaced Trees (HS-Trees). Both methods represent the backbone of multiple state-of-the-art methods for cases of anomaly detection on dynamic system data, with a brief list of recent applications in Introduction \ref{par:validation}. Comparison is conducted on real benchmarking data, annotated with labels of whether the observation was anomalous or normal. The dataset of Skoltech Anomaly Benchmark (SKAB) \cite{skab2020} is used for this purpose, as no established benchmarking multivariate data were found regarding energy storage systems. It represents a combination of experiments with the behavior of rotor imbalance as a subject to various functions introduced to control action as well as slow and sudden changes in the amount of water in the circuit. The system is described by 8 features. The data were preprocessed according to best practices for the given method, namely: standard scaling for OC-SVM, normalization for HS-Trees, while no scaling was required by our  proposed method. The optimal quantile threshold value for both reference methods is found using Bayesian Optimization. Due to no further knowledge about the process, the parameters of the proposed method were optimized using Bayesian Optimization as well. Results are provided within Table \ref{tab:perf_comp}, evaluating F1 score, Recall and Precision. A value of 100\% at each metric represents a perfect detection. The latency represents the average computation time per sample of the pipeline including training and data preprocessing.
+In this subsection, we compare the proposed method with adaptive unsupervised detection methods without an interpretability layer. Two of the well-established methods, providing iterative learning capabilities over multivariate time-series data are One-Class Support Vector Machine (OC-SVM) and Half Spaced Trees (HS-Trees). Both methods represent the backbone of multiple state-of-the-art methods for cases of anomaly detection on dynamic system data, as we brief listed in Introduction \ref{par:validation}.
+
+Comparison is conducted on real benchmarking data, annotated with labels of whether the observation was anomalous or normal. The dataset of Skoltech Anomaly Benchmark (SKAB) \cite{skab2020} is used for this purpose, as no established benchmarking multivariate data were found regarding energy storage systems. It represents a combination of experiments with the behavior of rotor imbalance as a subject to various functions introduced to control action as well as slow and sudden changes in the amount of water in the circuit. The system is described by 8 features and conveys slow and sudden drifts.
+
+The data were preprocessed according to best practices for the given method, namely: standard scaling for OC-SVM, normalization for HS-Trees, while no scaling was required by our proposed method. Preprocessing is performed online as it would be in the production environment, with running mean and variance used in online standard scaler, while normalization employs running peak-to-peak distance. As stated in the employed library for the online machine learning river, such processing has no detrimental effect on performance in the long run (\cite{Montiel2021})
+
+The optimal hyperparameters for both reference methods is found using Bayesian Optimization. Due to no further knowledge about the data generating process, and equity in benchmark, the hyperparameters of our proposed method were optimized using Bayesian Optimization as well. 20 steps of random exploration with 100 iterations of Bayesian Optimization were used, increasing default values set in the Bayesian Optimization library (\cite{Nogueira2014}).
+
+The hyperparameters are optimized with F1 score as cost function first, to maximize both precision and recall on anomalous samples. Second, the hyperparameters are optimized with macro F1 score, as it considers performance on both anomalous samples as well as normal samples equally. Therefore, the performance is not indifferent towars type I. errors, false alarms due to wrong detection of normal data as anomalies.
+
+As adaptation is required and anticipated within benchmark datasets, the performance is evaluated iteratively, similarly to the operation after deployment. The metric is updated with each new sample and its final value used to drive Bayesian Optimization. The performance is evaluated using the best performing model, found by Bayesian Optimization. The performance of the proposed method is evaluated on the same data.
+
+Hyperparameter search ranges were specified regardless of the data domain. The ranges in both cases of OC-SVM and HS-Trees were centered around the default values of the library. The ranges for the proposed method were set arbitrarily wide, to allow the Bayesian Optimization to explore the space of hyperparameters. Values of quantile filter threshold were aligned with the threshold used in our proposed method. The ranges are provided in Table \ref{tab:hyperparam_ranges}.
+
+\begin{table}[ht]
+\centering
+\caption{Hyperparameter Ranges for Detection Algorithms}
+\label{tab:hyperparam_ranges}
+\begin{tabular}{|l|l|c|c|}
+\hline
+\textbf{Algorithm} & \textbf{Hyperparameters} & \textbf{Default} & \textbf{Ranges} \\
+\hline
+AIM &
+\begin{tabular}[c]{@{}l@{}}Threshold\\$t_e$\\$t_a$\\Grace Period\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}0.99735\\-\\$t_e$\\$t_e$\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}(0.85, 0.99993)\\(150, 500)\\(50, 1000)\\(50, 1000)\end{tabular} \\
+\hline
+OC-SVM &
+\begin{tabular}[c]{@{}l@{}}Threshold\\Learning Rate\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}-\\0.01\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}(0.85, 0.99993)\\(0.005, 0.02)\end{tabular} \\
+\hline
+HS-Trees &
+\begin{tabular}[c]{@{}l@{}}Threshold\\N Trees\\Max Height\\Window Size\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}-\\10\\8\\250\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}(0.85, 0.99993)\\(5, 15)\\(6, 10)\\(200, 300)\end{tabular} \\
+\hline
+\end{tabular}
+\end{table}
+
+
+The results are provided in Table \ref{tab:perf_comp}, evaluating F1 score, Recall and Precision. A value of 100\% at each metric represents a perfect detection. The latency represents the average computation time per sample of the pipeline including training and data preprocessing.
 
 \begin{table}[htbp]
- \caption{Metrics evaluation on SKAB dataset}
- \begin{center}
- \label{tab:perf_comp}
- \begin{tabular}{|c|c|c|c|c|}
- \hline
- Metric & AID & OC-SVM & HS-Trees \\
- \hline
- F1 [$\%$] & $\boldsymbol{48.70}$ & 44.42 & 34.10 \\
- \hline
- Recall [$\%$] & 49.90 & $\boldsymbol{56.67}$ & 32.57 \\
- \hline
- Precision [$\%$] & $\boldsymbol{47.56}$ & 36.52 & 35.77 \\
- \hline
- Avg. Latency [ms] & 1.55 & 0.44 & $\boldsymbol{0.21}$ \\
- \hline
- \end{tabular}
- \end{center}
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+    \hline
+    \textbf{Algorithm} & F1 [$\%$] & Recall [$\%$] & Precision [$\%$] & Avg. Latency [ms] \\
+    \hline
+    AID & $\boldsymbol{48.70}$ & 49.90 & $\boldsymbol{47.56}$ & 1.55 \\
+    \hline
+    OC-SVM & 44.42 & $\boldsymbol{56.67}$ & 36.52 & 0.44 \\
+    \hline
+    HS-Trees & 34.10 & 32.57 & 35.77 & $\boldsymbol{0.21}$ \\
+    \hline
+\end{tabular}
+\end{center}
 \end{table}
 
 The results in Table \ref{tab:perf_comp} suggest, that our algorithm provides slightly better performance than reference methods. Based on the Scoreboard for various algorithms on SKAB's Kaggle page, our iterative approach performs comparably to the evaluated batch-trained model. Such a model has all the training data available before prediction unlike ours, evaluating the metrics iteratively on a streamed dataset.
@@ -39,7 +76,7 @@ The industrial partner provided a physical model of the battery cell temperature
  &- (\ui{V}{b,max} \ui{q}{fan} \ui{V}{c,max} \ui{q}{circ.fan}) \rho \ui{c}{p} \uis{T}{bat}{i}) / (\ui{m}{bat} \ui{c}{p,b}) \nonumber
 \end{align}
 
-When combined with an averaged measurement of battery cell temperature, we could compute the difference between real and predicted temperature. Such deviation can be useful in detecting unexpected patterns in temperature. Nevertheless, it may be inaccurate as the physical model is simplified and does not account for spatial aspects, like temperature gradients as well as different dynamic effects of charging and discharging on temperature. Therefore, the raw measured temperature is used as well.
+When combined with an averaged measurement of battery cell temperature, we could compute the difference between real and predicted temperature. Such deviation can be useful in detecting unexpected patterns in temperature. Nevertheless, it may be inaccurate as the physical model is simplified and does not account for spatial aspects, like temperature gradients as well as different dynamic effects of charging and discharging on temperature. For instance, in Fig. \ref{fig:bess} mainly during the grace period we see, that the dynamics of cooling is not captured well, resulting in subtle positive difference between average cell temperature and the temperature predicted by the model. Therefore, the raw measured temperature is used as well.
 The deviation between demanded power and delivered power was used to aid the identification of the state, as the increased difference might be related to other unexpected and novel patterns.
 
 \begin{figure}[htbp]
@@ -48,11 +85,13 @@ The deviation between demanded power and delivered power was used to aid the ide
 \label{fig:bess}
 \end{figure}
 
-Fig. \ref{fig:bess} depicts the operation of the BESS over March 2022. Multiple events of anomalous behavior happened within this period, confirmed by the operators, that are observable through a sudden or significant shift in measurements in a given period. As the first step, the detection mechanism was initialized, following the provided guidelines for parameter selection in Subsection \ref{init}. The expiration period was set to $\ui{t}{e} = 7$ days, due to the weekly seasonality of human behavior impacting battery usage. The threshold was kept at default value $T = 0.99735$. A grace period, during which the model learns from both normal and anomalous data (though normal are expected, yet not required here), is shortened to 2.5 days to observe the effect of BESS calibration happening on 3\textsuperscript{rd} day from deployment.
+Fig. \ref{fig:bess} depicts the operation of the BESS over March 2022. Multiple events of anomalous behavior happened within this period, confirmed by the operators, that are observable through a sudden or significant shift in measurements in a given period. As the first step, the detection mechanism was initialized, following the provided guidelines for parameter selection in Subsection \ref{init}. The expiration period was set to $\ui{t}{e} = 7$ days, due to the weekly seasonality of human behavior impacting battery usage. The threshold was kept at default value $T = 0.99735$. A grace period, during which the model learns from both normal and anomalous data (though normal are expected, yet not required here), is shortened to 2.5 days to observe detectors reaction to the effect of tests performed on BESS happening on 3\textsuperscript{rd} day from deployment of the system.
 
-The deployment and operation of the anomaly detection system were successful as shown by its adaptation of changepoint on 7\textsuperscript{th} March 2022 that appeared due to the relocation of the battery storage system outdoors. The model was adapted online based on Subsection \ref{train}. The sudden shift in environmental conditions, due to the transfer of the system to outside changed the dynamics of the system's temperature. However, new behavior was adopted by the top-level anomaly isolation system within five days, reducing potential false alerts afterward, by observably shifting the conditional mean to lower temperatures. Perhaps more interesting are the alerted changepoints.
+As changepoint adaptation in presence of anomalies follows \eqref{eq:condition}, the tests on 3\textsuperscript{rd} day triggered adaptation, resulting in increased variance of distribution concerning Average Cell Temperature. The increased variance is observable in the light red area, loosening the region of normal operation.
 
-Calibration of the BESS, usually observed as deviations of setpoint from real power demand and multiple peaks in temperature was captured as well.
+The deployment and operation of the anomaly detection system demonstrate adaptation to changepoint on 7\textsuperscript{th} March 2022 that appeared due to the relocation of the battery storage system outdoors. The model adapted online due to 7 day window spcified by $\ui{t}{e}$. The sudden shift in environmental conditions, due to the transfer of the system to outside changed the dynamics of the system's temperature. The shift was subtle and the absolute temperature did not trigger alarm. On the other hand, However, new behavior was adopted by the AID framework within five days, reducing potential false alerts afterward, by observably shifting the conditional mean to lower temperatures. Perhaps more interesting are the alerted changepoint adaptation events.
+
+Calibration of the BESS, usually observed as deviations of setpoint from real power demand and multiple peaks in temperature were captured as well.
 
 The system identified 6 deviations in sampling, denoted by the red bars in Fig. \ref{fig:bess}. 4 anomalies with shorter duration represented packet loss. The prolonged anomaly was notified during the transfer of the battery pack. The longest dropout observed happened across 20\textsuperscript{th} March up to 21\textsuperscript{st}. Unexpectedly, the change point detection module triggered an alarm at the end of the loss, resulting in adaptation and a sharp shift in drawn limits for Power Setpoint Deviation. Red dots represent anomalies at the signal level given by equation \eqref{eq:anomaly_signal}. The dynamic signal limits are surpassed in one or multiple signals during the system's anomalies. The root cause isolation allows the pairing of anomalies with specific features. Conditional probability, against which the anomalies are evaluated allows consideration of signal relationships within individual limits.
 
