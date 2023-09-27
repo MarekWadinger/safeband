@@ -354,7 +354,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         if self.protect_anomaly_detector:
             if t_a:
                 self.t_a: int = t_a
-                self.buffer = collections.deque(maxlen=self.t_a)
+                self.buffer = collections.deque(maxlen=round(self.t_a))
             else:
                 raise ValueError("When protect_anomaly_detector == True, "
                                  "t_a must be integer specifying adaptation "
@@ -411,6 +411,14 @@ class ConditionalGaussianScorer(GaussianScorer):
         else:
             return 0.5, None
 
+    def _drift_detected(self):
+        len_ = len(self.buffer)
+        if len_ > 0:
+            # return sum(self.buffer) / len_ > 1 - self.alpha
+            return (sum(self.buffer) / len_ > (1 - self.threshold))
+        else:
+            return 0
+
     def get_root_cause(self):
         return self.root_cause
 
@@ -418,8 +426,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         if self.protect_anomaly_detector:
             is_anomaly = self.predict_one(x)
             self.buffer.append(is_anomaly)
-            is_change = (sum(self.buffer) / len(self.buffer) >
-                         (1 - self.threshold))
+            is_change = self._drift_detected()
             if not is_anomaly or is_change:
                 super().learn_one(x, **learn_kwargs)
         else:
