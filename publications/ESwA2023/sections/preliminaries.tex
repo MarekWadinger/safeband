@@ -42,7 +42,7 @@ Finally, the unbiased variance follows the formula:
 s^2_{n-1} = \frac{S_{n-1}}{n-2}\text{.}\label{eq:revvar}
 \end{equation}
 
-Notably, inversion allows the algorithm to keep constant rate of adaptation at cost of storing a bounded data buffer.
+Notably, inversion allows the algorithm to keep a constant rate of adaptation at the cost of storing a bounded data buffer.
 
 \subsection{Statistical Model of Multivariate System}\label{AA:Distribution}
 Multivariate normal distribution generalizes the multivariate systems to the model where the degree to which variables are related is represented by the covariance matrix. Gaussian normal distribution of variables is a reasonable assumption for process measurements, as it is a common distribution that arises from stable physical processes measured with noise (\cite{Mishra201831}). The general notation of multivariate normal distribution is:
@@ -106,7 +106,7 @@ Subsequently, we can derive the conditional distribution of any subset variable 
   X_a \mid \mathbf{X}_{\boldsymbol{b}} \sim\ \mathcal{N}(\mu_{a \mid \boldsymbol{b}},\, \sigma_{a \mid \boldsymbol{b}}^2)\text{.}\label{eq:cond_distribution}
 \end{equation}
 
-where $\mu_{a \mid \boldsymbol{b}}$ denotes the conditional mean and $\sigma_{a \mid \boldsymbol{b}}^2$ represents the conditional variance. These crucial parameters can be computed applying the Schur complement as follows:
+where $\mu_{a \mid \boldsymbol{b}}$ denotes the conditional mean and $\sigma_{a \mid \boldsymbol{b}}^2$ represents the conditional variance. These crucial parameters can be computed by applying the Schur complement as follows:
 
 \begin{equation}
   \sigma_{a \mid \boldsymbol{b}}^2 = \sigma_{aa}^2 - \boldsymbol\Sigma_{a\boldsymbol{b}} \boldsymbol\Sigma_{\boldsymbol{bb}}^{-1} \boldsymbol\Sigma_{\boldsymbol{b}a}\text{,}\label{eq:cond_var}
@@ -183,7 +183,7 @@ For the overall abnormality of the system, any anomaly in signals $\uis{\boldsym
 defining the discrimination boundary between system operation where $y_i = 0$ indicates normal system operation, and $y_i = 1$ indicates anomalous operation.
 
 \subsection{Anomaly Definition}\label{AA:AnomalyDefinition}
-This subsection provides an overview of the definition of anomalies in data analysis and their categorization, setting convention for this paper.
+This subsection provides an overview of the definition of anomalies in data analysis and their categorization, setting conventions for this paper.
 
 In the realm of data analysis, anomalies are conspicuous deviations from the anticipated patterns within a dataset. Traditionally, the task of anomaly detection has relied upon unsupervised methodologies, wherein the identification of "outliers" entails the comparison of data points in both temporal and spatial contexts. This approach, often referred to as point-wise anomaly detection, classifies a data point as an anomaly when it exhibits significant dissimilarity from its neighboring data points (\cite{IGLESIASVAZQUEZ2023120994}).
 
