@@ -1,8 +1,9 @@
 import textwrap
 
 from datetime import timedelta
-from typing import Union
+from typing import Literal, Union
 
+import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -36,7 +37,10 @@ formatter = mdates.ConciseDateFormatter(
     offset_formats=['', '%Y', '', '', '', '%Y-%b-%d %H:%M'])
 
 
-def set_size(width=307.28987, fraction=1, subplots=(1, 1)):
+def set_size(
+        width: Union[float, int, Literal['thesis', 'beamer']] = 307.28987,
+        fraction=1,
+        subplots=(1, 1)):
     """Set figure dimensions to avoid scaling in LaTeX.
 
     Parameters
@@ -209,6 +213,9 @@ def plot_anomaly_bars(args, colors, axs):
         if isinstance(a, pd.Series):
             ax: plt.Axes = axs[-i]
             a = a.astype(int).diff()
+            # Since zero is nan
+            if a[a != 0].iloc[1] == -1:
+                a[1] = 1
             if a[a != 0].iloc[-1] == 1:
                 a[-1] = -1
             for s_idx, (x0, x1) in enumerate(
@@ -250,18 +257,22 @@ def plot_limits_grid_(
             n_bar_plots += 1
 
     fig, axs = plt.subplots(
-        nrows=n_rows+n_bar_plots, ncols=1,
-        figsize=set_size('thesis', subplots=((n_rows+n_bar_plots)/6, 1)),
+        nrows=int(n_rows+n_bar_plots), ncols=1,
+        figsize=set_size(
+            'thesis',
+            subplots=((n_rows+n_bar_plots*0.2)/2.3, 1)),  # Kokam divide by 3.5
         sharex='col', sharey='row',
         gridspec_kw={
-            # 'width_ratios': [3, 1],
             'height_ratios': [*(n_rows*[1]), *(n_bar_plots*[0.2])],
             }
         )
+    if isinstance(axs, plt.Axes):
+        axs = np.array([axs])
+    else:
+        axs = axs.T.flatten()
 
-    axs = axs.T.flatten()
-    fig.subplots_adjust(left=0.05, bottom=0.08, right=0.85, top=0.95)
-    fig.subplots_adjust(hspace=0.15)
+    fig.subplots_adjust(
+        left=0.05, bottom=0.1, right=0.85, top=0.95, hspace=0.15)
 
     for i, col_name in enumerate(df.columns):
         ser: pd.Series[float] = df[col_name]
@@ -274,38 +285,100 @@ def plot_limits_grid_(
         ax: plt.Axes = axs[i]
         ax.plot(ser_,
                 linewidth=0.7, label='Signal')
-        if kwargs.get('grace_period'):
-            ax.axvspan(
-                ser.index[0],  # type: ignore
-                ser.index[int(kwargs['grace_period'])],  # type: ignore
-                color='0.8', alpha=0.9, label='Grace Period')
         set_axis_style(ax, ser, ylabel=col_name)
-        if signal_anomaly is not None:
-            a = signal_anomaly.apply(lambda x: x[col_name])
-            ax.scatter(ser[a].index, ser[a],
-                       color=colors[3], s=3, label='Signal Anomalies')
         ser_high_ = ser_high.apply(
             lambda x: x[col_name]) if ser_high is not None else None
         ser_low_ = ser_low.apply(
             lambda x: x[col_name]) if ser_low is not None else None
 
         if ser_high_ is not None and ser_low_ is not None:
-            ax.fill_between(ser_high_.index, ser_high_, ser.max(),
-                            label=r'Limits',
+            ax.fill_between(ser_high_.index, ser_high_, max(ser.max(), 1),
+                            label='Limits',
                             color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.25),
                             linestyle="-", linewidth=0.7,)
-            ax.fill_between(ser_low_.index, ser_low_, ser.min(),
+            ax.fill_between(ser_low_.index, ser_low_, min(ser.min(), 0),
                             color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.25),
                             linestyle="-", linewidth=0.7,)
+        if signal_anomaly is not None:
+            a = signal_anomaly.apply(lambda x: x[col_name])
+            ax.scatter(ser[a].index, ser[a],
+                       color=colors[3], s=3, label='Signal Anomalies')
+        if kwargs.get('grace_period'):
+            ax.axvspan(
+                ser.index[0],  # type: ignore
+                ser.index[int(kwargs['grace_period'])],  # type: ignore
+                color='0.8', alpha=0.9, label='Grace Period')
 
         ax.tick_params(axis='both', which='major', labelsize=8)
 
+        # Kokam module - 1st case study - second
+        # if a['2023-08-23 16:00':'2023-08-23 18:00'].any():
+        #     axins1 = ax.inset_axes(
+        #         [0.45, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[])
+        #     axins1.plot(ser_['2023-08-23 16:00':'2023-08-23 18:00'])
+        #     axins1.scatter(
+        #         ser[a]['2023-08-23 16:00':'2023-08-23 18:00'].index,
+        #         ser[a]['2023-08-23 16:00':'2023-08-23 18:00'],
+        #         color=colors[3], s=3, label='Signal Anomalies',
+        #         zorder=2)
+        #     axins1.grid(False)
+        #     ax.indicate_inset_zoom(axins1, edgecolor="black")
+        # if a['2023-08-24 17:00':'2023-08-24 20:00'].any():
+        #     axins1 = ax.inset_axes(
+        #         [0.8, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[])
+        #     axins1.plot(ser_['2023-08-24 17:00':'2023-08-24 20:00'])
+        #     axins1.scatter(
+        #             ser[a]['2023-08-24 17:00':'2023-08-24 20:00'].index,
+        #             ser[a]['2023-08-24 17:00':'2023-08-24 20:00'],
+        #                 color=colors[3], s=3, label='Signal Anomalies',
+        #                 zorder=2)
+        #     axins1.grid(False)
+        #     ax.indicate_inset_zoom(axins1, edgecolor="black")
+
+        # # Kokam module - 2nd case study - second
+        # if a['2023-08-27 01:00':'2023-08-27 06:00'].any():
+        #     axins1 = ax.inset_axes(
+        #         [0.2, 0.6, 0.20, 0.40], xticklabels=[], yticklabels=[])
+        #     axins1.plot(ser_['2023-08-27 01:00':'2023-08-27 06:00'])
+        #     axins1.scatter(
+        #         ser[a]['2023-08-27 01:00':'2023-08-27 06:00'].index,
+        #         ser[a]['2023-08-27 01:00':'2023-08-27 06:00'],
+        #         color=colors[3], s=3, label='Signal Anomalies',
+        #         zorder=2)
+        #     axins1.grid(False)
+        #     ax.indicate_inset_zoom(axins1, edgecolor="black")
+        # if a['2023-08-28 03:00':'2023-08-28 05:00'].any():
+        #     axins1 = ax.inset_axes(
+        #         [0.7, 0.6, 0.20, 0.40], xticklabels=[], yticklabels=[])
+        #     axins1.plot(ser_['2023-08-28 03:00':'2023-08-28 05:00'])
+        #     axins1.scatter(
+        #             ser[a]['2023-08-28 03:00':'2023-08-28 05:00'].index,
+        #             ser[a]['2023-08-28 03:00':'2023-08-28 05:00'],
+        #                 color=colors[3], s=3, label='Signal Anomalies',
+        #                 zorder=2)
+        #     axins1.grid(False)
+        #     ax.indicate_inset_zoom(axins1, edgecolor="black")
+
     plot_anomaly_bars(args, colors, axs)
+
+    # # TERRA - 1st case study
+    # axins1 = axs[0].inset_axes(
+    #     [0.05, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[])
+    # axins1.plot(ser_['2022-03-06 14:00':'2022-03-06 15:00'])
+    # axins1.grid(False)
+    # axs[0].indicate_inset_zoom(axins1, edgecolor="black")
+    # axins1 = axs[0].inset_axes(
+    #     [0.6, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[])
+    # axins1.plot(ser_['2022-03-12 21:00':'2022-03-12 22:00'])
+    # axins1.grid(False)
+    # axs[0].indicate_inset_zoom(axins1, edgecolor="black")
 
     axs[0].legend(bbox_to_anchor=(0., 1.05, 1., .102),
                   loc='lower left', ncols=4, mode="expand", borderaxespad=0.)
 
     axs[-1].tick_params(axis='x', labelrotation=50, labelsize=8)
+
+    fig.tight_layout()
 
     if save:
         plt.savefig(f"plots/{file_name}_thresh.pdf")
