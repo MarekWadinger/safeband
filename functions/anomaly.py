@@ -415,7 +415,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         len_ = len(self.buffer)
         if len_ > 0:
             # return sum(self.buffer) / len_ > 1 - self.alpha
-            return (sum(self.buffer) / len_ > (1 - self.threshold))
+            return (sum(self.buffer) / len_ > (self.threshold))
         else:
             return 0
 
