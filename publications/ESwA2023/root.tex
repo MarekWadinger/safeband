@@ -74,44 +74,29 @@
 %% use the cortext command for theassociated footnote;
 %% use the ead command for the email address,
 %% and the form \ead[url] for the home page:
-\title{Adaptable and Interpretable Framework for Anomaly Detection in SCADA-based IoT Systems}  % \tnoteref{label1}}
-%% \tnotetext[label1]{}
-\author[aff1,aff2]{Marek Wadinger\corref{cor1}}  % \fnref{label2}}
+\title{Adaptable and Interpretable Framework for Anomaly Detection in SCADA-based IoT Systems}
+
+\author[aff1,aff2]{Marek Wadinger\corref{cor1}}
 \ead{marek.wadinger@stuba.sk}
+\cortext[cor1]{\textit{Phone numbers:} +421 902 810 324 (Marek Wadinger)}
 % TODO: Center the tilde vertically
-\ead[url]{uiam.sk/~wadinger}
-%% \fntext[label2]{}
-\affiliation[aff1]{organization={Institute of Information Engineering, Automation and Mathematics, Slovak University of Technology in Bratislava},
-    % addressline={Radlinskeho 9},
-    % city={Bratislava},
-    % postcode={812 37},
-    % state={Bratislava},
-    % country={Slovakia}
-}
-\affiliation[aff2]{organization={Tesla 50Hz s.r.o.}
-}
-%% \fntext[label3]{}
-
-\title{}
-
-%% use optional labels to link authors explicitly to addresses:
-%% \author[label1,label2]{}
-%% \affiliation[label1]{organization={},
-%%             addressline={},
-%%             city={},
-%%             postcode={},
-%%             state={},
-%%             country={}}
-%%
-%% \affiliation[label2]{organization={},
-%%             addressline={},
-%%             city={},
-%%             postcode={},
-%%             state={},
-%%             country={}}
+% \ead[url]{uiam.sk/~wadinger}
 
 \author[aff1,aff2]{Michal Kvasnica}
+\ead{michal.kvasnica@stuba.sk}
 
+\affiliation[aff1]{organization={Institute of Information Engineering, Automation and Mathematics, Slovak University of Technology in Bratislava},
+    addressline={Radlinskeho 9},
+    postcode={812 37},
+    state={Bratislava},
+    country={Slovakia}
+}
+\affiliation[aff2]{organization={Tesla 50Hz s.r.o.},
+    addressline={Pálenica 53/79},
+    postcode={033 17},
+    state={Liptovský Hrádok},
+    country={Slovakia}
+}
 
 \begin{abstract}
 %% Text of abstract
@@ -125,10 +110,10 @@
 
 %%Research highlights
 \begin{highlights}
-\item First interpretable anomaly detector with self-supervised adaptation
+\item Interpretable anomaly detector with self-supervised adaptation
 \item Delivers comparable performance to established general methods
 \item Isolates root cause of anomalies while considering interactions
-\item Demonstrates interpretability by providing process limits for signals
+\item Demonstrates interpretability by providing operating limits for signals
 \item Uses self-learning approach on streamed IoT data
 \end{highlights}
 
@@ -162,6 +147,22 @@ Anomaly detection \sep Root cause isolation \sep Iterative learning \sep Statist
 \label{Conclusion}
 \input{sections/conclusion.tex}
 
+\section*{Additional information}
+Our framework is openly accessible on GitHub at the following URL: \url{https://github.com/MarekWadinger/online_outlier_detection}.
+
+\section*{CRediT authorship contribution statement}
+\textbf{Marek Wadinger:} Conceptualization; Data curation; Formal analysis; Investigation; Methodology; Resources; Software; Validation; Visualization; Writing - original draft; and Writing - review \& editing. \textbf{Michal Kvasnica:} Conceptualization; Funding acquisition; Project administration; Resources; Supervision; Validation.
+
+\section*{Declaration of Competing Interest}
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\section*{Acknowledgements}
+This work was supported by the Horizon Europe [101079342]; the Slovak Research and Development Agency [APVV-20-0261]; and the Scientific Grant Agency of the Slovak Republic [1/0490/23].
+
+% HORIZON EUROPE
+% Agentúra na Podporu Výskumu a Vývoja
+% Vedecká grantová agentúra MŠVVaŠ SR a SAV
+
 %% The Appendices part is started with the command \appendix;
 %% appendix sections are then done as normal sections
 %% \appendix
@@ -174,25 +175,10 @@ Anomaly detection \sep Root cause isolation \sep Iterative learning \sep Statist
 %%       \citep{<label>} ==> [21]
 %%
 
-%% If you have bibdatabase file and want bibtex to generate the
-%% bibitems, please use
-%%
-\bibliographystyle{elsarticle-num-names}
+
+\bibliographystyle{elsarticle-harv}
 \bibliography{main}
 
-%% else use the following coding to input the bibitems directly in the
-%% TeX file.
-
-%% \begin{thebibliography}{00}
-
-%% %% \bibitem[Author(year)]{label}
-%% %% Text of bibliographic item
-
-%% \bibitem[ ()]{}
-
-%% \end{thebibliography}
 \end{document}
 
 \endinput
-%%
-%% End of file `elsarticle-template-num-names.tex'.
