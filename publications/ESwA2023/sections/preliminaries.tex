@@ -1,7 +1,7 @@
 In this section, we present the fundamental ideas that form the basis of the developed approach. Subsection \ref{AA:Welford} explains Welford's online algorithm, which can adjust distribution to changes in real-time. Subsection \ref{AA:InvWelford} proposes a two-pass implementation that can reverse the impact of expired samples. The math behind distribution modeling in Subsection \ref{AA:Distribution} establishes the foundation for the Gaussian anomaly detection model discussed in Subsection \ref{AA:Anomaly}, followed by conditional probability computation in Subsection \ref{AA:Conditional}. The last subsection of the preliminaries is devoted to the definition of anomalies.
 
 \subsection{Welford's Online Algorithm}\label{AA:Welford}
-Welford introduced a numerically stable online algorithm for calculating mean and variance in a single pass through data. Therefore, the algorithm allows the processing of IoT device measurements without the need to store their values \cite{Wel62}.
+Welford introduced a numerically stable online algorithm for calculating mean and variance in a single pass through data. Therefore, the algorithm allows the processing of IoT device measurements without the need to store their values \citep{Wel62}.
 
 Given measurement \(x_i\) where \(i=1,...,n\) is a sample index in sample population \(n\), the corrected sum of squares \(S_n\) is defined as
 \begin{equation}
@@ -45,7 +45,7 @@ s^2_{n-1} = \frac{S_{n-1}}{n-2}\text{.}\label{eq:revvar}
 Notably, inversion allows the algorithm to keep a constant rate of adaptation at the cost of storing a bounded data buffer.
 
 \subsection{Statistical Model of Multivariate System}\label{AA:Distribution}
-Multivariate normal distribution generalizes the multivariate systems to the model where the degree to which variables are related is represented by the covariance matrix. Gaussian normal distribution of variables is a reasonable assumption for process measurements, as it is a common distribution that arises from stable physical processes measured with noise (\cite{Mishra201831}). The general notation of multivariate normal distribution is:
+Multivariate normal distribution generalizes the multivariate systems to the model where the degree to which variables are related is represented by the covariance matrix. Gaussian normal distribution of variables is a reasonable assumption for process measurements, as it is a common distribution that arises from stable physical processes measured with noise \citep{Mishra201831}. The general notation of multivariate normal distribution is:
 \begin{equation}
  \mathbf{X}\ \sim\ \mathcal{N}_k(\boldsymbol\mu,\, \boldsymbol\Sigma)\text{,}\label{eq:distribution}
 \end{equation}
@@ -67,7 +67,7 @@ F(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma}) = \int_{-\infty}^{q} f(
 
 where $\text{d}\boldsymbol{x}$ denotes the integration over all $k$ dimensions of $\boldsymbol{x}$.
 
-As the equation \eqref{eq:cdf} cannot be integrated explicitly, an algorithm for numerical computation was proposed in \cite{Genz2000}.
+As the equation \eqref{eq:cdf} cannot be integrated explicitly, an algorithm for numerical computation was proposed in \citet{Genz2000}.
 
 Given the PDF, we can also determine the value of \(\boldsymbol{x}\) that corresponds to a given quantile $q$ using a numerical method for inversion of CDF (ICDF) often denoted as percent point function (PPF) or $F(\boldsymbol{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma})^{-1}$. An algorithm that calculates the value of the PPF is part of standard statistical software tools.
 
@@ -185,12 +185,12 @@ defining the discrimination boundary between system operation where $y_i = 0$ in
 \subsection{Anomaly Definition}\label{AA:AnomalyDefinition}
 This subsection provides an overview of the definition of anomalies in data analysis and their categorization, setting conventions for this paper.
 
-In the realm of data analysis, anomalies are conspicuous deviations from the anticipated patterns within a dataset. Traditionally, the task of anomaly detection has relied upon unsupervised methodologies, wherein the identification of "outliers" entails the comparison of data points in both temporal and spatial contexts. This approach, often referred to as point-wise anomaly detection, classifies a data point as an anomaly when it exhibits significant dissimilarity from its neighboring data points (\cite{IGLESIASVAZQUEZ2023120994}).
+In the realm of data analysis, anomalies are conspicuous deviations from the anticipated patterns within a dataset. Traditionally, the task of anomaly detection has relied upon unsupervised methodologies, wherein the identification of "outliers" entails the comparison of data points in both temporal and spatial contexts. This approach, often referred to as point-wise anomaly detection, classifies a data point as an anomaly when it exhibits significant dissimilarity from its neighboring data points \citep{IGLESIASVAZQUEZ2023120994}.
 
-The concept of point anomalies, influenced by factors such as temporal and spatial aspects, can be further categorized into conditional and contextual anomalies (\cite{Ruff2021}).
+The concept of point anomalies, influenced by factors such as temporal and spatial aspects, can be further categorized into conditional and contextual anomalies \citep{Ruff2021}.
 
-Nevertheless, this conventional method may not be suitable for scenarios characterized by collective anomalies, where clusters of abnormal data points coexist. A more pragmatic approach defines anomalies as deviations from established "normal" patterns, resembling the principles of semi-supervised learning. Change point detection, in a similar vein, can be regarded as a relative approach that takes into account the varying dynamics of changes, whether they occur gradually or abruptly (\cite{IGLESIASVAZQUEZ2023120994}).
+Nevertheless, this conventional method may not be suitable for scenarios characterized by collective anomalies, where clusters of abnormal data points coexist. A more pragmatic approach defines anomalies as deviations from established "normal" patterns, resembling the principles of semi-supervised learning. Change point detection, in a similar vein, can be regarded as a relative approach that takes into account the varying dynamics of changes, whether they occur gradually or abruptly \citep{IGLESIASVAZQUEZ2023120994}.
 
-It is imperative to recognize that the interpretation of anomalies, outliers, and novelties can vary upon the application. Anomalies typically garner significant attention, while outliers are often treated as undesirable noise and are typically excluded during data preprocessing. Novelties, on the other hand, signify new observations that necessitate model updates to adapt to an evolving environment (\cite{Ruff2021}).
+It is imperative to recognize that the interpretation of anomalies, outliers, and novelties can vary upon the application. Anomalies typically garner significant attention, while outliers are often treated as undesirable noise and are typically excluded during data preprocessing. Novelties, on the other hand, signify new observations that necessitate model updates to adapt to an evolving environment \citep{Ruff2021}.
 
-Notwithstanding the differences in terminology, methods employed for the identification of data points residing in low-probability regions, irrespective of whether they are referred to as "anomaly detection," "outlier detection," or "novelty detection," share fundamental similarities (\cite{IGLESIASVAZQUEZ2023120994}).
+Notwithstanding the differences in terminology, methods employed for the identification of data points residing in low-probability regions, irrespective of whether they are referred to as "anomaly detection," "outlier detection," or "novelty detection," share fundamental similarities \citep{IGLESIASVAZQUEZ2023120994}.
