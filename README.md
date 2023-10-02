@@ -26,9 +26,9 @@ The main benefits of the  solution are that it:
 * Demonstrates interpretability by providing process limits for signals
 * Provides comparable detection accuracy to established general methods
 
-![ESwA23 - Graphical Abstract]([https://github.com/MarekWadinger/online_outlier_detection/assets/50716630/68049357-9fdf-43db-8144-ef86403606ef](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/ESwA23%20-%20Graphical%20Abstract.pdf))
+![ESwA23 - Graphical Abstract](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/ESwA23%20-%20Graphical%20Abstract.pdf)
 
-![BESS_thresh]([https://github.com/MarekWadinger/online_outlier_detection/assets/50716630/6c2da80b-ee2b-46f0-8aa1-3bdace9f3229](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/TERRA_thresh_4days.pdf))
+![BESS_thresh](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/TERRA_thresh_4days.pdf)
 
 ## ⚡️ Quickstart
 
