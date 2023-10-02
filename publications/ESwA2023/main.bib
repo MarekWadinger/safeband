@@ -232,17 +232,6 @@
   abstract = {In the past decade, rapid technological advances in the fields of electronics and telecommunications have given rise to versatile, ubiquitous decentralized embedded sensor systems with ad hoc wireless networking capabilities. Typically these systems are used to gather large amounts of data, while the detection of anomalies (such as system failures, intrusion, or unanticipated behavior of the environment) in the data (or other types or processing) is performed in centralized computer systems. In spite of the great interest that it attracts, the systematic porting and analysis of centralized anomaly detection algorithms to a decentralized paradigm (compatible with the aforementioned sensor systems) has not been thoroughly addressed in the literature. We approach this task from a new angle, assessing the viability of localized (in-node) anomaly detection based on machine learning. The main challenges we address are: (1) deploying decentralized, automated, online learning, anomaly detection algorithms within the stringent constraints of typical embedded systems; and (2) evaluating the performance of such algorithms and comparing them with that of centralized ones. To this end, we first analyze (and port) single and multi-dimensional input classifiers that are trained incrementally online and whose computational requirements are compatible with the limitations of embedded platforms. Next, we combine multiple classifiers in a single online ensemble. Then, using both synthetic and real-world datasets from different application domains, we extensively evaluate the anomaly detection performance of our algorithms and ensemble, in terms of precision and recall, and compare it to that of well-known offline, centralized machine learning algorithms. Our results show that the ensemble performs better than each individual decentralized classifier and that it can match the performance of the offline alternatives, thus showing that our approach is a viable solution to detect anomalies, even in environments with little a priori knowledge.}
 }
 
-@misc{Ahmad2016,
-  doi       = {10.48550/ARXIV.1607.02480},
-  url       = {https://arxiv.org/abs/1607.02480},
-  author    = {Ahmad, Subutai and Purdy, Scott},
-  keywords  = {Artificial Intelligence (cs.AI), Distributed, Parallel, and Cluster Computing (cs.DC), Systems and Control (eess.SY), FOS: Computer and information sciences, FOS: Computer and information sciences, FOS: Electrical engineering, electronic engineering, information engineering, FOS: Electrical engineering, electronic engineering, information engineering},
-  title     = {Real-Time Anomaly Detection for Streaming Analytics},
-  publisher = {arXiv},
-  year      = {2016},
-  copyright = {Creative Commons Attribution 4.0 International}
-}
-
 @inproceedings{Carletti2019,
   author    = {Carletti, Mattia and Masiero, Chiara and Beghi, Alessandro and Susto, Gian Antonio},
   booktitle = {2019 IEEE International Conference on Systems, Man and Cybernetics (SMC)},
@@ -593,16 +582,6 @@
   doi     = {10.1080/10618600.1992.10477010}
 }
 
-@book{Brent72,
-  address   = {Englewood Cliffs, N.J},
-  title     = {Algorithms for minimization without derivatives},
-  url       = {https://openlibrary.org/books/OL4739237M/Algorithms_for_minimization_without_derivatives},
-  journal   = {The Open Library},
-  publisher = {Prentice-Hall},
-  author    = {Brent, R. P.},
-  year      = {1972}
-}
-
 @article{IGLESIASVAZQUEZ2023120994,
   title    = {Anomaly detection in streaming data: A comparison and evaluation study},
   journal  = {Expert Systems with Applications},
@@ -633,14 +612,23 @@
 }
 
 @article{Gama2014,
-  author  = {Gama, João and Žliobaitė, Indrė and Bifet, Albert and Pechenizkiy, Mykola and Bouchachia, Hamid},
-  year    = {2014},
-  month   = {04},
-  pages   = {},
-  title   = {A Survey on Concept Drift Adaptation},
-  volume  = {46},
-  journal = {ACM Computing Surveys (CSUR)},
-  doi     = {10.1145/2523813}
+  author     = {Gama, Jo\~{a}o and \v{Z}liobaitundefined, Indrundefined and Bifet, Albert and Pechenizkiy, Mykola and Bouchachia, Abdelhamid},
+  title      = {A Survey on Concept Drift Adaptation},
+  year       = {2014},
+  issue_date = {April 2014},
+  publisher  = {Association for Computing Machinery},
+  address    = {New York, NY, USA},
+  volume     = {46},
+  number     = {4},
+  issn       = {0360-0300},
+  url        = {https://doi.org/10.1145/2523813},
+  doi        = {10.1145/2523813},
+  abstract   = {Concept drift primarily refers to an online supervised learning scenario when the relation between the input data and the target variable changes over time. Assuming a general knowledge of supervised learning in this article, we characterize adaptive learning processes; categorize existing strategies for handling concept drift; overview the most representative, distinct, and popular techniques and algorithms; discuss evaluation methodology of adaptive algorithms; and present a set of illustrative applications. The survey covers the different facets of concept drift in an integrated way to reflect on the existing scattered state of the art. Thus, it aims at providing a comprehensive introduction to the concept drift adaptation for researchers, industry analysts, and practitioners.},
+  journal    = {ACM Comput. Surv.},
+  month      = {mar},
+  articleno  = {44},
+  numpages   = {37},
+  keywords   = {change detection, adaptive learning, data streams, Concept drift}
 }
 
 @article{Ahmad2017134,
@@ -683,43 +671,4 @@
   title  = {{Bayesian Optimization}: Open source constrained global optimization tool for {Python}},
   year   = {2014},
   url    = { https://github.com/fmfn/BayesianOptimization}
-}
-
-@article{Lai2021,
-  title   = {TODS: An Automated Time Series Outlier Detection System},
-  volume  = {35},
-  number  = {18},
-  journal = {Proceedings of the AAAI Conference on Artificial Intelligence},
-  author  = {Lai, Kwei-Herng and Zha, Daochen and Wang, Guanchu and Xu, Junjie and Zhao, Yue and Kumar, Devesh and Chen, Yile and Zumkhawaka, Purav and Wan, Minyang and Martinez, Diego and Hu, Xia},
-  year    = {2021},
-  month   = {May},
-  pages   = {16060-16062}
-}
-
-@inproceedings{WadingerPC,
-  author    = {Marek Wadinger and Michal Kvasnica},
-  title     = {Real-Time Outlier Detection with Dynamic Process Limits},
-  booktitle = {Proceedings of the 2023 24th International Conference on Process Control (PC)},
-  year      = {2023},
-  url       = {https://arxiv.org/abs/2301.13527},
-  note      = {Preprint version}
-}
-
-@inproceedings{WadingerSVK,
-  author    = {Marek Wadinger},
-  title     = {Story of Solar Panel no. 1.6.7 - Practical approach to anomaly detection},
-  booktitle = {Proceedings of 23rd Slovak Student Scientific Conference, Chemistry and Technologies for Life},
-  isbn      = {978-80-8208-064-6},
-  pages     = {360-361},
-  year      = {2021},
-  numpages  = {2},
-  location  = {Bratislava, Slovakia},
-  url       = {https://www.uiam.sk/assets/fileAccess.php?id=2489&type=1}
-}
-
-@misc{WadingerCDC,
-  author = {Marek Wadinger and Michal Kvasnica},
-  title  = {Adaptable and Interpretable Framework for Novelty Detection in Real-Time IoT Systems},
-  year   = {2023},
-  note   = {Submitted to 62nd IEEE Conference on Decision and Control (CDC 2023)}
 }
