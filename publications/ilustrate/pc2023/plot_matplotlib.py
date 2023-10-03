@@ -127,16 +127,16 @@ def plot_limits_(
     set_axis_style(ax, ser, "Date", f"{ser.name} [-]")
     if "ylim" not in kwargs:
         kwargs["ylim"] = (ser.min(), ser.max())
-    ax.set_ylim(kwargs["ylim"])
+    ax.set_ylim(*kwargs["ylim"])
 
-    if kwargs.get("xticks_on") == "anomalies":
+    if kwargs.get("xticks_on") == "anomalies" and anomalies is not None:
         a = anomalies.astype(int).diff()
         b = a[a == 1].resample('1d').sum()
         ax.set_xticks(b[b > 0].index.map(str))
     elif kwargs.get("xticks_on"):
         ax.set_xticks(kwargs["xticks_on"].index.map(str))
 
-    ax.plot(ser.resample('1t').fillna(None), linewidth=0.7, label="Signal")
+    ax.plot(ser.resample('1t').asfreq(), linewidth=0.7, label="Signal")
 
     if anomalies is not None:
         an_ser = ser.copy()
@@ -144,20 +144,32 @@ def plot_limits_(
         ax.plot(an_ser, linewidth=1.2, color="r", label="Anomalies",
                 marker='.', markersize=0.8)
 
-    if (ser_high is not None) and (ser_low is not None):
-        ax.fill_between(ser_high.index, ser_high, kwargs["ylim"][1],
-                        label=r'Limits',
-                        color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.5),
-                        linestyle="-", linewidth=0.7,)
-        ax.fill_between(ser_low.index, ser_low, kwargs["ylim"][0],
-                        color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.5),
-                        linestyle="-", linewidth=0.7,)
+    if ser_high is not None and ser_low is not None:
+        ax = plot_limits(ax, ser_high, ser_low, kwargs["ylim"])
 
     ax.legend(bbox_to_anchor=(0., 1.05, 1., .102),
               loc='lower left', ncols=3, mode="expand", borderaxespad=0.)
 
     if save:
         fig.savefig(f"{file_name}_thresh.pdf", backend='pdf')
+
+
+def plot_limits(
+        ax: plt.Axes,
+        ser_high: pd.Series,
+        ser_low: pd.Series,
+        *ylim: tuple[float, float]):
+    if (ser_high is not None) and (ser_low is not None):
+        ax.fill_between(
+            ser_high.index, ser_high, ylim[1],  # type: ignore
+            label=r'Limits',
+            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.25),
+            linestyle="-", linewidth=0.7)
+        ax.fill_between(
+            ser_low.index, ser_low, ylim[0],  # type: ignore
+            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.25),
+            linestyle="-", linewidth=0.7)
+    return ax
 
 
 def plot_compare_anomalies_(
@@ -190,7 +202,7 @@ def plot_compare_anomalies_(
         axs[-1].set_xticks(kwargs["xticks_on"].index.map(str))
 
     for row, anomaly in enumerate(anomalies, start=0):
-        axs[row].plot(ser.resample('1t').fillna(None), linewidth=0.7,
+        axs[row].plot(ser.resample('1t').asfreq(), linewidth=0.7,
                       label="Signal")
 
         axs[row].set_ylim(kwargs["ylim"])
@@ -212,17 +224,17 @@ def plot_anomaly_bars(args, colors, axs):
     for i, a in enumerate(args, start=1):
         if isinstance(a, pd.Series):
             ax: plt.Axes = axs[-i]
-            a = a.astype(int).diff()
-            # Since zero is nan
-            if a[a != 0].iloc[1] == -1:
-                a[1] = 1
-            if a[a != 0].iloc[-1] == 1:
-                a[-1] = -1
+            a = a.astype(int).diff().fillna(0)
+            if (a != 0).any():
+                if a[a != 0].iloc[0] == -1:
+                    a[1] = 1
+                elif a[a != 0].iloc[-1] == 1:
+                    a[-1] = -1
             for s_idx, (x0, x1) in enumerate(
                     zip(a[a == 1].index, a[a == -1].index)):
                 ax.axvspan(x0, x1, color=colors[i], alpha=1,
-                           label="_"*s_idx + a.name, linewidth=2)
-            ylabel = '\n'.join(textwrap.wrap(a.name, 11))
+                           label="_"*s_idx + str(a.name), linewidth=2)
+            ylabel = '\n'.join(textwrap.wrap(str(a.name), 11))
             ax.set_ylabel(f"{ylabel}", rotation=0, horizontalalignment='left',)
             ax.yaxis.set_label_position("right")
             ax.set_yticks([])
@@ -264,8 +276,8 @@ def plot_limits_grid_(
         sharex='col', sharey='row',
         gridspec_kw={
             'height_ratios': [*(n_rows*[1]), *(n_bar_plots*[0.2])],
-            }
-        )
+        }
+    )
     if isinstance(axs, plt.Axes):
         axs = np.array([axs])
     else:
@@ -278,7 +290,7 @@ def plot_limits_grid_(
         ser: pd.Series[float] = df[col_name]
         if kwargs.get('resample'):
             ser_ = ser.resample(
-                rule=kwargs['resample']).fillna(None)
+                rule=kwargs['resample']).asfreq()
         else:
             ser_ = ser
 
@@ -292,13 +304,10 @@ def plot_limits_grid_(
             lambda x: x[col_name]) if ser_low is not None else None
 
         if ser_high_ is not None and ser_low_ is not None:
-            ax.fill_between(ser_high_.index, ser_high_, max(ser.max(), 1),
-                            label='Limits',
-                            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.25),
-                            linestyle="-", linewidth=0.7,)
-            ax.fill_between(ser_low_.index, ser_low_, min(ser.min(), 0),
-                            color=(1, 0, 0, 0.1), edgecolor=(1, 0, 0, 0.25),
-                            linestyle="-", linewidth=0.7,)
+            ax = plot_limits(
+                ax, ser_high_, ser_low_,
+                (min(ser.min(), 0), max(ser.max(), 1)))
+
         if signal_anomaly is not None:
             a = signal_anomaly.apply(lambda x: x[col_name])
             ax.scatter(ser[a].index, ser[a],
