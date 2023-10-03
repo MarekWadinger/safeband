@@ -15,14 +15,14 @@ VAR_SMOOTHING = 1e-9
 
 @typing.runtime_checkable
 class Distribution(typing.Protocol):  # pragma: no cover
-    mu: typing.Union[float, typing.Sequence[float], None]
-    sigma: typing.Union[float, typing.Sequence[float], None]
+    mu: typing.Union[float, typing.Sequence[float], dict[str, float], None]
+    sigma: typing.Union[float, typing.Sequence[float], dict[str, float], None]
     n_samples: typing.Union[float, None]
 
     def update(self, *args, **kwargs):
         ...
 
-    def cdf(self, *args, **kwargs):
+    def cdf(self, *args, **kwargs) -> float:
         ...
 
 
@@ -143,7 +143,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                  gaussian: Distribution,
                  grace_period: int,
                  threshold: float = THRESHOLD,
-                 log_threshold: float = None
+                 log_threshold: typing.Union[float, None] = None
                  ):
         if not isinstance(gaussian, Distribution):
             raise ValueError(
@@ -151,8 +151,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.gaussian = gaussian
         self.grace_period = grace_period
         self.threshold = threshold
-        self.log_threshold = log_threshold
         if log_threshold is not None:
+            self.log_threshold = log_threshold
             self.log_threshold_top = np.log1p(-np.exp(log_threshold))
         self._feature_names_in = None
         self._feature_dim_in = None
@@ -183,7 +183,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     def predict_one(self, x) -> int:
         score = self.score_one(x)
         self._get_feature_dim_in(x)
-        if self.gaussian.n_samples > self.grace_period:
+        if (
+                self.gaussian.n_samples > self.grace_period and
+                self._feature_dim_in):
             if self.log_threshold:
                 score = -np.inf if score <= 0 else np.log(score)
                 if (
@@ -411,13 +413,13 @@ class ConditionalGaussianScorer(GaussianScorer):
         else:
             return 0.5, None
 
-    def _drift_detected(self):
+    def _drift_detected(self) -> bool:
         len_ = len(self.buffer)
         if len_ > 0:
             # return sum(self.buffer) / len_ > 1 - self.alpha
             return (sum(self.buffer) / len_ > (self.threshold))
         else:
-            return 0
+            return False
 
     def get_root_cause(self):
         return self.root_cause
