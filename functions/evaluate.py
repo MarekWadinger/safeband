@@ -1,15 +1,15 @@
 import inspect
 import time
+from typing import Union
 
 import pandas as pd
-from river.anomaly.base import AnomalyDetector
 from river.metrics.base import BinaryMetric
 
 
 def progressive_val_predict(  # noqa: C901
-        model: AnomalyDetector,
+        model,
         dataset,
-        metrics: list[BinaryMetric],
+        metrics: Union[list[BinaryMetric], None],
         print_every: int = 0,
         protect_anomaly_detector: bool = False,
         print_final: bool = True,
