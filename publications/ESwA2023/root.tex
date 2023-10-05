@@ -74,7 +74,7 @@
 %% use the cortext command for theassociated footnote;
 %% use the ead command for the email address,
 %% and the form \ead[url] for the home page:
-\title{Adaptable and Interpretable Framework for Anomaly Detection in SCADA-based IoT Systems}
+\title{Adaptable and Interpretable Framework for Anomaly Detection in SCADA-based Industrial Systems}
 
 \author[aff1,aff2]{Marek Wadinger\corref{cor1}}
 \ead{marek.wadinger@stuba.sk}
@@ -91,7 +91,7 @@
     state={Bratislava},
     country={Slovakia}
 }
-\affiliation[aff2]{organization={Tesla 50Hz s.r.o.},
+\affiliation[aff2]{organization={Tesla Labs s.r.o.},
     addressline={Pálenica 53/79},
     postcode={033 17},
     state={Liptovský Hrádok},
@@ -111,10 +111,10 @@
 %%Research highlights
 \begin{highlights}
 \item Interpretable anomaly detector with self-supervised adaptation
-\item Delivers comparable performance to established general methods
-\item Isolates root cause of anomalies while considering interactions
-\item Demonstrates interpretability by providing operating limits for signals
-\item Uses self-learning approach on streamed IoT data
+\item Demonstrates interpretability by providing dynamic operating limits
+\item Leverages self-learning approach on streamed IoT data
+\item Utilizes existing SCADA-based industrial infrastruture
+\item Offers faster response time to incidents due to root cause isolation
 \end{highlights}
 
 \begin{keyword}
@@ -135,10 +135,12 @@ Anomaly detection \sep Root cause isolation \sep Iterative learning \sep Statist
 \label{Preliminaries}
 \input{sections/preliminaries.tex}
 
+\clearpage
 \section{Adaptive Anomaly Detection and Interpretation Framework}
 \label{Proposed Method}
 \input{sections/proposed_method.tex}
 
+\clearpage
 \section{Case Study}
 \label{Case Study}
 \input{sections/case_study.tex}
