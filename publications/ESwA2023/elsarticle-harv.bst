@@ -1,11 +1,11 @@
 %%
 %% This is file `elsarticle-harv.bst'  (Version 2.1),
-%% 
+%%
 %% Copyright 2009-2020 Elsevier Ltd
-%% 
+%%
 %% This file is part of the 'Elsarticle Bundle'.
 %% ---------------------------------------------
-%% 
+%%
 %% It may be distributed under the conditions of the LaTeX Project Public
 %% License, either version 1.2 of this license or (at your option) any
 %% later version.  The latest version of this license is in
@@ -16,7 +16,7 @@
 %% $Id: elsarticle-harv.bst 194 2020-11-23 11:29:27Z rishi $
 %%
 %% $URL: https://lenova.river-valley.com/svn/elsarticle/trunk/elsarticle-harv.bst $
-%% 
+%%
 
 ENTRY
   { address
@@ -72,7 +72,7 @@ FUNCTION {init.state.consts}
 STRINGS { s t}
 FUNCTION {output.comma}
 { ", " * write$}
-   
+
 FUNCTION {output.nonnull}
 { 's :=
   output.state mid.sentence =
@@ -1572,7 +1572,7 @@ FUNCTION {begin.bib}
 }
 EXECUTE {begin.bib}
 EXECUTE {init.state.consts}
-EXECUTE {init.web.variables} 
+EXECUTE {init.web.variables}
 ITERATE {call.type$}
 FUNCTION {end.bib}
 { newline$
@@ -1594,5 +1594,3 @@ EXECUTE {end.bib}
 %% 30.08.2012
 %%   a. collaboration added.
 %%
-
-
