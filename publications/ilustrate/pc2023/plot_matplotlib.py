@@ -158,7 +158,7 @@ def plot_limits(
         ax: plt.Axes,
         ser_high: pd.Series,
         ser_low: pd.Series,
-        *ylim: tuple[float, float]):
+        ylim: tuple[float, float]):
     if (ser_high is not None) and (ser_low is not None):
         ax.fill_between(
             ser_high.index, ser_high, ylim[1],  # type: ignore
