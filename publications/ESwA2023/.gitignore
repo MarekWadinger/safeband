@@ -33,6 +33,7 @@
 # Misc
 elsarticle
 studies
+submission_materials
 figures/*.png
 
 # Exceptions
