@@ -194,10 +194,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self._feature_dim_in = None
 
     def _get_feature_dim_in(self, x):
-        if hasattr(x, '__len__'):
-            self._feature_dim_in = len(x)
-        else:
-            self._feature_dim_in = 1
+        if self._feature_dim_in is None:
+            if hasattr(x, '__len__'):
+                self._feature_dim_in: int = len(x)
+            else:
+                self._feature_dim_in: int = 1
+
+    def _get_feature_names_in(self, x):
+        if self._feature_names_in is None and isinstance(x, dict):
+            self._feature_names_in: list[str] = list(x.keys())
 
     def _learn_one(self, x, **kwargs):
         if self._feature_names_in is None and isinstance(x, dict):
@@ -237,8 +242,10 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self.gaussian.cdf(x)
 
     def predict_one(self, x) -> int:
-        score = self.score_one(x)
         self._get_feature_dim_in(x)
+        self._get_feature_names_in(x)
+
+        score = self.score_one(x)
         if (
                 self.gaussian.n_samples > self.grace_period and
                 self._feature_dim_in):
@@ -262,6 +269,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             return 0
 
     def limit_one(self, x, diagonal_only=True):
+        self._get_feature_dim_in(x)
+        self._get_feature_names_in(x)
+
         if isinstance(self.gaussian.mu, dict):
             loc_value = [*self.gaussian.mu.values()]
         else:
@@ -274,9 +284,6 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             kwargs["scale"] = [
                 kwargs["scale"][i][i]
                 for i in kwargs["scale"].columns]
-        if isinstance(x, dict):
-            if self._feature_names_in is None:
-                self._feature_names_in = list(x.keys())
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
@@ -303,8 +310,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             thresh_high = dict(zip(self.gaussian.mu.keys(), thresh_high))
             thresh_low = dict(zip(self.gaussian.mu.keys(), thresh_low))
         else:
-            thresh_high = dict(zip(x.keys(), [np.nan] * len(x)))
-            thresh_low = dict(zip(x.keys(), [np.nan] * len(x)))
+            thresh_high = dict(zip(
+                self._feature_names_in,
+                [np.nan] * self._feature_dim_in))
+            thresh_low = dict(zip(
+                self._feature_names_in,
+                [np.nan] * self._feature_dim_in))
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
@@ -319,7 +330,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         is_anomaly = self.predict_one(x)
 
-        thresh_high, thresh_low = self.limit_one()
+        thresh_high, thresh_low = self.limit_one(x)
 
         if not is_anomaly:
             if isinstance(self.gaussian, utils.TimeRolling):
@@ -475,6 +486,9 @@ class ConditionalGaussianScorer(GaussianScorer):
         return score
 
     def predict_one(self, x) -> int:
+        self._get_feature_dim_in(x)
+        self._get_feature_names_in(x)
+
         score, idx = self._score_one(x)
         if (self.alpha > score) or (score > 1 - self.alpha):
             if self._feature_names_in is not None and idx is not None:
@@ -499,13 +513,16 @@ class ConditionalGaussianScorer(GaussianScorer):
         return lower_bound[0], upper_bound[0]
 
     def limit_one(self, x):
+        # TODO: might break the things up in Pipeline if called before
+        #  predict_one or learn_one
+        self._get_feature_dim_in(x)
+        self._get_feature_names_in(x)
+        if isinstance(x, dict):
+            x = np.fromiter(x.values(), dtype=float)
+
         ths, tls = [], []
         mean = np.array([*self.gaussian.mu.values()])
         covariance = self.gaussian.var
-        if isinstance(x, dict):
-            if self._feature_names_in is None:
-                self._feature_names_in = list(x.keys())
-            x = np.fromiter(x.values(), dtype=float)
         if covariance.shape[0] != 0:
             for var_idx in range(len(x)):
                 cond_mean, _, cond_std = self.gaussian.mv_conditional(
@@ -514,8 +531,8 @@ class ConditionalGaussianScorer(GaussianScorer):
                 ths.append(th)
                 tls.append(tl)
         else:
-            ths = [0.] * len(x) if hasattr(x, '__len__') else [0.]
-            tls = [0.] * len(x) if hasattr(x, '__len__') else [0.]
+            ths = [np.nan] * len(x) if hasattr(x, '__len__') else [np.nan]
+            tls = [np.nan] * len(x) if hasattr(x, '__len__') else [np.nan]
         if (
                 self._feature_names_in is not None and
                 len(ths) == len(self._feature_names_in)):
