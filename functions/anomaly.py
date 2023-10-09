@@ -147,7 +147,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     """  # noqa: E501
     def __init__(self,
                  gaussian: typing.Union[
-                     ConditionableDistribution, Rolling, TimeRolling],
+                     Distribution, Rolling, TimeRolling],
                  threshold: float = 0.99735,
                  log_threshold: typing.Union[float, None] = None,
                  grace_period: typing.Union[int, None] = None,
