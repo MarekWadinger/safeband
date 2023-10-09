@@ -8,30 +8,41 @@ from river.metrics.base import BinaryMetric
 
 def progressive_val_predict(  # noqa: C901
         model,
-        dataset,
+        dataset: pd.DataFrame,
         metrics: Union[list[BinaryMetric], None],
         print_every: int = 0,
-        protect_anomaly_detector: bool = False,
         print_final: bool = True,
         compute_limits: bool = False,
+        detect_signal: bool = False,
+        detect_change: bool = False,
+        sampling_model=None,
         **kwargs):
-    system_anomaly = []
-    change_point = []
-    ths, tls = [], []
-
+    y_pred = []
+    meta = {}
+    if compute_limits:
+        meta['level_high'], meta['level_low'] = [], []
+    if detect_signal:
+        meta['signal'] = []
+    if detect_change:
+        meta['change_point'] = []
+    if sampling_model is not None:
+        meta['sampling'] = []
     start = time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
-        t = t.tz_localize(None)
+        # PREPOCESSING
+        if isinstance(t, pd.Timestamp):
+            t = t.tz_localize(None)
         x = x.to_dict()
         if "anomaly" in x:
             y = x.pop("anomaly")
         else:
             y = None
 
-    # Check anomaly in system
+        # PREDICT
         is_anomaly = model.predict_one(x)
-        system_anomaly.append(is_anomaly)
+        y_pred.append(is_anomaly)
 
+        # EVALUATE
         if metrics is not None:
             if y is not None:
                 if not isinstance(metrics, list):
@@ -44,49 +55,61 @@ def progressive_val_predict(  # noqa: C901
                 raise ValueError("Dataset must contain column 'anomaly' to "
                                  "use metrics.")
 
+        # DYNAMIC OPERATING LIMITS
         if compute_limits and hasattr(model, 'limit_one'):
             thresh_high, thresh_low = model.limit_one(x)
-            ths.append(thresh_high)
-            tls.append(thresh_low)
+            meta['level_high'].append(thresh_high)
+            meta['level_low'].append(thresh_low)
 
-        if (i != 0) and kwargs.get("t_a"):
-            is_change = (sum(system_anomaly[-kwargs["t_a"]:-1]) /
-                         len(system_anomaly[-kwargs["t_a"]:-1]) >
-                         model.threshold)
-        else:
-            is_change = 0
-        change_point.append(is_change)
+            # ISOLATE ROT CAUSES
+            if detect_signal:
+                meta['signal'].append(
+                    {k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
+                     for i, (k, v) in enumerate(x.items())})
 
-        if protect_anomaly_detector:
-            if not is_anomaly or is_change:
-                if (hasattr(model, 'gaussian') and
-                    inspect.signature(
-                        model.gaussian.update).parameters.get("t")):
-                    model = model.learn_one(x, **{'t': t})
-                else:
-                    model = model.learn_one(x)
-        else:
-            if (hasattr(model, 'gaussian') and
-                inspect.signature(
-                    model.gaussian.update).parameters.get("t")):
-                model = model.learn_one(x, **{'t': t})
+        # DETECT NON-UNIFORM SAMPLING
+        if sampling_model is not None and isinstance(t, pd.Timestamp):
+            if i > 0:
+                t_ = (t-t_prev).seconds  # noqa: F821
+                sample_a = sampling_model.predict_one(t_)
+                meta['sampling'].append(sample_a)
+
+                w = 1-sampling_model.score_one(t_) if sample_a else 1
+                sampling_model.learn_one(t_, w=w)
             else:
-                model = model.learn_one(x)
+                meta['sampling'].append(0)
+            t_prev = t  # noqa: F841
+
+        # DETECT CHANGE POINTS
+        if detect_change:
+            meta['change_point'].append(model._drift_detected())
+
+        # UPDATE MODEL
+        if (hasattr(model, 'gaussian') and
+            inspect.signature(
+                model.gaussian.update).parameters.get("t")):
+            model = model.learn_one(x, **{'t': t})
+        else:
+            model = model.learn_one(x)
+
+    # POSTPROCESSING FOR SYNCHRONEOUS SAMPLING EVALUATION
+    if sampling_model is not None:
+        for i in range(len(meta['sampling'])):
+            if meta['sampling'][i] == 1:
+                meta['sampling'][i-1] = 1
 
     end = time.time()
+
     if print_final:
         print(f"Avg. latency per sample: {(end - start)*1000/len(dataset)}ms")
         if metrics is not None:
             for metric in metrics:
                 print(metric)
 
-    if compute_limits and hasattr(model, 'limit_one'):
-        return system_anomaly, change_point, ths, tls
-    else:
-        return system_anomaly, change_point, None, None
+    return y_pred, meta
 
 
-def print_stats(df, y_pred, change_point):
+def print_stats(df, y_pred):
     df_y_pred = pd.Series(y_pred, index=df.anomaly.index)
     res = pd.concat([df.anomaly, df_y_pred], axis=1)
     real = res[res['anomaly'] == 1]
@@ -95,6 +118,5 @@ def print_stats(df, y_pred, change_point):
     print(f"{'Pred anomalous samples | events | proportion:':<55} "
           f"{sum(df_y_pred):<8} | {sum(df_y_pred.diff().dropna() == 1):<5} | "
           f"{sum(df_y_pred)/len(df_y_pred):.02%}\n"
-          f"{'Pred changepoints:':<55} {sum(change_point)}\n"
           f"{'Found samples | events | proportion:':<55} "
           f"{sum_:<8} | {' ':<5} | {sum_/len_real:.02%}")
