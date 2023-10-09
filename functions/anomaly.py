@@ -4,6 +4,7 @@ import typing
 import numpy as np
 import pandas as pd
 from river import anomaly, utils
+from river.utils import Rolling, TimeRolling
 from scipy.stats import norm
 
 
@@ -145,7 +146,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     1
     """  # noqa: E501
     def __init__(self,
-                 gaussian: Distribution,
+                 gaussian: typing.Union[
+                     ConditionableDistribution, Rolling, TimeRolling],
                  threshold: float = 0.99735,
                  log_threshold: typing.Union[float, None] = None,
                  grace_period: typing.Union[int, None] = None,
@@ -387,7 +389,8 @@ class ConditionalGaussianScorer(GaussianScorer):
     0.997...
     """  # noqa: E501
     def __init__(self,
-                 gaussian: ConditionableDistribution,
+                 gaussian: typing.Union[
+                     ConditionableDistribution, Rolling, TimeRolling],
                  threshold: float = 0.99735,
                  grace_period: typing.Union[int, None] = None,
                  t_a: typing.Union[int, None] = None,
