@@ -9,7 +9,7 @@ from river.metrics.base import BinaryMetric
 def progressive_val_predict(  # noqa: C901
         model,
         dataset: pd.DataFrame,
-        metrics: Union[list[BinaryMetric], None],
+        metrics: Union[list[BinaryMetric], None] = None,
         print_every: int = 0,
         print_final: bool = True,
         compute_limits: bool = False,
