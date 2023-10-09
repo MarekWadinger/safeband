@@ -8,8 +8,6 @@ from scipy.stats import norm
 
 
 # CONSTANTS
-LOG_THRESHOLD = -25
-THRESHOLD = 0.99735
 VAR_SMOOTHING = 1e-9
 
 
@@ -26,6 +24,7 @@ class Distribution(typing.Protocol):  # pragma: no cover
         ...
 
 
+@typing.runtime_checkable
 class ConditionableDistribution(Distribution, typing.Protocol):  # pragma: no cover  # noqa: E501
     mu: dict[str, float]
     sigma: pd.DataFrame
@@ -146,19 +145,48 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     """  # noqa: E501
     def __init__(self,
                  gaussian: Distribution,
-                 grace_period: int,
-                 threshold: float = THRESHOLD,
-                 log_threshold: typing.Union[float, None] = None
+                 threshold: float = 0.99735,
+                 log_threshold: typing.Union[float, None] = None,
+                 grace_period: typing.Union[int, None] = None,
+                 t_a: typing.Union[int, None] = None,
+                 protect_anomaly_detector: bool = True,
                  ):
         if not isinstance(gaussian, Distribution):
             raise ValueError(
                 f"{gaussian} does not satisfy the necessary protocol")
         self.gaussian = gaussian
-        self.grace_period = grace_period
+
+        if hasattr(gaussian, 'window_size'):
+            self.t_e = gaussian.window_size
+        elif hasattr(gaussian, 'period'):
+            self.t_e = int(gaussian.period.total_seconds()/60)
+        else:
+            self.t_e = 0
+        if grace_period is None:
+            self.grace_period = self.t_e
+        elif grace_period > self.t_e or grace_period < 1:
+            import warnings
+            warnings.warn(f"Grace period must be between 1 and "
+                          f"{self.t_e} minutes or None.")
+            self.grace_period = self.t_e
+        else:
+            self.grace_period = grace_period
+
         self.threshold = threshold
         self.log_threshold = log_threshold
         if self.log_threshold is not None:
             self.log_threshold_top = np.log1p(-np.exp(self.log_threshold))
+
+        self.protect_anomaly_detector = protect_anomaly_detector
+        if self.protect_anomaly_detector:
+            if t_a:
+                self.t_a: int = t_a
+                self.buffer = collections.deque(maxlen=round(self.t_a))
+            else:
+                raise ValueError("When protect_anomaly_detector == True, "
+                                 "t_a must be integer specifying adaptation "
+                                 "constant")
+
         self._feature_names_in = None
         self._feature_dim_in = None
 
@@ -334,41 +362,24 @@ class ConditionalGaussianScorer(GaussianScorer):
     """  # noqa: E501
     def __init__(self,
                  gaussian: ConditionableDistribution,
+                 threshold: float = 0.99735,
                  grace_period: typing.Union[int, None] = None,
                  t_a: typing.Union[int, None] = None,
-                 threshold: float = THRESHOLD,
                  protect_anomaly_detector: bool = True
                  ):
-        if hasattr(gaussian, 'window_size'):
-            self.t_e = gaussian.window_size
-        elif hasattr(gaussian, 'period'):
-            self.t_e = int(gaussian.period.total_seconds()/60)
-        else:
-            self.t_e = 0
-        if grace_period is None:
-            grace_period = self.t_e
-        else:
-            if grace_period > self.t_e or grace_period < 1:
-                # import warnings
-                # warnings.warn(f"Grace period must be between 1 and"
-                #               f"{self.t_e} minutes or None.")
-                grace_period = self.t_e
+        if not isinstance(gaussian, ConditionableDistribution):
+            raise ValueError(
+                f"{gaussian} does not satisfy the necessary protocol")
         super().__init__(
-            gaussian,
-            grace_period,
-            threshold)
+            gaussian=gaussian,
+            threshold=threshold,
+            grace_period=grace_period,
+            t_a=t_a,
+            protect_anomaly_detector=protect_anomaly_detector
+            )
         self.gaussian = gaussian
         self.root_cause = None
         self.alpha = (1 - threshold) / 2
-        self.protect_anomaly_detector = protect_anomaly_detector
-        if self.protect_anomaly_detector:
-            if t_a:
-                self.t_a: int = t_a
-                self.buffer = collections.deque(maxlen=round(self.t_a))
-            else:
-                raise ValueError("When protect_anomaly_detector == True, "
-                                 "t_a must be integer specifying adaptation "
-                                 "constant")
 
     def _farthest_from_center(self, input_list):
         # Initialize variables to keep track of the farthest element and its
