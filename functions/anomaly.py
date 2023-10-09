@@ -243,9 +243,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 (1-self.threshold)**_feature_dim_in, **kwargs)
         if (
                 self._feature_names_in is not None and
-                len(thresh_high) == len(self._feature_names_in)):
-            thresh_high = dict(zip(self._feature_names_in, thresh_high))
-            thresh_low = dict(zip(self._feature_names_in, thresh_low))
+                isinstance(self.gaussian.mu, dict) and
+                len(thresh_high) == len(self._feature_names_in)
+                ):
+            thresh_high = dict(zip(self.gaussian.mu.keys(), thresh_high))
+            thresh_low = dict(zip(self.gaussian.mu.keys(), thresh_low))
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
