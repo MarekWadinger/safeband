@@ -199,7 +199,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     def learn_one(self, x, **kwargs):
         if self._feature_names_in is None and isinstance(x, dict):
             self._feature_names_in = list(x.keys())
-        self._get_feature_dim_in(x)
+        if self._feature_dim_in is None:
+            self._get_feature_dim_in(x)
         self.gaussian.update(x, **kwargs)
         return self
 
