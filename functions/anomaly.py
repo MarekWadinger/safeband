@@ -196,12 +196,31 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         else:
             self._feature_dim_in = 1
 
-    def learn_one(self, x, **kwargs):
+    def _learn_one(self, x, **kwargs):
         if self._feature_names_in is None and isinstance(x, dict):
             self._feature_names_in = list(x.keys())
         if self._feature_dim_in is None:
             self._get_feature_dim_in(x)
         self.gaussian.update(x, **kwargs)
+        return self
+
+    def _drift_detected(self) -> bool:
+        len_ = len(self.buffer)
+        if len_ > 0:
+            # return sum(self.buffer) / len_ > 1 - self.alpha
+            return (sum(self.buffer) / len_ > (self.threshold))
+        else:
+            return False
+
+    def learn_one(self, x, **learn_kwargs):
+        if self.protect_anomaly_detector:
+            is_anomaly = self.predict_one(x)
+            self.buffer.append(is_anomaly)
+            is_change = self._drift_detected()
+            if not is_anomaly or is_change:
+                self._learn_one(x, **learn_kwargs)
+        else:
+            self._learn_one(x, **learn_kwargs)
         return self
 
     def score_one(self, x) -> float:
@@ -433,27 +452,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         else:
             return 0.5, None
 
-    def _drift_detected(self) -> bool:
-        len_ = len(self.buffer)
-        if len_ > 0:
-            # return sum(self.buffer) / len_ > 1 - self.alpha
-            return (sum(self.buffer) / len_ > (self.threshold))
-        else:
-            return False
-
     def get_root_cause(self):
         return self.root_cause
-
-    def learn_one(self, x, **learn_kwargs):
-        if self.protect_anomaly_detector:
-            is_anomaly = self.predict_one(x)
-            self.buffer.append(is_anomaly)
-            is_change = self._drift_detected()
-            if not is_anomaly or is_change:
-                super().learn_one(x, **learn_kwargs)
-        else:
-            super().learn_one(x, **learn_kwargs)
-        return self
 
     def score_one(self, x) -> float:
         score, _ = self._score_one(x)
