@@ -4,6 +4,7 @@ from typing import Union
 
 import pandas as pd
 from river.metrics.base import BinaryMetric
+from river.compose import Pipeline
 
 
 def progressive_val_predict(  # noqa: C901
@@ -17,16 +18,22 @@ def progressive_val_predict(  # noqa: C901
         detect_change: bool = False,
         sampling_model=None,
         **kwargs):
+    # CREATE REFERENCE TO LAST STEP OF PIPELINE (TRACK STATE OF MDOEL)
+    if isinstance(model, Pipeline):
+        model_ = model[-1]
+    else:
+        model_ = model
     y_pred = []
     meta = {}
     if compute_limits:
-        meta['level_high'], meta['level_low'] = [], []
+        meta["Limit High"], meta["Limit Low"] = [], []
     if detect_signal:
-        meta['signal'] = []
+        meta["Signal Anomaly"] = []
     if detect_change:
-        meta['change_point'] = []
+        meta["Changepoint"] = []
     if sampling_model is not None:
-        meta['sampling'] = []
+        meta["Sampling Anomaly"] = []
+
     start = time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
         # PREPOCESSING
@@ -56,47 +63,49 @@ def progressive_val_predict(  # noqa: C901
                                  "use metrics.")
 
         # DYNAMIC OPERATING LIMITS
-        if compute_limits and hasattr(model, 'limit_one'):
-            thresh_high, thresh_low = model.limit_one(x)
-            meta['level_high'].append(thresh_high)
-            meta['level_low'].append(thresh_low)
+        if compute_limits and hasattr(model_, "limit_one"):
+            thresh_high, thresh_low = model_.limit_one(x)
+            meta["Limit High"].append(thresh_high)
+            meta["Limit Low"].append(thresh_low)
 
             # ISOLATE ROT CAUSES
             if detect_signal:
-                meta['signal'].append(
+                x_ = {k: v for k, v in x.items()
+                      if k in model_._feature_names_in}
+                meta["Signal Anomaly"].append(
                     {k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
-                     for i, (k, v) in enumerate(x.items())})
+                     for i, (k, v) in enumerate(x_.items())})
 
         # DETECT NON-UNIFORM SAMPLING
         if sampling_model is not None and isinstance(t, pd.Timestamp):
             if i > 0:
                 t_ = (t-t_prev).seconds  # noqa: F821
                 sample_a = sampling_model.predict_one(t_)
-                meta['sampling'].append(sample_a)
+                meta["Sampling Anomaly"].append(sample_a)
 
                 w = 1-sampling_model.score_one(t_) if sample_a else 1
                 sampling_model.learn_one(t_, w=w)
             else:
-                meta['sampling'].append(0)
+                meta["Sampling Anomaly"].append(0)
             t_prev = t  # noqa: F841
 
         # DETECT CHANGE POINTS
         if detect_change:
-            meta['change_point'].append(model._drift_detected())
+            meta["Changepoint"].append(model_._drift_detected())
 
         # UPDATE MODEL
-        if (hasattr(model, 'gaussian') and
+        if (hasattr(model, "gaussian") and
             inspect.signature(
                 model.gaussian.update).parameters.get("t")):
-            model = model.learn_one(x, **{'t': t})
+            model = model.learn_one(x, **{"t": t})
         else:
             model = model.learn_one(x)
 
     # POSTPROCESSING FOR SYNCHRONEOUS SAMPLING EVALUATION
     if sampling_model is not None:
-        for i in range(len(meta['sampling'])):
-            if meta['sampling'][i] == 1:
-                meta['sampling'][i-1] = 1
+        for i in range(len(meta["Sampling Anomaly"])):
+            if meta["Sampling Anomaly"][i] == 1:
+                meta["Sampling Anomaly"][i-1] = 1
 
     end = time.time()
 
@@ -112,8 +121,8 @@ def progressive_val_predict(  # noqa: C901
 def print_stats(df, y_pred):
     df_y_pred = pd.Series(y_pred, index=df.anomaly.index)
     res = pd.concat([df.anomaly, df_y_pred], axis=1)
-    real = res[res['anomaly'] == 1]
-    sum_ = sum(real.apply(lambda x: x['anomaly'] == x[0], axis=1))
+    real = res[res["anomaly"] == 1]
+    sum_ = sum(real.apply(lambda x: x["anomaly"] == x[0], axis=1))
     len_real = len(real) if not len(real) == 0 else float('nan')
     print(f"{'Pred anomalous samples | events | proportion:':<55} "
           f"{sum(df_y_pred):<8} | {sum(df_y_pred.diff().dropna() == 1):<5} | "
