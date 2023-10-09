@@ -28,6 +28,7 @@ class Distribution(typing.Protocol):  # pragma: no cover
 class ConditionableDistribution(Distribution, typing.Protocol):  # pragma: no cover  # noqa: E501
     mu: dict[str, float]
     sigma: pd.DataFrame
+    var: pd.DataFrame
     n_samples: typing.Union[float, int]
 
     def update(self, *args, **kwargs):
@@ -157,9 +158,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.gaussian = gaussian
 
         if hasattr(gaussian, 'window_size'):
-            self.t_e = gaussian.window_size
+            self.t_e = gaussian.window_size  # type: ignore
         elif hasattr(gaussian, 'period'):
-            self.t_e = int(gaussian.period.total_seconds()/60)
+            self.t_e = int(gaussian.period.total_seconds()/60)  # type: ignore
         else:
             self.t_e = 0
         if grace_period is None:
@@ -300,8 +301,13 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
     def process_one(self, x, t=None):
         if self.gaussian.n_samples == 0:
-            self.gaussian.obj = self.gaussian._from_state(0, x,
-                                                          VAR_SMOOTHING, 1)
+            if hasattr(self.gaussian, 'obj'):
+                self.gaussian.obj = (  # type: ignore
+                    self.gaussian.obj._from_state(  # type: ignore
+                        0, x, VAR_SMOOTHING, 1))
+            else:
+                self.gaussian = self.gaussian._from_state(  # type: ignore
+                    0, x, VAR_SMOOTHING, 1)
 
         is_anomaly = self.predict_one(x)
 
@@ -499,8 +505,8 @@ class ConditionalGaussianScorer(GaussianScorer):
                 ths.append(th)
                 tls.append(tl)
         else:
-            ths: list = [0.] * len(x) if hasattr(x, '__len__') else [0.]
-            tls: list = [0.] * len(x) if hasattr(x, '__len__') else [0.]
+            ths = [0.] * len(x) if hasattr(x, '__len__') else [0.]
+            tls = [0.] * len(x) if hasattr(x, '__len__') else [0.]
         if (
                 self._feature_names_in is not None and
                 len(ths) == len(self._feature_names_in)):
