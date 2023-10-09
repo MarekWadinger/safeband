@@ -4,6 +4,7 @@ import typing
 import numpy as np
 import pandas as pd
 from river import anomaly, utils
+from river.utils import Rolling, TimeRolling
 from scipy.stats import norm
 
 
@@ -28,6 +29,7 @@ class Distribution(typing.Protocol):  # pragma: no cover
 class ConditionableDistribution(Distribution, typing.Protocol):  # pragma: no cover  # noqa: E501
     mu: dict[str, float]
     sigma: pd.DataFrame
+    var: pd.DataFrame
     n_samples: typing.Union[float, int]
 
     def update(self, *args, **kwargs):
@@ -124,7 +126,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     management of low joint likelihood values.
     >>> from river.proba import MultivariateGaussian
     >>> scorer = GaussianScorer(utils.Rolling(MultivariateGaussian(), 2),
-    ...     grace_period=0, log_threshold=-8)
+    ...     grace_period=1, log_threshold=-8)
     >>> scorer.learn_one({"a": 1, "b": 2}).gaussian.mu
     {'a': 1.0, 'b': 2.0}
     >>> scorer.learn_one({"a": 2, "b": 3}).gaussian.mu
@@ -142,9 +144,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     -16.000...
     >>> scorer.predict_one({"a": -2.161, "b": -1.161})
     1
+    >>> scorer.predict_one({"a": -2.160, "b": -1.160})
+    0
     """  # noqa: E501
     def __init__(self,
-                 gaussian: Distribution,
+                 gaussian: typing.Union[
+                     Distribution, Rolling, TimeRolling],
                  threshold: float = 0.99735,
                  log_threshold: typing.Union[float, None] = None,
                  grace_period: typing.Union[int, None] = None,
@@ -157,9 +162,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.gaussian = gaussian
 
         if hasattr(gaussian, 'window_size'):
-            self.t_e = gaussian.window_size
+            self.t_e = gaussian.window_size  # type: ignore
         elif hasattr(gaussian, 'period'):
-            self.t_e = int(gaussian.period.total_seconds()/60)
+            self.t_e = int(gaussian.period.total_seconds()/60)  # type: ignore
         else:
             self.t_e = 0
         if grace_period is None:
@@ -179,28 +184,48 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
-            if t_a:
-                self.t_a: int = t_a
-                self.buffer = collections.deque(maxlen=round(self.t_a))
-            else:
-                raise ValueError("When protect_anomaly_detector == True, "
-                                 "t_a must be integer specifying adaptation "
-                                 "constant")
+            self.t_a: int = t_a if t_a else self.t_e
+            self.buffer = collections.deque(maxlen=round(self.t_a))
 
         self._feature_names_in = None
         self._feature_dim_in = None
 
     def _get_feature_dim_in(self, x):
-        if hasattr(x, '__len__'):
-            self._feature_dim_in = len(x)
-        else:
-            self._feature_dim_in = 1
+        if self._feature_dim_in is None:
+            if hasattr(x, '__len__'):
+                self._feature_dim_in: int = len(x)
+            else:
+                self._feature_dim_in: int = 1
 
-    def learn_one(self, x, **kwargs):
+    def _get_feature_names_in(self, x):
+        if self._feature_names_in is None and isinstance(x, dict):
+            self._feature_names_in: list[str] = list(x.keys())
+
+    def _learn_one(self, x, **kwargs):
         if self._feature_names_in is None and isinstance(x, dict):
             self._feature_names_in = list(x.keys())
-        self._get_feature_dim_in(x)
+        if self._feature_dim_in is None:
+            self._get_feature_dim_in(x)
         self.gaussian.update(x, **kwargs)
+        return self
+
+    def _drift_detected(self) -> bool:
+        len_ = len(self.buffer)
+        if len_ > 0:
+            # return sum(self.buffer) / len_ > 1 - self.alpha
+            return (sum(self.buffer) / len_ > (self.threshold))
+        else:
+            return False
+
+    def learn_one(self, x, **learn_kwargs):
+        if self.protect_anomaly_detector:
+            is_anomaly = self.predict_one(x)
+            self.buffer.append(is_anomaly)
+            is_change = self._drift_detected()
+            if not is_anomaly or is_change:
+                self._learn_one(x, **learn_kwargs)
+        else:
+            self._learn_one(x, **learn_kwargs)
         return self
 
     def score_one(self, x) -> float:
@@ -214,8 +239,10 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self.gaussian.cdf(x)
 
     def predict_one(self, x) -> int:
-        score = self.score_one(x)
         self._get_feature_dim_in(x)
+        self._get_feature_names_in(x)
+
+        score = self.score_one(x)
         if (
                 self.gaussian.n_samples > self.grace_period and
                 self._feature_dim_in):
@@ -238,7 +265,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         else:
             return 0
 
-    def limit_one(self, diagonal_only=True):
+    def limit_one(self, *args, diagonal_only=True):
+        if len(args) > 0:
+            self._get_feature_dim_in(args[0])
+            self._get_feature_names_in(args[0])
+
         if isinstance(self.gaussian.mu, dict):
             loc_value = [*self.gaussian.mu.values()]
         else:
@@ -276,16 +307,28 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 ):
             thresh_high = dict(zip(self.gaussian.mu.keys(), thresh_high))
             thresh_low = dict(zip(self.gaussian.mu.keys(), thresh_low))
+        elif self._feature_names_in is not None:
+            thresh_high = dict(zip(
+                self._feature_names_in,
+                [np.nan] * self._feature_dim_in))
+            thresh_low = dict(zip(
+                self._feature_names_in,
+                [np.nan] * self._feature_dim_in))
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
         if self.gaussian.n_samples == 0:
-            self.gaussian.obj = self.gaussian._from_state(0, x,
-                                                          VAR_SMOOTHING, 1)
+            if hasattr(self.gaussian, 'obj'):
+                self.gaussian.obj = (  # type: ignore
+                    self.gaussian.obj._from_state(  # type: ignore
+                        0, x, VAR_SMOOTHING, 1))
+            else:
+                self.gaussian = self.gaussian._from_state(  # type: ignore
+                    0, x, VAR_SMOOTHING, 1)
 
         is_anomaly = self.predict_one(x)
 
-        thresh_high, thresh_low = self.limit_one()
+        thresh_high, thresh_low = self.limit_one(x)
 
         if not is_anomaly:
             if isinstance(self.gaussian, utils.TimeRolling):
@@ -326,7 +369,7 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> scorer.gaussian.mu
     {}
     >>> scorer.limit_one({"a": 1, "b": 2})
-    ({'a': 0.0, 'b': 0.0}, {'a': 0.0, 'b': 0.0})
+    ({'a': nan, 'b': nan}, {'a': nan, 'b': nan})
     >>> scorer.learn_one({"a": 0, "b": 0}).gaussian.mu
     {'a': 0.0, 'b': 0.0}
     >>> scorer.score_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
@@ -361,7 +404,8 @@ class ConditionalGaussianScorer(GaussianScorer):
     0.997...
     """  # noqa: E501
     def __init__(self,
-                 gaussian: ConditionableDistribution,
+                 gaussian: typing.Union[
+                     ConditionableDistribution, Rolling, TimeRolling],
                  threshold: float = 0.99735,
                  grace_period: typing.Union[int, None] = None,
                  t_a: typing.Union[int, None] = None,
@@ -432,33 +476,17 @@ class ConditionalGaussianScorer(GaussianScorer):
         else:
             return 0.5, None
 
-    def _drift_detected(self) -> bool:
-        len_ = len(self.buffer)
-        if len_ > 0:
-            # return sum(self.buffer) / len_ > 1 - self.alpha
-            return (sum(self.buffer) / len_ > (self.threshold))
-        else:
-            return False
-
     def get_root_cause(self):
         return self.root_cause
-
-    def learn_one(self, x, **learn_kwargs):
-        if self.protect_anomaly_detector:
-            is_anomaly = self.predict_one(x)
-            self.buffer.append(is_anomaly)
-            is_change = self._drift_detected()
-            if not is_anomaly or is_change:
-                super().learn_one(x, **learn_kwargs)
-        else:
-            super().learn_one(x, **learn_kwargs)
-        return self
 
     def score_one(self, x) -> float:
         score, _ = self._score_one(x)
         return score
 
     def predict_one(self, x) -> int:
+        self._get_feature_dim_in(x)
+        self._get_feature_names_in(x)
+
         score, idx = self._score_one(x)
         if (self.alpha > score) or (score > 1 - self.alpha):
             if self._feature_names_in is not None and idx is not None:
@@ -483,13 +511,16 @@ class ConditionalGaussianScorer(GaussianScorer):
         return lower_bound[0], upper_bound[0]
 
     def limit_one(self, x):
+        # TODO: might break the things up in Pipeline if called before
+        #  predict_one or learn_one
+        self._get_feature_dim_in(x)
+        self._get_feature_names_in(x)
+        if isinstance(x, dict):
+            x = np.fromiter(x.values(), dtype=float)
+
         ths, tls = [], []
         mean = np.array([*self.gaussian.mu.values()])
         covariance = self.gaussian.var
-        if isinstance(x, dict):
-            if self._feature_names_in is None:
-                self._feature_names_in = list(x.keys())
-            x = np.fromiter(x.values(), dtype=float)
         if covariance.shape[0] != 0:
             for var_idx in range(len(x)):
                 cond_mean, _, cond_std = self.gaussian.mv_conditional(
@@ -498,8 +529,8 @@ class ConditionalGaussianScorer(GaussianScorer):
                 ths.append(th)
                 tls.append(tl)
         else:
-            ths: list = [0.] * len(x) if hasattr(x, '__len__') else [0.]
-            tls: list = [0.] * len(x) if hasattr(x, '__len__') else [0.]
+            ths = [np.nan] * len(x) if hasattr(x, '__len__') else [np.nan]
+            tls = [np.nan] * len(x) if hasattr(x, '__len__') else [np.nan]
         if (
                 self._feature_names_in is not None and
                 len(ths) == len(self._feature_names_in)):
