@@ -261,7 +261,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         else:
             return 0
 
-    def limit_one(self, diagonal_only=True):
+    def limit_one(self, x, diagonal_only=True):
         if isinstance(self.gaussian.mu, dict):
             loc_value = [*self.gaussian.mu.values()]
         else:
@@ -274,6 +274,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             kwargs["scale"] = [
                 kwargs["scale"][i][i]
                 for i in kwargs["scale"].columns]
+        if isinstance(x, dict):
+            if self._feature_names_in is None:
+                self._feature_names_in = list(x.keys())
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
@@ -299,6 +302,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 ):
             thresh_high = dict(zip(self.gaussian.mu.keys(), thresh_high))
             thresh_low = dict(zip(self.gaussian.mu.keys(), thresh_low))
+        else:
+            thresh_high = dict(zip(x.keys(), [np.nan] * len(x)))
+            thresh_low = dict(zip(x.keys(), [np.nan] * len(x)))
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
