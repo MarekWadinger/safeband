@@ -126,7 +126,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     management of low joint likelihood values.
     >>> from river.proba import MultivariateGaussian
     >>> scorer = GaussianScorer(utils.Rolling(MultivariateGaussian(), 2),
-    ...     grace_period=0, log_threshold=-8)
+    ...     grace_period=1, log_threshold=-8)
     >>> scorer.learn_one({"a": 1, "b": 2}).gaussian.mu
     {'a': 1.0, 'b': 2.0}
     >>> scorer.learn_one({"a": 2, "b": 3}).gaussian.mu
@@ -144,6 +144,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     -16.000...
     >>> scorer.predict_one({"a": -2.161, "b": -1.161})
     1
+    >>> scorer.predict_one({"a": -2.160, "b": -1.160})
+    0
     """  # noqa: E501
     def __init__(self,
                  gaussian: typing.Union[
@@ -182,13 +184,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
-            if t_a:
-                self.t_a: int = t_a
-                self.buffer = collections.deque(maxlen=round(self.t_a))
-            else:
-                raise ValueError("When protect_anomaly_detector == True, "
-                                 "t_a must be integer specifying adaptation "
-                                 "constant")
+            self.t_a: int = t_a if t_a else self.t_e
+            self.buffer = collections.deque(maxlen=round(self.t_a))
 
         self._feature_names_in = None
         self._feature_dim_in = None
@@ -268,9 +265,10 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         else:
             return 0
 
-    def limit_one(self, x, diagonal_only=True):
-        self._get_feature_dim_in(x)
-        self._get_feature_names_in(x)
+    def limit_one(self, *args, diagonal_only=True):
+        if len(args) > 0:
+            self._get_feature_dim_in(args[0])
+            self._get_feature_names_in(args[0])
 
         if isinstance(self.gaussian.mu, dict):
             loc_value = [*self.gaussian.mu.values()]
@@ -309,7 +307,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 ):
             thresh_high = dict(zip(self.gaussian.mu.keys(), thresh_high))
             thresh_low = dict(zip(self.gaussian.mu.keys(), thresh_low))
-        else:
+        elif self._feature_names_in is not None:
             thresh_high = dict(zip(
                 self._feature_names_in,
                 [np.nan] * self._feature_dim_in))
@@ -371,7 +369,7 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> scorer.gaussian.mu
     {}
     >>> scorer.limit_one({"a": 1, "b": 2})
-    ({'a': 0.0, 'b': 0.0}, {'a': 0.0, 'b': 0.0})
+    ({'a': nan, 'b': nan}, {'a': nan, 'b': nan})
     >>> scorer.learn_one({"a": 0, "b": 0}).gaussian.mu
     {'a': 0.0, 'b': 0.0}
     >>> scorer.score_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
