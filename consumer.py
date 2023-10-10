@@ -1,15 +1,16 @@
 import json
 import os
-
 from argparse import Namespace
 from datetime import datetime
 
 import paho.mqtt.client as mqtt
-
 from human_security import HumanRSA
 
 from functions.encryption import (
-    load_public_key, load_private_key, verify_and_decrypt_data)
+    load_private_key,
+    load_public_key,
+    verify_and_decrypt_data,
+)
 from functions.parse import get_argparser, get_config
 
 PORT = 1883
@@ -130,6 +131,7 @@ def query_mqtt(config: dict, args: Namespace):
 
 if __name__ == '__main__':
     import doctest
+
     # Run the doctests
     doctest.testmod()
 

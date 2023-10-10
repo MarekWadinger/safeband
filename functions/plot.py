@@ -1,6 +1,5 @@
 # IMPORTS
 import textwrap
-
 from datetime import timedelta
 from typing import Union
 

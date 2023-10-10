@@ -1,14 +1,16 @@
-import pulsar
 import sys
-
 from argparse import ArgumentParser
 from pathlib import Path
 
+import pulsar
 from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 from functions.encryption import (  # noqa: E402
-    init_rsa_security, encrypt_data, decode_data)
+    decode_data,
+    encrypt_data,
+    init_rsa_security,
+)
 from functions.safe_streamz import map  # noqa: E402, F401
 
 

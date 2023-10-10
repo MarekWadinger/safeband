@@ -7,7 +7,6 @@ from river import anomaly, utils
 from river.utils import Rolling, TimeRolling
 from scipy.stats import norm
 
-
 # CONSTANTS
 VAR_SMOOTHING = 1e-9
 

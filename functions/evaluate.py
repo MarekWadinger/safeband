@@ -3,8 +3,8 @@ import time
 from typing import Union
 
 import pandas as pd
-from river.metrics.base import BinaryMetric
 from river.compose import Pipeline
+from river.metrics.base import BinaryMetric
 
 
 def progressive_val_predict(  # noqa: C901

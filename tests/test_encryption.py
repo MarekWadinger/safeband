@@ -1,18 +1,25 @@
 import os
-import pytest
 import sys
 from pathlib import Path
 
+import pytest
 from cryptography.exceptions import InvalidSignature
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 from functions.encryption import (  # noqa: E402
-    generate_keys, save_public_key, save_private_key,
-    load_public_key, load_private_key,
-    encrypt_data, decrypt_data,
-    sign_data, verify_signature,
-    decode_data, verify_and_decrypt_data)
+    decode_data,
+    decrypt_data,
+    encrypt_data,
+    generate_keys,
+    load_private_key,
+    load_public_key,
+    save_private_key,
+    save_public_key,
+    sign_data,
+    verify_and_decrypt_data,
+    verify_signature,
+)
 
 
 class TestSecurity():

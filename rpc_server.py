@@ -12,8 +12,12 @@ from river import proba, utils
 from streamz import Sink, Stream
 
 from functions.anomaly import GaussianScorer
-from functions.encryption import (decode_data, encrypt_data, init_rsa_security,
-                                  sign_data)
+from functions.encryption import (
+    decode_data,
+    encrypt_data,
+    init_rsa_security,
+    sign_data,
+)
 from functions.safe_streamz import map  # noqa: E402, F401
 from functions.utils import common_prefix
 

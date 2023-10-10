@@ -1,15 +1,17 @@
-import pulsar
 import sys
-
 from argparse import ArgumentParser
 from pathlib import Path
 
+import pulsar
 from pulsar.schema import JsonSchema, Record, String
 from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 from functions.encryption import (  # noqa: E402
-    init_rsa_security, decrypt_data, encode_data)
+    decrypt_data,
+    encode_data,
+    init_rsa_security,
+)
 from functions.safe_streamz import map  # noqa: E402, F401
 
 

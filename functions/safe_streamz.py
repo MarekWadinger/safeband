@@ -1,4 +1,5 @@
 import logging
+
 from streamz import Stream
 
 logger = logging.getLogger(__name__)

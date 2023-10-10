@@ -1,17 +1,20 @@
 import argparse
-from io import StringIO
 import json
 import os
-import paho.mqtt.client as mqtt
 import sys
+from io import StringIO
 from pathlib import Path
 
+import paho.mqtt.client as mqtt
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from functions.encryption import (  # noqa: E402
-    encrypt_data, sign_data, decode_data)
 from consumer import on_message, query_file  # noqa: E402
+from functions.encryption import (  # noqa: E402
+    decode_data,
+    encrypt_data,
+    sign_data,
+)
 
 
 class TestSecurity():
