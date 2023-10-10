@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 import time
+from typing import IO
 
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
@@ -18,14 +19,13 @@ from functions.encryption import (
     init_rsa_security,
     sign_data,
 )
-from functions.safe_streamz import map  # noqa: E402, F401
 from functions.utils import common_prefix
 
 # CONSTANTS
 GRACE_PERIOD = 60*24
 WINDOW = dt.timedelta(hours=24*7)
 
-open_files = []
+open_files: list[IO] = []
 
 
 # DEFINITIONS
@@ -62,7 +62,7 @@ class to_mqtt(Sink):
                  client_kwargs=None, publish_kwargs=None,
                  **kwargs):
         self.host = host
-        self.port = port
+        self.port = int(port)
         self.c_kw = client_kwargs or {}
         self.p_kw = publish_kwargs or {}
         self.client = None
@@ -148,7 +148,7 @@ def signal_handler(sig, frame, detector, config):  # pragma: no cover
     # if config.get("bootstrap.servers"):
     #     detector.flush()
 
-    exit(0)
+    sys.exit(0)
 
 
 class RpcOutlierDetector:
@@ -201,23 +201,27 @@ class RpcOutlierDetector:
         (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
         """
         if isinstance(x, pd.Series):
-            return {"time": x.name.tz_localize(None),
+            if isinstance(x.name, pd.Timestamp):
+                t = x.name.tz_localize(None)
+            else:
+                t = pd.Timestamp.now().tz_localize(None)
+            return {"time": t,
                     "data": x[topics].to_dict()
                     }
-        elif isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
+        if isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
             return {"time": x[0].tz_localize(None),
                     "data": x[1][topics].to_dict()
                     }
-        elif isinstance(x, dict):
+        if isinstance(x, dict):
             return {"time": dt.datetime.now().replace(microsecond=0),
                     "data": {k: float(v) for k, v in x.items() if k in topics}
                     }
-        elif isinstance(x, MQTTMessage):
+        if isinstance(x, MQTTMessage):
             return {"time": dt.datetime
                     .fromtimestamp(x.timestamp).replace(microsecond=0),
                     "data": {x.topic.split("/")[-1]: float(x.payload)}
                     }
-        elif isinstance(x, bytes):
+        if isinstance(x, bytes):
             return {"time": dt.datetime.now().replace(microsecond=0),
                     "data": {topics[0]: float(x.decode("utf-8"))}
                     }
@@ -359,12 +363,12 @@ class RpcOutlierDetector:
                 topics,
                 subscription_name='detection_service')
         else:
-            raise (RuntimeError("Wrong data format."))
+            raise RuntimeError("Wrong data format.")
         return source
 
     def get_sink(
             self,
-            config: dict,
+            config: dict[str, str],
             topics: list,
             detector):
         """Get the data sink based on the provided configuration.
@@ -381,11 +385,11 @@ class RpcOutlierDetector:
         topic: str = f"{prefix}dynamic_limits"
         print(f"Sinking to '{topic}'\n")
         if config.get("path") and config.get("output"):
-            f = open(config.get("output"), 'a')
+            f = open(config.get("output", ""), 'a')
             open_files.append(f)
             detector.sink(self.dump_to_file, f)
         elif config.get("host"):  # pragma: no cover
-            detector.map(lambda x: json.dumps(x)).to_mqtt(
+            detector.map(json.dumps).to_mqtt(
                 **config, topic=topic, publish_kwargs={"retain": True})
         # TODO: add coverage test
         elif config.get("bootstrap.servers"):  # pragma: no cover

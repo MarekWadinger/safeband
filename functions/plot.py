@@ -155,8 +155,8 @@ def set_invisible(fig, inv_lines: list):
 def plot_limits_3d(
         df: pd.DataFrame,
         anomalies: pd.Series,
-        ser_high: Union[pd.Series, None] = None,
-        ser_low: Union[pd.Series, None] = None,
+        ser_high: pd.Series,
+        ser_low: pd.Series,
         signal_anomalies: Union[pd.Series, None] = None,
         y: Union[str, None] = None,
         z: Union[str, None] = None,
@@ -246,8 +246,8 @@ def add_thresholds(
         fig,
         thresh_high,
         thresh_low,
-        row: int,
-        col: int,
+        row: Union[int, None],
+        col: Union[int, None],
         yaxis_range: list[int]):
     fig.add_trace(go.Scatter(
         x=thresh_high.index, y=(
@@ -343,8 +343,8 @@ def plot_compare_anomalies(
 def plot_limits_grid(
         df: pd.DataFrame,
         anomalies: pd.Series,
-        ser_high: Union[pd.Series, None] = None,
-        ser_low: Union[pd.Series, None] = None,
+        ser_high: pd.Series,
+        ser_low: pd.Series,
         file_name: Union[str, None] = None,
         save: bool = True,
         changepoints: Union[pd.Series, None] = None,
@@ -402,12 +402,13 @@ def plot_limits_grid(
                 line_width=0.7, mode='markers', marker_size=2
             ), row=row, col=1)
 
-            a = samplings.astype(int).diff()
-            for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
-                fig.add_vrect(
-                    x0=x0, x1=x1,
-                    line_color="blue", fillcolor="blue", opacity=0.25,
-                    layer="below", row=row, col=1)
+            if samplings is not None:
+                a = samplings.astype(int).diff()
+                for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
+                    fig.add_vrect(
+                        x0=x0, x1=x1,
+                        line_color="blue", fillcolor="blue", opacity=0.25,
+                        layer="below", row=row, col=1)  # type: ignore
 
         if isinstance(changepoints, pd.Series):
             c = changepoints.astype(int).diff()

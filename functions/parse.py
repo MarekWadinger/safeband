@@ -36,7 +36,7 @@ def get_config(config_file):  # pragma: no cover
           config_parser.get('mqtt', 'host') and
           config_parser.get('mqtt', 'port')):
         config = dict(config_parser['mqtt'])
-        config['port'] = int(config['port'])
+        config['port'] = config['port']
     elif (config_parser.has_section('kafka') and
           config_parser.has_option('kafka', 'bootstrap.servers') and
           config_parser.get('kafka', 'bootstrap.servers')):

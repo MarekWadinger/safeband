@@ -21,7 +21,7 @@ class TestSecurity():
 
     def setup_class(self):
         self.parent_path = Path(__file__).parent
-        self.config = {"output": self.parent_path / 'test.json'}
+        self.config = {"output": str(self.parent_path / 'test.json')}
         self.args = argparse.Namespace()
         self.args.receiver = HumanRSA()
         self.args.receiver.generate()

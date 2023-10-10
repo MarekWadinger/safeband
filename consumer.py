@@ -60,7 +60,7 @@ def on_message(self, userdata, msg):
     print("Received message: " + item)
 
 
-def query_file(config: dict, args: Namespace):
+def query_file(config: dict[str, str], args: Namespace):
     """
     Query a JSON file based on the command-line arguments and print the
     closest past item.
@@ -77,7 +77,7 @@ def query_file(config: dict, args: Namespace):
         {'time': datetime.datetime(2023, 1, 1, 0, 0), 'anomaly': 0, ...}
     """
     # Load the JSON file as a list of dictionaries
-    with open(config.get("output")) as f:
+    with open(config.get("output", ""), encoding='utf-8') as f:
         data = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects
@@ -99,7 +99,7 @@ def query_file(config: dict, args: Namespace):
     print(closest_item)
 
 
-def query_mqtt(config: dict, args: Namespace):
+def query_mqtt(config: dict[str, str], args: Namespace):
     """
     Create an MQTT client instance and connect to the MQTT broker.
 
@@ -125,7 +125,7 @@ def query_mqtt(config: dict, args: Namespace):
     client.on_message = on_message
 
     # Connect to the MQTT broker
-    client.connect(config.get("host"), PORT, 60)
+    client.connect(config.get("host", ""), PORT, 60)
     return client
 
 
@@ -139,19 +139,19 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--date", help="Date as 'Y-m-d H:M:S'",
                         default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     # Parse command-line arguments
-    args = parser.parse_args()
+    args_ = parser.parse_args()
 
-    config = get_config(args.config_file)
+    config_ = get_config(args_.config_file)
 
-    if not os.path.exists(args.key_path):
-        raise RuntimeError('Cannot find key path.')
+    if os.path.exists(args_.key_path):
+        args_.receiver = HumanRSA()
+        load_private_key(args_.key_path + "/receiver_pem", args_.receiver)
+        load_public_key(args_.key_path + "/sender_pem.pub", args_.receiver)
     else:
-        args.receiver = HumanRSA()
-        load_private_key(args.key_path + "/receiver_pem", args.receiver)
-        load_public_key(args.key_path + "/sender_pem.pub", args.receiver)
+        raise RuntimeError('Cannot find key path.')
 
-    if config.get("output"):
-        query_file(config, args)
-    elif config.get("host"):
-        client = query_mqtt(config, args)
+    if config_.get("output"):
+        query_file(config_, args_)
+    elif config_.get("host"):
+        client = query_mqtt(config_, args_)
         client.loop_forever()

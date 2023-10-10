@@ -24,7 +24,7 @@ def progressive_val_predict(  # noqa: C901
     else:
         model_ = model
     y_pred = []
-    meta = {}
+    meta: dict[str, list] = {}
     if compute_limits:
         meta["Limit High"], meta["Limit Low"] = [], []
     if detect_signal:
@@ -33,20 +33,21 @@ def progressive_val_predict(  # noqa: C901
         meta["Changepoint"] = []
     if sampling_model is not None:
         meta["Sampling Anomaly"] = []
+    t_prev = pd.Timestamp.now()
 
     start = time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
         # PREPOCESSING
         if isinstance(t, pd.Timestamp):
             t = t.tz_localize(None)
-        x = x.to_dict()
-        if "anomaly" in x:
-            y = x.pop("anomaly")
+        x_: dict[str, float] = x.to_dict()
+        if "anomaly" in x_:
+            y = x_.pop("anomaly")
         else:
             y = None
 
         # PREDICT
-        is_anomaly = model.predict_one(x)
+        is_anomaly = model.predict_one(x_)
         y_pred.append(is_anomaly)
 
         # EVALUATE
@@ -64,13 +65,13 @@ def progressive_val_predict(  # noqa: C901
 
         # DYNAMIC OPERATING LIMITS
         if compute_limits and hasattr(model_, "limit_one"):
-            thresh_high, thresh_low = model_.limit_one(x)
+            thresh_high, thresh_low = model_.limit_one(x_)
             meta["Limit High"].append(thresh_high)
             meta["Limit Low"].append(thresh_low)
 
             # ISOLATE ROT CAUSES
             if detect_signal:
-                x_ = {k: v for k, v in x.items()
+                x_ = {k: v for k, v in x_.items()
                       if k in model_._feature_names_in}
                 meta["Signal Anomaly"].append(
                     {k: not ((thresh_low[k] < v) and (v < thresh_high[k]))

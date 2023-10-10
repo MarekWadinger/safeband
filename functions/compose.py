@@ -18,7 +18,7 @@ def convert_to_nested_dict(d):
     >>> convert_to_nested_dict(input_dict)
     {'QuantileFilter': {'a': 1, 'b': 0}}
     """
-    result = {}
+    result: dict = {}
     for key, value in d.items():
         parts = key.split('__')
         if len(parts) <= 2:

@@ -103,10 +103,12 @@ python consumer.py -t "Average Cell Temperature"
 The response is the latest date in `dynamic_limits.json`
 
 ```python
-{'time': datetime.datetime(1970, 1, 1, 14, 52, 42),
- 'anomaly': 0,
- 'level_high': 1180.92,
- 'level_low': 1151.15}
+{
+    "time": datetime.datetime(1970, 1, 1, 14, 52, 42),
+    "anomaly": 0,
+    "level_high": 1180.92,
+    "level_low": 1151.15,
+}
 ```
 
 Note: You can modify the attributes to retrieve thrasholds at any date:

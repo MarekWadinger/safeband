@@ -184,26 +184,24 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
             self.t_a: int = t_a if t_a else self.t_e
-            self.buffer = collections.deque(maxlen=round(self.t_a))
-
-        self._feature_names_in = None
-        self._feature_dim_in = None
+            self.buffer: collections.deque = collections.deque(
+                maxlen=round(self.t_a))
 
     def _get_feature_dim_in(self, x):
-        if self._feature_dim_in is None:
+        if not hasattr(self, "_feature_dim_in"):
             if hasattr(x, '__len__'):
                 self._feature_dim_in: int = len(x)
             else:
-                self._feature_dim_in: int = 1
+                self._feature_dim_in = 1
 
     def _get_feature_names_in(self, x):
-        if self._feature_names_in is None and isinstance(x, dict):
+        if not hasattr(self, "_feature_names_in") and isinstance(x, dict):
             self._feature_names_in: list[str] = list(x.keys())
 
     def _learn_one(self, x, **kwargs):
-        if self._feature_names_in is None and isinstance(x, dict):
-            self._feature_names_in = list(x.keys())
-        if self._feature_dim_in is None:
+        if not hasattr(self, "_feature_names_in") and isinstance(x, dict):
+            self._get_feature_names_in(x)
+        if not hasattr(self, "_feature_dim_in"):
             self._get_feature_dim_in(x)
         self.gaussian.update(x, **kwargs)
         return self
@@ -230,7 +228,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     def score_one(self, x) -> float:
         # TODO: find out why return different results on each invocation
         if self.gaussian.n_samples < self.grace_period:
-            if self._feature_dim_in is None:
+            if not hasattr(self, "_feature_dim_in"):
                 return 0.5
             else:
                 return 0.5**self._feature_dim_in
@@ -269,11 +267,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             self._get_feature_dim_in(args[0])
             self._get_feature_names_in(args[0])
 
-        if isinstance(self.gaussian.mu, dict):
-            loc_value = [*self.gaussian.mu.values()]
-        else:
-            loc_value = self.gaussian.mu
-        kwargs = {"loc": loc_value,
+        kwargs = {"loc": [*self.gaussian.mu.values()]
+                  if isinstance(self.gaussian.mu, dict)
+                  else self.gaussian.mu,
                   "scale": self.gaussian.sigma}
         if (
                 diagonal_only and
@@ -284,7 +280,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
-        if self._feature_dim_in is None:
+        if not hasattr(self, "_feature_dim_in"):
             _feature_dim_in = 1
         else:
             _feature_dim_in = self._feature_dim_in
@@ -300,13 +296,13 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             thresh_low = norm.ppf(
                 (1-self.threshold)**_feature_dim_in, **kwargs)
         if (
-                self._feature_names_in is not None and
+                hasattr(self, "_feature_names_in") and
                 isinstance(self.gaussian.mu, dict) and
                 len(thresh_high) == len(self._feature_names_in)
                 ):
             thresh_high = dict(zip(self.gaussian.mu.keys(), thresh_high))
             thresh_low = dict(zip(self.gaussian.mu.keys(), thresh_low))
-        elif self._feature_names_in is not None:
+        elif hasattr(self, "_feature_names_in"):
             thresh_high = dict(zip(
                 self._feature_names_in,
                 [np.nan] * self._feature_dim_in))
@@ -488,7 +484,7 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         score, idx = self._score_one(x)
         if (self.alpha > score) or (score > 1 - self.alpha):
-            if self._feature_names_in is not None and idx is not None:
+            if hasattr(self, "_feature_names_in") and idx is not None:
                 self.root_cause = self._feature_names_in[idx]
             else:
                 self.root_cause = None
@@ -531,11 +527,14 @@ class ConditionalGaussianScorer(GaussianScorer):
             ths = [np.nan] * len(x) if hasattr(x, '__len__') else [np.nan]
             tls = [np.nan] * len(x) if hasattr(x, '__len__') else [np.nan]
         if (
-                self._feature_names_in is not None and
+                hasattr(self, "_feature_names_in") and
                 len(ths) == len(self._feature_names_in)):
-            ths = dict(zip(self._feature_names_in, ths))
-            tls = dict(zip(self._feature_names_in, tls))
-        return ths, tls
+            return (
+               dict(zip(self._feature_names_in, ths)),
+               dict(zip(self._feature_names_in, tls))
+               )
+        else:
+            return ths, tls
 
 
 class ThresholdChangeFilter(anomaly.ThresholdFilter):
@@ -555,7 +554,7 @@ class ThresholdChangeFilter(anomaly.ThresholdFilter):
             protect_anomaly_detector=protect_anomaly_detector,
         )
         self.t_a = t_a
-        self.buffer = collections.deque(
+        self.buffer: collections.deque = collections.deque(
             maxlen=self.t_a)
 
     def learn_one(self, *args, **learn_kwargs):
