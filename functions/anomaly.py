@@ -61,7 +61,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     Make sure that the passed distribution sattisfies necessary protocol
     >>> bad_scorer = GaussianScorer(
     ...     type('Dist', (object,), {})(), grace_period=0
-    ...     )  # doctest: +IGNORE_EXCEPTION_DETAIL
+    ...     )
     Traceback (most recent call last):
     ...
     ValueError:  does not satisfy the necessary protocol
@@ -135,12 +135,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     -8.4999624532873
     >>> scorer.predict_one({"a": 0, "b": 0})
     0
-    >>> scorer.limit_one()  # doctest: +ELLIPSIS
+    >>> scorer.limit_one()
     ({'a': 3.767..., 'b': 4.767...}, {'a': -2.160..., 'b': -1.160...})
 
     Behind the scenes, the threshold is adapted to the dimensionality of the
     input
-    >>> np.log(scorer.score_one({"a": -2.161, "b": -1.161}))  # doctest: +ELLIPSIS
+    >>> np.log(scorer.score_one({"a": -2.161, "b": -1.161}))
     -16.000...
     >>> scorer.predict_one({"a": -2.161, "b": -1.161})
     1
@@ -354,14 +354,14 @@ class ConditionalGaussianScorer(GaussianScorer):
     Make sure that the passed distribution sattisfies necessary protocol
     >>> bad_scorer = ConditionalGaussianScorer(
     ...     type('Dist', (object,), {})(), grace_period=0, t_a=0
-    ...     )  # doctest: +IGNORE_EXCEPTION_DETAIL
+    ...     )
     Traceback (most recent call last):
     ...
     ValueError:  does not satisfy the necessary protocol
 
     Gaussian scorer on rolling window
     >>> from river.utils import Rolling
-    >>> from functions.proba import MultivariateGaussian
+    >>> from proba import MultivariateGaussian
     >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 2),
     ...     grace_period=1, protect_anomaly_detector=False)
     >>> isinstance(scorer, ConditionalGaussianScorer)
@@ -372,7 +372,7 @@ class ConditionalGaussianScorer(GaussianScorer):
     ({'a': nan, 'b': nan}, {'a': nan, 'b': nan})
     >>> scorer.learn_one({"a": 0, "b": 0}).gaussian.mu
     {'a': 0.0, 'b': 0.0}
-    >>> scorer.score_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
+    >>> scorer.score_one({"a": 1, "b": 2})
     0.5
     >>> scorer.predict_one({"a": 1, "b": 2})
     0
@@ -388,19 +388,19 @@ class ConditionalGaussianScorer(GaussianScorer):
     b  0.5  0.5
     >>> scorer.learn_one({"a": 0, "b": 1}).gaussian.mu
     {'a': 0.5, 'b': 1.0}
-    >>> scorer.score_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
+    >>> scorer.score_one({"a": 1, "b": 2})
     0.760...
-    >>> scorer.limit_one({"a": 1, "b": 2})  # doctest: +ELLIPSIS
+    >>> scorer.limit_one({"a": 1, "b": 2})
     ({'a': 2.625..., 'b': 1.0}, {'a': -1.625..., 'b': 1.0})
     >>> scorer.predict_one({"a": 2.626, "b": 1.0})
     1
     >>> scorer.get_root_cause()
     'a'
-    >>> scorer.score_one({"a": 2.626, "b": 1.0})  # doctest: +ELLIPSIS
+    >>> scorer.score_one({"a": 2.626, "b": 1.0})
     0.998...
     >>> scorer.predict_one({"a": 2.620, "b": 1.0})
     0
-    >>> scorer.score_one({"a": 2.500, "b": 1.0})  # doctest: +ELLIPSIS
+    >>> scorer.score_one({"a": 2.500, "b": 1.0})
     0.997...
     """  # noqa: E501
     def __init__(self,

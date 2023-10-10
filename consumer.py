@@ -72,7 +72,7 @@ def query_file(config: dict, args: Namespace):
         >>> config = {"output": "tests/sample.json"}
         >>> args = Namespace()
         >>> args.date = "2023-01-01 00:00:00"
-        >>> query_file(config, args)  # doctest: +ELLIPSIS
+        >>> query_file(config, args)
         {'time': datetime.datetime(2023, 1, 1, 0, 0), 'anomaly': 0, ...}
     """
     # Load the JSON file as a list of dictionaries

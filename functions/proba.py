@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-
 from river import proba
 
 
@@ -20,16 +19,6 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     >>> np.random.seed(42)
     >>> X = pd.DataFrame(np.random.random((8, 3)),
     ...                  columns=["red", "green", "blue"])
-    >>> X
-            red     green      blue
-    0  0.374540  0.950714  0.731994
-    1  0.598658  0.156019  0.155995
-    2  0.058084  0.866176  0.601115
-    3  0.708073  0.020584  0.969910
-    4  0.832443  0.212339  0.181825
-    5  0.183405  0.304242  0.524756
-    6  0.431945  0.291229  0.611853
-    7  0.139494  0.292145  0.366362
 
     >>> p = MultivariateGaussian()
     >>> p.n_samples

@@ -331,7 +331,7 @@ class RpcOutlierDetector(object):
 
         >>> config = {"invalid": "config"}
         >>> topics = ["test"]
-        >>> source = obj.get_source(config, topics)  # doctest: +IGNORE_EXCEPTION_DETAIL
+        >>> source = obj.get_source(config, topics)
         Traceback (most recent call last):
         ...
         RuntimeError: Wrong data format.
