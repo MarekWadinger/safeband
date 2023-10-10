@@ -151,7 +151,7 @@ def signal_handler(sig, frame, detector, config):  # pragma: no cover
     exit(0)
 
 
-class RpcOutlierDetector(object):
+class RpcOutlierDetector:
     def __init__(self):
         self.stopped = True
 

@@ -77,7 +77,7 @@ def query_file(config: dict, args: Namespace):
         {'time': datetime.datetime(2023, 1, 1, 0, 0), 'anomaly': 0, ...}
     """
     # Load the JSON file as a list of dictionaries
-    with open(config.get("output"), 'r') as f:
+    with open(config.get("output")) as f:
         data = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects
