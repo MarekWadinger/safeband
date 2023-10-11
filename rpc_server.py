@@ -19,11 +19,12 @@ from functions.encryption import (
     init_rsa_security,
     sign_data,
 )
+from functions.proba import MultivariateGaussian
 from functions.utils import common_prefix
 
 # CONSTANTS
-GRACE_PERIOD = 60*24
-WINDOW = dt.timedelta(hours=24*7)
+GRACE_PERIOD = 60*2
+WINDOW = dt.timedelta(hours=24*1)
 
 open_files: list[IO] = []
 
@@ -62,7 +63,7 @@ class to_mqtt(Sink):
                  client_kwargs=None, publish_kwargs=None,
                  **kwargs):
         self.host = host
-        self.port = int(port)
+        self.port = port
         self.c_kw = client_kwargs or {}
         self.p_kw = publish_kwargs or {}
         self.client = None
@@ -77,7 +78,17 @@ class to_mqtt(Sink):
             self.client.connect(self.host, self.port, self.keepalive,
                                 **self.c_kw)
         # TODO: wait on successful delivery
-        self.client.publish(self.topic, x, **self.p_kw)
+        if isinstance(x, bytes):
+            self.client.publish(self.topic, x, **self.p_kw)
+        else:
+            del x['time']
+            self.client.publish(
+                f"{self.topic}anomaly", x.pop('anomaly'), **self.p_kw)
+            for key in x['level_high']:
+                self.client.publish(
+                    f"{key}_DOL_high", x['level_high'][key], **self.p_kw)
+                self.client.publish(
+                    f"{key}_DOL_low", x['level_low'][key], **self.p_kw)
 
     def destroy(self):  # pragma: no cover
         self.client.disconnect()
@@ -261,7 +272,7 @@ class RpcOutlierDetector:
         >>> isinstance(result["level_low"], float)
         True
         """
-        if isinstance(model.gaussian.obj, proba.MultivariateGaussian):
+        if isinstance(model.gaussian.obj, MultivariateGaussian):
             x_ = x["data"]
         else:
             x_ = next(iter(x["data"].values()))
@@ -389,8 +400,8 @@ class RpcOutlierDetector:
             open_files.append(f)
             detector.sink(self.dump_to_file, f)
         elif config.get("host"):  # pragma: no cover
-            detector.map(json.dumps).to_mqtt(
-                **config, topic=topic, publish_kwargs={"retain": True})
+            detector.to_mqtt(
+                **config, topic=prefix, publish_kwargs={"retain": True})
         # TODO: add coverage test
         elif config.get("bootstrap.servers"):  # pragma: no cover
             detector.map(lambda x: (str(x), "dynamic_limits")
@@ -483,12 +494,15 @@ class RpcOutlierDetector:
         sender, _ = init_rsa_security(key_path)
 
         if len(topics) > 1:
-            obj = proba.MultivariateGaussian()
+            obj = MultivariateGaussian()
+            model = GaussianScorer(
+                utils.TimeRolling(obj, period=WINDOW),
+                grace_period=GRACE_PERIOD)
         else:
             obj = proba.Gaussian()
-        model = GaussianScorer(
-            utils.TimeRolling(obj, period=WINDOW),
-            grace_period=GRACE_PERIOD)
+            model = GaussianScorer(
+                utils.TimeRolling(obj, period=WINDOW),
+                grace_period=GRACE_PERIOD)
 
         source = self.get_source(config, topics, debug)
 
