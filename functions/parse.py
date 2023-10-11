@@ -16,8 +16,7 @@ def get_argparser():  # pragma: no cover
                         default='.security')
     # "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
     parser.add_argument("-t", "--topic", nargs='*', type=str,
-                        help="Topic of MQTT or Column of pd.DataFrame",
-                        default="Average Cell Temperature")
+                        help="Topic of MQTT or Column of pd.DataFrame")
     return parser
 
 
@@ -36,7 +35,7 @@ def get_config(config_file):  # pragma: no cover
           config_parser.get('mqtt', 'host') and
           config_parser.get('mqtt', 'port')):
         config = dict(config_parser['mqtt'])
-        config['port'] = config['port']
+        config['port'] = int(config['port'])
     elif (config_parser.has_section('kafka') and
           config_parser.has_option('kafka', 'bootstrap.servers') and
           config_parser.get('kafka', 'bootstrap.servers')):
