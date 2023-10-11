@@ -12,7 +12,7 @@ from paho.mqtt.client import MQTTMessage
 from river import proba, utils
 from streamz import Sink, Stream
 
-from functions.anomaly import GaussianScorer
+from functions.anomaly import ConditionalGaussianScorer, GaussianScorer
 from functions.encryption import (
     decode_data,
     encrypt_data,
@@ -495,7 +495,7 @@ class RpcOutlierDetector:
 
         if len(topics) > 1:
             obj = MultivariateGaussian()
-            model = GaussianScorer(
+            model = ConditionalGaussianScorer(
                 utils.TimeRolling(obj, period=WINDOW),
                 grace_period=GRACE_PERIOD)
         else:
