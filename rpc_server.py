@@ -1,5 +1,6 @@
 # IMPORTS
 import datetime as dt
+import glob
 import json
 import os
 import signal
@@ -7,6 +8,7 @@ import sys
 import time
 from typing import IO
 
+import joblib
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
 from river import proba, utils
@@ -25,11 +27,38 @@ from functions.utils import common_prefix
 # CONSTANTS
 GRACE_PERIOD = 60*2
 WINDOW = dt.timedelta(hours=24*1)
+RECOVERY_FOLDER = ".recovery_models"
 
 open_files: list[IO] = []
 
 
 # DEFINITIONS
+def load_model(topics):
+    model_files = glob.glob(
+        os.path.join(
+            RECOVERY_FOLDER, f"model_{len(topics)}_*.pkl")
+        )
+    if model_files:
+        model_files.sort(reverse=True)
+        for latest_model in model_files:
+            recovery_data = joblib.load(latest_model)
+            if recovery_data["topics"] == topics:
+                model = recovery_data["model"]
+                print("Latest model found:", latest_model)
+                return model
+        print("No matching model files found in the recovery folder.")
+    else:
+        print("No model files found in the recovery folder.")
+
+
+def save_model(topics, model):
+    now = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    recovery_path = f"{RECOVERY_FOLDER}/model_{len(topics)}_{now}.pkl"
+    with open(recovery_path, 'wb') as f:
+        joblib.dump({"model": model, "topics": topics}, f)
+        print(f"Model saved to {recovery_path}")
+
+
 @Stream.register_api()
 class to_mqtt(Sink):
     """
@@ -137,9 +166,10 @@ def print_summary(df):
     print(text)
 
 
-def signal_handler(sig, frame, detector, config):  # pragma: no cover
+def signal_handler(sig, frame, detector, model, config, topics):
     os.write(sys.stdout.fileno(), b"\nSignal received to stop the app...\n")
     detector.stop()
+    save_model(topics, model)
 
     time.sleep(1)
     # Print summary
@@ -443,12 +473,6 @@ class RpcOutlierDetector:
             detector.start()
             print("=== Service started ===")
 
-            signal.signal(
-                signal.SIGINT, lambda signalnum,
-                frame: signal_handler(
-                    signalnum, frame, detector, config)
-                )
-
             while True:
                 try:
                     if source.stopped:
@@ -485,6 +509,7 @@ class RpcOutlierDetector:
         >>> topics = ["A"]
         >>> obj = RpcOutlierDetector()
         >>> obj.start(config, topics, key_path=".temp", debug=True)
+        No matching model files found in the recovery folder.
         Sinking to 'dynamic_limits'
         <BLANKLINE>
         === Debugging started... ===
@@ -492,17 +517,19 @@ class RpcOutlierDetector:
         """
         # TODO: Move to encryption.py
         sender, _ = init_rsa_security(key_path)
+        model = load_model(topics)
 
-        if len(topics) > 1:
-            obj = MultivariateGaussian()
-            model = ConditionalGaussianScorer(
-                utils.TimeRolling(obj, period=WINDOW),
-                grace_period=GRACE_PERIOD)
-        else:
-            obj = proba.Gaussian()
-            model = GaussianScorer(
-                utils.TimeRolling(obj, period=WINDOW),
-                grace_period=GRACE_PERIOD)
+        if model is None:
+            if len(topics) > 1:
+                obj = MultivariateGaussian()
+                model = ConditionalGaussianScorer(
+                    utils.TimeRolling(obj, period=WINDOW),
+                    grace_period=GRACE_PERIOD)
+            else:
+                obj = proba.Gaussian()
+                model = GaussianScorer(
+                    utils.TimeRolling(obj, period=WINDOW),
+                    grace_period=GRACE_PERIOD)
 
         source = self.get_source(config, topics, debug)
 
@@ -516,4 +543,14 @@ class RpcOutlierDetector:
 
         detector = self.get_sink(config, topics, detector)
 
-        self.run(config, source, detector, debug)
+        signal.signal(
+                signal.SIGINT, lambda signalnum,
+                frame: signal_handler(
+                    signalnum, frame, detector, model, config, topics)
+                )
+
+        try:
+            self.run(config, source, detector, debug)
+        except Exception:
+            print(model.gaussian)
+            save_model(topics, model)
