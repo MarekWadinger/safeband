@@ -49,7 +49,8 @@ class TestSecurity():
         on_message(obj, self.args, msg)
         sys.stdout = stdout_  # restore the previous stdout.
         assert (f.getvalue() ==
-                'Received message: {"time": "2022-01-01 00:00:00"}\n')
+                ('Received message at 1970-01-01 01:00:00: '
+                 '{"time": "2022-01-01 00:00:00"}\n'))
 
     def test_verify_file_message(self):
         f = StringIO()

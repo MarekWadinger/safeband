@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import os
 from argparse import Namespace
@@ -49,7 +50,7 @@ def on_message(self, userdata, msg):
         >>> usr = Namespace(topic=["my_topic"])
         >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
         >>> on_message(obj, usr, msg)
-        Received message: Hello
+        Received message at 1970-01-01 01:00:00: Hello
     """
     if isinstance(userdata, Namespace) and 'receiver' in userdata:
         item = verify_and_decrypt_data(json.loads(msg.payload.decode()),
@@ -57,7 +58,8 @@ def on_message(self, userdata, msg):
         item = json.dumps(item)
     else:
         item = msg.payload.decode()
-    print("Received message: " + item)
+    t = dt.datetime.fromtimestamp(msg.timestamp).replace(microsecond=0)
+    print(f"Received message at {t}: {item}")
 
 
 def query_file(config: dict[str, str], args: Namespace):
@@ -130,11 +132,6 @@ def query_mqtt(config: dict[str, str], args: Namespace):
 
 
 if __name__ == '__main__':
-    import doctest
-
-    # Run the doctests
-    doctest.testmod()
-
     parser = get_argparser()
     parser.add_argument("-d", "--date", help="Date as 'Y-m-d H:M:S'",
                         default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -143,7 +140,7 @@ if __name__ == '__main__':
 
     config_ = get_config(args_.config_file)
 
-    if os.path.exists(args_.key_path):
+    if args_.key_path and os.path.exists(args_.key_path):
         args_.receiver = HumanRSA()
         load_private_key(args_.key_path + "/receiver_pem", args_.receiver)
         load_public_key(args_.key_path + "/sender_pem.pub", args_.receiver)
