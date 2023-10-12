@@ -1,0 +1,11 @@
+# Ignore everything
+*
+.*
+
+# Allow certain files and folders
+!requirements.txt
+!**/functions
+!**/tests
+!rpc_server.py
+!rpc_client.py
+!config.ini

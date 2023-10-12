@@ -1,5 +1,5 @@
 bayesian-optimization==1.4.3
-confluent-kafka==2.0.2
+# confluent-kafka==2.0.2
 cryptography==41.0.4
 git+https://github.com/MarekWadinger/river.git
 human_security==1.0
