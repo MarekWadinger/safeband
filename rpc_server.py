@@ -510,7 +510,7 @@ class RpcOutlierDetector:
         >>> topics = ["A"]
         >>> obj = RpcOutlierDetector()
         >>> obj.start(config, topics, key_path=".temp", debug=True)
-        No matching model files found in the recovery folder.
+        No ... in the recovery folder.
         Sinking to 'dynamic_limits'
         <BLANKLINE>
         === Debugging started... ===
