@@ -17,12 +17,14 @@ ENV PATH="${PATH}:/root/.cargo/bin"
 
 # # Set the working directory to /app
 WORKDIR /app
-# # Copy the current directory contents into the container at /app (except .dockerignore)
-COPY . /app
 
 # Install any needed packages specified in requirements.txt
-RUN pip install -q --no-cache-dir -U pip setuptools setuptools_rust wheel
+RUN pip install -q -U pip setuptools setuptools_rust wheel
+COPY requirements.txt /app
 RUN pip install -q --no-cache-dir -U -r requirements.txt
+
+# # Copy the current directory contents into the container at /app (except .dockerignore)
+COPY . /app
 
 # Run rpc_client.py when the container launches
 CMD ["python", "rpc_client.py", "--topic", \

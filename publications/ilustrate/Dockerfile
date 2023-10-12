@@ -7,25 +7,24 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Install system requirements
-RUN apt-get -qq update && apt-get install -y tini gcc
-#  g++ curl
-RUN apt -qq install -y --fix-missing texlive texlive-latex-extra texlive-fonts-recommended dvipng cm-super
+RUN apt-get -qq update && apt-get install -y gcc g++
+RUN apt-get -qq update && apt-get install -y git curl
+RUN apt-get -qq install -y --fix-missing tini texlive texlive-latex-extra texlive-fonts-recommended dvipng cm-super
 
 # Get Rust
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="${PATH}:/root/.cargo/bin"
+
+# # Set the working directory to /app
+WORKDIR /app
 
 # Install pip requirements
-# Install from local wheel
-# COPY *.whl .
-#RUN pip install --no-index --no-deps *.whl
-RUN pip install -q --no-cache-dir -U pip
+RUN pip install -q -U pip setuptools setuptools_rust wheel
 RUN pip install jupyter -U
-COPY requirements.txt .
-RUN python -m pip install -r requirements.txt
+COPY requirements.txt /app
+RUN pip install -q --no-cache-dir -U -r requirements.txt
 
 
-WORKDIR /app
 COPY . /app
 
 RUN chmod +x /usr/bin/tini
