@@ -6,9 +6,10 @@ import os
 import signal
 import sys
 import time
-from typing import IO
+from typing import IO, Union
 
 import joblib
+import paho.mqtt.client as mqtt
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
 from river import proba, utils
@@ -95,13 +96,12 @@ class to_mqtt(Sink):
         self.port = port
         self.c_kw = client_kwargs or {}
         self.p_kw = publish_kwargs or {}
-        self.client = None
+        self.client: Union[mqtt.Client, None] = None
         self.topic = topic
         self.keepalive = keepalive
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
     def update(self, x, who=None, metadata=None):
-        import paho.mqtt.client as mqtt
         if self.client is None:
             self.client = mqtt.Client(clean_session=True)
             self.client.connect(self.host, self.port, self.keepalive,
@@ -120,9 +120,10 @@ class to_mqtt(Sink):
                     f"{key}_DOL_low", x['level_low'][key], **self.p_kw)
 
     def destroy(self):  # pragma: no cover
-        self.client.disconnect()
-        self.client = None
-        super().destroy()
+        if self.client is not None:
+            self.client.disconnect()
+            self.client = None
+            super().destroy()
 
 
 def _filt(msgs: dict, topics: list) -> bool:
@@ -487,7 +488,7 @@ class RpcOutlierDetector:
             self,
             config: dict,
             topics: list,
-            key_path: str,
+            key_path: Union[str, None],
             debug: bool = False):
         """Process the limits in a streaming manner.
 
@@ -515,8 +516,6 @@ class RpcOutlierDetector:
         === Debugging started... ===
         === Debugging finished with success... ===
         """
-        # TODO: Move to encryption.py
-        sender, _ = init_rsa_security(key_path)
         model = load_model(topics)
 
         if model is None:
@@ -536,10 +535,15 @@ class RpcOutlierDetector:
         detector = (source
                     .map(self.preprocess, topics)
                     .map(self.fit_transform, model)
-                    .map(sign_data, sender)
-                    .map(encrypt_data, sender)
-                    .map(decode_data)
                     )
+
+        if key_path:
+            sender, _ = init_rsa_security(key_path)
+            detector = (detector
+                        .map(sign_data, sender)
+                        .map(encrypt_data, sender)
+                        .map(decode_data)
+                        )
 
         detector = self.get_sink(config, topics, detector)
 
