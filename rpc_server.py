@@ -54,6 +54,8 @@ def load_model(topics):
 
 def save_model(topics, model):
     now = dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    if not os.path.exists(RECOVERY_FOLDER):
+        os.makedirs(RECOVERY_FOLDER)
     recovery_path = f"{RECOVERY_FOLDER}/model_{len(topics)}_{now}.pkl"
     with open(recovery_path, 'wb') as f:
         joblib.dump({"model": model, "topics": topics}, f)
