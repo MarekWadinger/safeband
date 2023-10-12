@@ -12,9 +12,7 @@ def get_argparser():  # pragma: no cover
     parser = ArgumentParser()
     parser.add_argument('-f', '--config-file', type=FileType('r'),
                         default='config.ini')
-    parser.add_argument('-k', '--key-path', help='Path to RSA keys',
-                        default='.security')
-    # "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
+    parser.add_argument('-k', '--key-path', help='Path to RSA keys')
     parser.add_argument("-t", "--topic", nargs='*', type=str,
                         help="Topic of MQTT or Column of pd.DataFrame")
     return parser
