@@ -133,8 +133,9 @@ def query_mqtt(config: dict[str, str], args: Namespace):
 
 if __name__ == '__main__':
     parser = get_argparser()
-    parser.add_argument("-d", "--date", help="Date as 'Y-m-d H:M:S'",
-                        default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    parser.add_argument(
+        "-d", "--date", help="Date as 'Y-m-d H:M:S'",
+        default=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
     # Parse command-line arguments
     args_ = parser.parse_args()
 

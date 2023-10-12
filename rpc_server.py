@@ -53,7 +53,7 @@ def load_model(topics):
 
 
 def save_model(topics, model):
-    now = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    now = dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     recovery_path = f"{RECOVERY_FOLDER}/model_{len(topics)}_{now}.pkl"
     with open(recovery_path, 'wb') as f:
         joblib.dump({"model": model, "topics": topics}, f)
@@ -76,7 +76,7 @@ class to_mqtt(Sink):
         **kwargs: Additional keyword arguments.
 
     Examples:
-    >>> out_msg = bytes(str(dt.datetime.now()), encoding='utf-8')
+    >>> out_msg = bytes(str(dt.datetime.utcnow()), encoding='utf-8')
     >>> mqtt_sink = to_mqtt(
     ...     Stream(), host="mqtt.eclipseprojects.io",
     ...     port=1883, topic='test', publish_kwargs={"retain":True})
@@ -246,7 +246,7 @@ class RpcOutlierDetector:
             if isinstance(x.name, pd.Timestamp):
                 t = x.name.tz_localize(None)
             else:
-                t = pd.Timestamp.now().tz_localize(None)
+                t = pd.Timestamp.utcnow().tz_localize(None)
             return {"time": t,
                     "data": x[topics].to_dict()
                     }
@@ -255,7 +255,7 @@ class RpcOutlierDetector:
                     "data": x[1][topics].to_dict()
                     }
         if isinstance(x, dict):
-            return {"time": dt.datetime.now().replace(microsecond=0),
+            return {"time": dt.datetime.utcnow().replace(microsecond=0),
                     "data": {k: float(v) for k, v in x.items() if k in topics}
                     }
         if isinstance(x, MQTTMessage):
@@ -264,7 +264,7 @@ class RpcOutlierDetector:
                     "data": {x.topic.split("/")[-1]: float(x.payload)}
                     }
         if isinstance(x, bytes):
-            return {"time": dt.datetime.now().replace(microsecond=0),
+            return {"time": dt.datetime.utcnow().replace(microsecond=0),
                     "data": {topics[0]: float(x.decode("utf-8"))}
                     }
 

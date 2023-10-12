@@ -33,7 +33,7 @@ def progressive_val_predict(  # noqa: C901
         meta["Changepoint"] = []
     if sampling_model is not None:
         meta["Sampling Anomaly"] = []
-    t_prev = pd.Timestamp.now()
+    t_prev = pd.Timestamp.utcnow()
 
     start = time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
