@@ -98,9 +98,9 @@ def progressive_val_predict(  # noqa: C901
         if (hasattr(model, "gaussian") and
             inspect.signature(
                 model.gaussian.update).parameters.get("t")):
-            model = model.learn_one(x, **{"t": t})
+            model = model.learn_one(x_, **{"t": t})
         else:
-            model = model.learn_one(x)
+            model = model.learn_one(x_)
 
     # POSTPROCESSING FOR SYNCHRONEOUS SAMPLING EVALUATION
     if sampling_model is not None:

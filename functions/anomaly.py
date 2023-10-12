@@ -165,7 +165,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             self.t_e = 0
         if grace_period is None:
             self.grace_period = self.t_e
-        elif grace_period > self.t_e or grace_period < 1:
+        elif self.t_e > 0 and grace_period > self.t_e or grace_period < 1:
             import warnings
             warnings.warn(f"Grace period must be between 1 and "
                           f"{self.t_e} minutes or None.")
@@ -313,10 +313,10 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             if hasattr(self.gaussian, 'obj'):
                 self.gaussian.obj = (  # type: ignore
                     self.gaussian.obj._from_state(  # type: ignore
-                        0, x, 0, 1))
+                        1, x, 0, 1))
             else:
                 self.gaussian = self.gaussian._from_state(  # type: ignore
-                    0, x, 0, 1)
+                    1, x, 0, 1)
 
         is_anomaly = self.predict_one(x)
 
