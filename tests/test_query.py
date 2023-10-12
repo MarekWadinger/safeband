@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from io import StringIO
 from pathlib import Path
@@ -48,9 +49,11 @@ class TestSecurity():
         sys.stdout = f
         on_message(obj, self.args, msg)
         sys.stdout = stdout_  # restore the previous stdout.
-        assert (f.getvalue() ==
-                ('Received message at 1970-01-01 01:00:00: '
-                 '{"time": "2022-01-01 00:00:00"}\n'))
+        assert re.match(
+            (r'Received message at 1970-01-01 \d{2}:\d{2}:\d{2}: '
+             r'{"time": "2022-01-01 00:00:00"}\n'),
+            f.getvalue()
+        ) is not None
 
     def test_verify_file_message(self):
         f = StringIO()

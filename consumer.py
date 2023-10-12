@@ -50,7 +50,7 @@ def on_message(self, userdata, msg):
         >>> usr = Namespace(topic=["my_topic"])
         >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
         >>> on_message(obj, usr, msg)
-        Received message at 1970-01-01 01:00:00: Hello
+        Received message at 1970-01-01 ...: Hello
     """
     if isinstance(userdata, Namespace) and 'receiver' in userdata:
         item = verify_and_decrypt_data(json.loads(msg.payload.decode()),
