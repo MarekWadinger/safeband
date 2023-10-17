@@ -115,11 +115,17 @@ class to_mqtt(Sink):
             del x['time']
             self.client.publish(
                 f"{self.topic}anomaly", x.pop('anomaly'), **self.p_kw)
-            for key in x['level_high']:
+            if isinstance(x['level_high'], list):
+                for key in x['level_high']:
+                    self.client.publish(
+                        f"{key}_DOL_high", x['level_high'][key], **self.p_kw)
+                    self.client.publish(
+                        f"{key}_DOL_low", x['level_low'][key], **self.p_kw)
+            else:
                 self.client.publish(
-                    f"{key}_DOL_high", x['level_high'][key], **self.p_kw)
+                    f"{self.topic}_DOL_high", x['level_high'], **self.p_kw)
                 self.client.publish(
-                    f"{key}_DOL_low", x['level_low'][key], **self.p_kw)
+                    f"{self.topic}_DOL_low", x['level_low'], **self.p_kw)
 
     def destroy(self):  # pragma: no cover
         if self.client is not None:

@@ -1,4 +1,4 @@
-# Adaptable and Interpretable Framework for Anomaly Detection
+# AID: Adaptable and Interpretable Framework for Anomaly Detection
 
 <!-- markdownlint-disable MD013 -->
 [![Python application](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml/badge.svg)](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml)
@@ -8,23 +8,23 @@
 [![DOI](https://zenodo.org/badge/DOI/10.1109/PC58330.2023.10217717.svg)](https://doi.org/10.1109/PC58330.2023.10217717)
 <!-- markdownlint-enable MD013 -->
 
-Online outlier detection service for existing real-time infrastructures for
+Online outlier detection service for industrial SCADA-based infrastructures for
 low-latency detection and change-point adaptation.
-The service provides dynamic process limits based on changing environmental
+The service provides dynamic operating limits based on changing environmental
 conditions and sensors aging. This implementation is built upon a robust
 foundation, leveraging the power of the open-source libraries
-**[river](https://github.com/online-ml/river)**
-and **[streamz](https://github.com/python-streamz/streamz)** and
+**[river](https://github.com/online-ml/river)**,
+**[streamz](https://github.com/python-streamz/streamz)** and
 **[human_security](https://github.com/mdipierro/human_security)**, among the
 others. Make sure to check out their great work!
 
-The main benefits of the  solution are that it:
+### Highlights:
 
-* Enriches interpretable anomaly detection with adaptive capabilities
-* Isolates root cause of anomalies while considering interactions
-* Uses self-learning approach on streamed IoT data
-* Demonstrates interpretability by providing process limits for signals
-* Provides comparable detection accuracy to established general methods
+* Interpretable anomaly detector with self-supervised adaptation
+* Demonstrates interpretability by providing dynamic operating limits
+* Leverages self-learning approach on streamed IoT data
+* Utilizes existing SCADA-based industrial infrastruture
+* Offers faster response time to incidents due to root cause isolation
 
 ![ESwA23 - Graphical Abstract](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/ESwA23%20-%20Graphical%20Abstract.pdf)
 
@@ -32,24 +32,46 @@ The main benefits of the  solution are that it:
 
 ## ⚡️ Quickstart
 
-Get your hand on the algorithm using this
-[notebook](https://github.com/MarekWadinger/online_outlier_detection/blob/main/examples/01_univariate_pc_2023.ipynb)
-and play around with example data.
+Get your hand on the algorithm using following Jupyter notebooks and play
+around with open-spource example data:
+
+0. [Case Study 0: Outlier Detection on Inverter Temperature](https://github.com/MarekWadinger/online_outlier_detection/blob/main/examples/03_conditional_ae_2023.ipynb)
+1. [Case Study 1: Anomaly Detection on BESS Temperature](https://github.com/MarekWadinger/online_outlier_detection/blob/main/examples/03_conditional_ae_2023.ipynb)
+2. [Case Study 2: Anomaly Detection on Battery Module Temperature](https://github.com/MarekWadinger/online_outlier_detection/blob/main/examples/04_eco_pack_presov.ipynb)
+3. [Comparison Study: One-Class SVM and HalfSpace Trees on SCAB Dataset](https://github.com/MarekWadinger/online_outlier_detection/blob/main/examples/04_eco_pack_presov.ipynb)
 
 ## 🏃 Run the services
 
-### Stream MQTT messages
+Our framework is ready to face your challenges with diverse set of suppported
+publish-subscribe services:
+
+* [**MQTT**](https://mqtt.org)
+* [**Apache Kafka**](https://kafka.apache.org)
+* [**Apache Pulsar**](https://pulsar.apache.org)
+* Streamed [**DataFrame**](https://pandas.pydata.org)
+* TODO: [**NATS**](https://nats.io)
+
+**NOTE**: Messaging can be **signed** and **encrypted** for most of the
+services. If you find any related bugs, feel free to
+[open an issue](https://github.com/MarekWadinger/online_outlier_detection/issues/new/choose).
+
+### Example Service Usage: MQTT
+
+We demonstrate the usage of the service using
+[**MQTT**](https://mqtt.org) protocol. The service is based on
+[**paho-mqtt**](https://pypi.org/project/paho-mqtt/) library. The source of data
+is a real coffee machine streaming data to MQTT broker.
 
 To start the service, run following line of code in your terminal:
 
 ```bash
-python client.py -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
+python rpc_client.py -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
 ```
 
 Note: You can modify the source data stream using attributes:
 
 * `[-f | --config-file]` with path to `config.ini`
-(NOTE: first valid key value pair is used)
+(**NOTE**: first valid key value pair is used)
 * `[-t | --topic]` to define topic to subscribe to or column in csv file
 * `[-k | --key-path]` with path to ssh keys of sender and receiver
 (NOTE: if empty, the keys are created)
@@ -78,12 +100,12 @@ Received message: {"time": "1970-01-01 03:17:11", "anomaly": "0", "level_high":"
 ```
 <!-- markdownlint-enable MD013 -->
 
-### Stream file messages
+### Example Service Usage: Streamed DataFrame
 
 If you want to stream example dataset use
 
 ```bash
-python client.py -t "Average Cell Temperature"
+python rpc_client.py -t "Average Cell Temperature"
 ```
 
 where your `config.ini` shall contain

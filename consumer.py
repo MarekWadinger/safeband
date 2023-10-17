@@ -1,15 +1,12 @@
 import datetime as dt
 import json
-import os
 from argparse import Namespace
 from datetime import datetime
 
 import paho.mqtt.client as mqtt
-from human_security import HumanRSA
 
 from functions.encryption import (
-    load_private_key,
-    load_public_key,
+    init_rsa_security,
     verify_and_decrypt_data,
 )
 from functions.parse import get_argparser, get_config
@@ -141,12 +138,8 @@ if __name__ == '__main__':
 
     config_ = get_config(args_.config_file)
 
-    if args_.key_path and os.path.exists(args_.key_path):
-        args_.receiver = HumanRSA()
-        load_private_key(args_.key_path + "/receiver_pem", args_.receiver)
-        load_public_key(args_.key_path + "/sender_pem.pub", args_.receiver)
-    else:
-        raise RuntimeError('Cannot find key path.')
+    if args_.key_path:
+        _, args_.receiver = init_rsa_security(args_.key_path)
 
     if config_.get("output"):
         query_file(config_, args_)
