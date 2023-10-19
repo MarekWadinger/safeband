@@ -115,7 +115,7 @@ class to_mqtt(Sink):
             del x['time']
             self.client.publish(
                 f"{self.topic}anomaly", x.pop('anomaly'), **self.p_kw)
-            if isinstance(x['level_high'], list):
+            if isinstance(x['level_high'], dict):
                 for key in x['level_high']:
                     self.client.publish(
                         f"{key}_DOL_high", x['level_high'][key], **self.p_kw)
