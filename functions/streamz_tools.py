@@ -60,7 +60,7 @@ class to_mqtt(Sink):
     ...                        topics="test")
     >>> msg.payload == out_msg
     True
-    
+
     Publish a dictionary
     >>> out_msg = {
     ...     'anomaly': 1,
@@ -75,7 +75,7 @@ class to_mqtt(Sink):
     ...                        topics="testanomaly")
     >>> int(msg.payload) == out_msg['anomaly']
     True
-    
+
     Publish a nested dictionary
     >>> out_msg = {
     ...     'anomaly': 1,
@@ -90,7 +90,7 @@ class to_mqtt(Sink):
     ...                        topics="b_DOL_high")
     >>> float(msg.payload) == out_msg['level_high']['b']
     True
-    
+
     >>> mqtt_sink.destroy()
     """
     def __init__(self, upstream, host, port, topic, keepalive=60,
@@ -144,7 +144,7 @@ def _filt(msgs: dict, topics: list) -> bool:
 
     Returns:
         bool: True if all topics are available in msgs, False otherwise.
-    
+
     Examples:
     >>> msgs = {'a': 1, 'b': 2}
     >>> topics = ['a', 'b']
@@ -167,7 +167,7 @@ def _func(previous_state: dict, new_msg: MQTTMessage, topics: list) -> dict:
 
     Returns:
         dict: Updated state.
-    
+
     Examples:
     >>> previous_state = {}
     >>> topics = ['foo']

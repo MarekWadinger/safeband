@@ -17,7 +17,7 @@ from functions.encryption import (  # noqa: E402
     encrypt_data,
     sign_data,
 )
-from functions.model_persistence import load_model, save_model
+from functions.model_persistence import load_model, save_model  # noqa: E402
 
 
 class TestQuery():
@@ -68,33 +68,31 @@ class TestQuery():
 
 
 class TestModelPresistence():
-    
-        def setup_class(self):
-            self.parent_path = Path(__file__).parent
-            self.path = str(Path(__file__).parent / ".recovery_models/")
-            self.topics = ["test"]
-    
-        def teardown_class(self):
-            models = glob.glob(
-            os.path.join(
-                self.path, f"model_{len(self.topics)}_*.pkl")
-            )
-            for model in models:
-                os.remove(model)
-            os.rmdir(self.path)
-    
-        def test_load_model(self):
-            model = load_model(self.path, self.topics)
-            assert model is None
-    
-        def test_save_model(self):
-            model = {"model": 1}
-            save_model(self.path, self.topics, model)
-            models = glob.glob(
-            os.path.join(
-                self.path, f"model_{len(self.topics)}_*.pkl")
-            )
-            assert len(models) == 1
 
-            assert model == load_model(self.path, self.topics)
-            assert None == load_model(self.path, ["bad_topics"])
+    def setup_class(self):
+        self.parent_path = Path(__file__).parent
+        self.path = str(Path(__file__).parent / ".recovery_models/")
+        self.topics = ["test"]
+
+    def teardown_class(self):
+        models = glob.glob(os.path.join(
+            self.path, f"model_{len(self.topics)}_*.pkl")
+        )
+        for model in models:
+            os.remove(model)
+        os.rmdir(self.path)
+
+    def test_load_model(self):
+        model = load_model(self.path, self.topics)
+        assert model is None
+
+    def test_save_model(self):
+        model = {"model": 1}
+        save_model(self.path, self.topics, model)
+        models = glob.glob(os.path.join(
+            self.path, f"model_{len(self.topics)}_*.pkl")
+        )
+        assert len(models) == 1
+
+        assert model == load_model(self.path, self.topics)
+        assert load_model(self.path, ["bad_topics"]) is None

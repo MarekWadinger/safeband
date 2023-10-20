@@ -17,7 +17,7 @@ def convert_to_nested_dict(d):
     ...     'QuantileFilter__b__int': 0.95}
     >>> convert_to_nested_dict(input_dict)
     {'QuantileFilter': {'a': 1, 'b': 0}}
-    
+
     >>> input_dict = {
     ...     'QuantileFilter__range__round': [0.05, 0.95]}
     >>> convert_to_nested_dict(input_dict)
@@ -82,7 +82,7 @@ def build_model(steps: list, params: dict):
     0.95
     >>> model["QuantileFilter"].anomaly_detector.nu
     0.123
-    
+
     Returns a river model when single step is given:
     >>> from river import anomaly, preprocessing
     >>> steps = [[anomaly.QuantileFilter, anomaly.OneClassSVM]]
@@ -94,7 +94,7 @@ def build_model(steps: list, params: dict):
     0.95
     >>> model.anomaly_detector.nu
     0.123
-    
+
     """
     model = compose.Pipeline()
     for step in steps:
