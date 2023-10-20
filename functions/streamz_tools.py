@@ -47,6 +47,7 @@ class to_mqtt(Sink):
         **kwargs: Additional keyword arguments.
 
     Examples:
+    >>> import datetime as dt
     >>> out_msg = bytes(str(dt.datetime.utcnow()), encoding='utf-8')
     >>> mqtt_sink = to_mqtt(
     ...     Stream(), host="mqtt.eclipseprojects.io",

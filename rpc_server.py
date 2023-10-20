@@ -3,8 +3,6 @@ import datetime as dt
 import glob
 import json
 import os
-import signal
-import sys
 import time
 from typing import IO, Union
 
@@ -22,7 +20,7 @@ from functions.encryption import (
     sign_data,
 )
 from functions.proba import MultivariateGaussian
-from functions.streamz_tools import to_mqtt, _filt, _func
+from functions.streamz_tools import _filt, _func, to_mqtt  # noqa: F401
 from functions.utils import common_prefix
 
 # CONSTANTS
@@ -87,32 +85,6 @@ def print_summary(df):
         f"Total number of anomalous events: "
         f"{sum(pd.Series(df['anomaly']).diff().dropna() == 1)}")
     print(text)
-
-
-def signal_handler(sig, frame, detector, model, config, topics):
-    os.write(sys.stdout.fileno(), b"\nSignal received to stop the app...\n")
-    detector.stop()
-    save_model(topics, model)
-
-    time.sleep(1)
-    # Print summary
-    if config.get("output"):
-        for file in open_files:
-            file.close()
-            print(f"Output saved to {file.name}")
-        try:
-            d = pd.read_json(config.get("output"), lines=True)
-            if not d.empty:
-                print_summary(d)
-            else:
-                print("No data retrieved")
-        except Exception:
-            print("Cannot show summary possibly due to encryption.")
-    # TODO: Find out how to flush kafka
-    # if config.get("bootstrap.servers"):
-    #     detector.flush()
-
-    sys.exit(0)
 
 
 class RpcOutlierDetector:
@@ -469,12 +441,6 @@ class RpcOutlierDetector:
                         )
 
         detector = self.get_sink(config, topics, detector)
-
-        signal.signal(
-                signal.SIGINT, lambda signalnum,
-                frame: signal_handler(
-                    signalnum, frame, detector, model, config, topics)
-                )
 
         try:
             self.run(config, source, detector, debug)
