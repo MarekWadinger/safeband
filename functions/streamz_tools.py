@@ -2,8 +2,8 @@ import logging
 from typing import Union
 
 import paho.mqtt.client as mqtt
-from streamz import Sink, Stream
 from paho.mqtt.client import MQTTMessage
+from streamz import Sink, Stream
 
 logger = logging.getLogger(__name__)
 
