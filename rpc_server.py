@@ -9,11 +9,10 @@ import time
 from typing import IO, Union
 
 import joblib
-import paho.mqtt.client as mqtt
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
 from river import proba, utils
-from streamz import Sink, Stream
+from streamz import Stream
 
 from functions.anomaly import ConditionalGaussianScorer, GaussianScorer
 from functions.encryption import (
@@ -23,6 +22,7 @@ from functions.encryption import (
     sign_data,
 )
 from functions.proba import MultivariateGaussian
+from functions.streamz_tools import to_mqtt, _filt, _func
 from functions.utils import common_prefix
 
 # CONSTANTS
@@ -60,94 +60,6 @@ def save_model(topics, model):
     with open(recovery_path, 'wb') as f:
         joblib.dump({"model": model, "topics": topics}, f)
         print(f"Model saved to {recovery_path}")
-
-
-@Stream.register_api()
-class to_mqtt(Sink):
-    """
-    Initialize the to_mqtt instance.
-
-    Args:
-        upstream (Stream): Upstream stream.
-        host (str): MQTT broker host.
-        port (int): MQTT broker port.
-        topic (str): MQTT topic.
-        keepalive (int): Keepalive duration.
-        client_kwargs (dict): Additional arguments for MQTT client connect.
-        publish_kwargs (dict): Additional arguments for MQTT publish.
-        **kwargs: Additional keyword arguments.
-
-    Examples:
-    >>> out_msg = bytes(str(dt.datetime.utcnow()), encoding='utf-8')
-    >>> mqtt_sink = to_mqtt(
-    ...     Stream(), host="mqtt.eclipseprojects.io",
-    ...     port=1883, topic='test', publish_kwargs={"retain":True})
-    >>> mqtt_sink.update(out_msg)
-
-    Check the message
-    >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
-    ...                        topics="test")
-    >>> msg.payload == out_msg
-    True
-    """
-    def __init__(self, upstream, host, port, topic, keepalive=60,
-                 client_kwargs=None, publish_kwargs=None,
-                 **kwargs):
-        self.host = host
-        self.port = port
-        self.c_kw = client_kwargs or {}
-        self.p_kw = publish_kwargs or {}
-        self.client: Union[mqtt.Client, None] = None
-        self.topic = topic
-        self.keepalive = keepalive
-        super().__init__(upstream, ensure_io_loop=True, **kwargs)
-
-    def update(self, x, who=None, metadata=None):
-        if self.client is None:
-            self.client = mqtt.Client(clean_session=True)
-            self.client.connect(self.host, self.port, self.keepalive,
-                                **self.c_kw)
-        # TODO: wait on successful delivery
-        if isinstance(x, bytes):
-            self.client.publish(self.topic, x, **self.p_kw)
-        else:
-            del x['time']
-            self.client.publish(
-                f"{self.topic}anomaly", x.pop('anomaly'), **self.p_kw)
-            if isinstance(x['level_high'], dict):
-                for key in x['level_high']:
-                    self.client.publish(
-                        f"{key}_DOL_high", x['level_high'][key], **self.p_kw)
-                    self.client.publish(
-                        f"{key}_DOL_low", x['level_low'][key], **self.p_kw)
-            else:
-                self.client.publish(
-                    f"{self.topic}_DOL_high", x['level_high'], **self.p_kw)
-                self.client.publish(
-                    f"{self.topic}_DOL_low", x['level_low'], **self.p_kw)
-
-    def destroy(self):  # pragma: no cover
-        if self.client is not None:
-            self.client.disconnect()
-            self.client = None
-            super().destroy()
-
-
-def _filt(msgs: dict, topics: list) -> bool:
-    return all(topic in msgs for topic in topics)
-
-
-def _func(previous_state, new_value, topics: list):
-    if new_value.topic in topics:
-        if not _filt(previous_state, topics):
-            previous_state[new_value.topic] = new_value.payload
-            state = previous_state.copy()
-        else:
-            state = {new_value.topic: new_value.payload}
-    else:
-        state = {}
-    return state
 
 
 def print_summary(df):
@@ -518,7 +430,6 @@ class RpcOutlierDetector:
         >>> topics = ["A"]
         >>> obj = RpcOutlierDetector()
         >>> obj.start(config, topics, key_path=".temp", debug=True)
-        No ... in the recovery folder.
         Sinking to 'dynamic_limits'
         <BLANKLINE>
         === Debugging started... ===
