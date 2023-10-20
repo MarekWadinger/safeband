@@ -11,7 +11,7 @@ from functions.encryption import (  # noqa: E402
     encrypt_data,
     init_rsa_security,
 )
-from functions.safe_streamz import map  # noqa: E402, F401
+from functions.streamz_tools import map  # noqa: E402, F401
 
 
 def encryption_service(

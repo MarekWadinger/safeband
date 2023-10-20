@@ -17,6 +17,16 @@ def convert_to_nested_dict(d):
     ...     'QuantileFilter__b__int': 0.95}
     >>> convert_to_nested_dict(input_dict)
     {'QuantileFilter': {'a': 1, 'b': 0}}
+
+    >>> input_dict = {
+    ...     'QuantileFilter__range__round': [0.05, 0.95]}
+    >>> convert_to_nested_dict(input_dict)
+    {'QuantileFilter': {'range': [0, 1]}}
+    >>> input_dict = {
+    ...     'QuantileFilter__c__int__bad': 1}
+    >>> convert_to_nested_dict(input_dict)  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+    ValueError: Up to 3 parts supported. You gave 4
     """
     result: dict = {}
     for key, value in d.items():
@@ -72,6 +82,19 @@ def build_model(steps: list, params: dict):
     0.95
     >>> model["QuantileFilter"].anomaly_detector.nu
     0.123
+
+    Returns a river model when single step is given:
+    >>> from river import anomaly, preprocessing
+    >>> steps = [[anomaly.QuantileFilter, anomaly.OneClassSVM]]
+    >>> input_dict = {
+    ...     'QuantileFilter': {'q': 0.95},
+    ...     'OneClassSVM': {'nu': 0.123}}
+    >>> model = build_model(steps, input_dict)
+    >>> model.q
+    0.95
+    >>> model.anomaly_detector.nu
+    0.123
+
     """
     model = compose.Pipeline()
     for step in steps:

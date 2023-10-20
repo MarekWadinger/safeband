@@ -5,10 +5,7 @@ from datetime import datetime
 
 import paho.mqtt.client as mqtt
 
-from functions.encryption import (
-    init_rsa_security,
-    verify_and_decrypt_data,
-)
+from functions.encryption import init_rsa_security, verify_and_decrypt_data
 from functions.parse import get_argparser, get_config
 
 PORT = 1883

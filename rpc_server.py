@@ -1,19 +1,13 @@
 # IMPORTS
 import datetime as dt
-import glob
 import json
-import os
-import signal
-import sys
 import time
 from typing import IO, Union
 
-import joblib
-import paho.mqtt.client as mqtt
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
 from river import proba, utils
-from streamz import Sink, Stream
+from streamz import Stream
 
 from functions.anomaly import ConditionalGaussianScorer, GaussianScorer
 from functions.encryption import (
@@ -22,134 +16,19 @@ from functions.encryption import (
     init_rsa_security,
     sign_data,
 )
+from functions.model_persistence import load_model, save_model
 from functions.proba import MultivariateGaussian
+from functions.streamz_tools import _filt, _func, to_mqtt  # noqa: F401
 from functions.utils import common_prefix
 
 # CONSTANTS
 GRACE_PERIOD = 60*2
 WINDOW = dt.timedelta(hours=24*1)
-RECOVERY_FOLDER = ".recovery_models"
 
 open_files: list[IO] = []
 
 
 # DEFINITIONS
-def load_model(topics):
-    model_files = glob.glob(
-        os.path.join(
-            RECOVERY_FOLDER, f"model_{len(topics)}_*.pkl")
-        )
-    if model_files:
-        model_files.sort(reverse=True)
-        for latest_model in model_files:
-            recovery_data = joblib.load(latest_model)
-            if recovery_data["topics"] == topics:
-                model = recovery_data["model"]
-                print("Latest model found:", latest_model)
-                return model
-        print("No matching model files found in the recovery folder.")
-    else:
-        print("No model files found in the recovery folder.")
-
-
-def save_model(topics, model):
-    now = dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    if not os.path.exists(RECOVERY_FOLDER):
-        os.makedirs(RECOVERY_FOLDER)
-    recovery_path = f"{RECOVERY_FOLDER}/model_{len(topics)}_{now}.pkl"
-    with open(recovery_path, 'wb') as f:
-        joblib.dump({"model": model, "topics": topics}, f)
-        print(f"Model saved to {recovery_path}")
-
-
-@Stream.register_api()
-class to_mqtt(Sink):
-    """
-    Initialize the to_mqtt instance.
-
-    Args:
-        upstream (Stream): Upstream stream.
-        host (str): MQTT broker host.
-        port (int): MQTT broker port.
-        topic (str): MQTT topic.
-        keepalive (int): Keepalive duration.
-        client_kwargs (dict): Additional arguments for MQTT client connect.
-        publish_kwargs (dict): Additional arguments for MQTT publish.
-        **kwargs: Additional keyword arguments.
-
-    Examples:
-    >>> out_msg = bytes(str(dt.datetime.utcnow()), encoding='utf-8')
-    >>> mqtt_sink = to_mqtt(
-    ...     Stream(), host="mqtt.eclipseprojects.io",
-    ...     port=1883, topic='test', publish_kwargs={"retain":True})
-    >>> mqtt_sink.update(out_msg)
-
-    Check the message
-    >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
-    ...                        topics="test")
-    >>> msg.payload == out_msg
-    True
-    """
-    def __init__(self, upstream, host, port, topic, keepalive=60,
-                 client_kwargs=None, publish_kwargs=None,
-                 **kwargs):
-        self.host = host
-        self.port = port
-        self.c_kw = client_kwargs or {}
-        self.p_kw = publish_kwargs or {}
-        self.client: Union[mqtt.Client, None] = None
-        self.topic = topic
-        self.keepalive = keepalive
-        super().__init__(upstream, ensure_io_loop=True, **kwargs)
-
-    def update(self, x, who=None, metadata=None):
-        if self.client is None:
-            self.client = mqtt.Client(clean_session=True)
-            self.client.connect(self.host, self.port, self.keepalive,
-                                **self.c_kw)
-        # TODO: wait on successful delivery
-        if isinstance(x, bytes):
-            self.client.publish(self.topic, x, **self.p_kw)
-        else:
-            del x['time']
-            self.client.publish(
-                f"{self.topic}anomaly", x.pop('anomaly'), **self.p_kw)
-            if isinstance(x['level_high'], dict):
-                for key in x['level_high']:
-                    self.client.publish(
-                        f"{key}_DOL_high", x['level_high'][key], **self.p_kw)
-                    self.client.publish(
-                        f"{key}_DOL_low", x['level_low'][key], **self.p_kw)
-            else:
-                self.client.publish(
-                    f"{self.topic}_DOL_high", x['level_high'], **self.p_kw)
-                self.client.publish(
-                    f"{self.topic}_DOL_low", x['level_low'], **self.p_kw)
-
-    def destroy(self):  # pragma: no cover
-        if self.client is not None:
-            self.client.disconnect()
-            self.client = None
-            super().destroy()
-
-
-def _filt(msgs: dict, topics: list) -> bool:
-    return all(topic in msgs for topic in topics)
-
-
-def _func(previous_state, new_value, topics: list):
-    if new_value.topic in topics:
-        if not _filt(previous_state, topics):
-            previous_state[new_value.topic] = new_value.payload
-            state = previous_state.copy()
-        else:
-            state = {new_value.topic: new_value.payload}
-    else:
-        state = {}
-    return state
-
-
 def print_summary(df):
     """Print a summary of the given DataFrame.
 
@@ -173,32 +52,6 @@ def print_summary(df):
         f"Total number of anomalous events: "
         f"{sum(pd.Series(df['anomaly']).diff().dropna() == 1)}")
     print(text)
-
-
-def signal_handler(sig, frame, detector, model, config, topics):
-    os.write(sys.stdout.fileno(), b"\nSignal received to stop the app...\n")
-    detector.stop()
-    save_model(topics, model)
-
-    time.sleep(1)
-    # Print summary
-    if config.get("output"):
-        for file in open_files:
-            file.close()
-            print(f"Output saved to {file.name}")
-        try:
-            d = pd.read_json(config.get("output"), lines=True)
-            if not d.empty:
-                print_summary(d)
-            else:
-                print("No data retrieved")
-        except Exception:
-            print("Cannot show summary possibly due to encryption.")
-    # TODO: Find out how to flush kafka
-    # if config.get("bootstrap.servers"):
-    #     detector.flush()
-
-    sys.exit(0)
 
 
 class RpcOutlierDetector:
@@ -497,6 +350,7 @@ class RpcOutlierDetector:
             config: dict,
             topics: list,
             key_path: Union[str, None],
+            recovery_path: Union[str, None] = None,
             debug: bool = False):
         """Process the limits in a streaming manner.
 
@@ -518,13 +372,13 @@ class RpcOutlierDetector:
         >>> topics = ["A"]
         >>> obj = RpcOutlierDetector()
         >>> obj.start(config, topics, key_path=".temp", debug=True)
-        No ... in the recovery folder.
         Sinking to 'dynamic_limits'
         <BLANKLINE>
         === Debugging started... ===
         === Debugging finished with success... ===
+        === Service stopped ===
         """
-        model = load_model(topics)
+        model = load_model(recovery_path, topics)
 
         if model is None:
             if len(topics) > 1:
@@ -555,14 +409,9 @@ class RpcOutlierDetector:
 
         detector = self.get_sink(config, topics, detector)
 
-        signal.signal(
-                signal.SIGINT, lambda signalnum,
-                frame: signal_handler(
-                    signalnum, frame, detector, model, config, topics)
-                )
-
         try:
             self.run(config, source, detector, debug)
-        except Exception:
-            print(model.gaussian)
-            save_model(topics, model)
+        finally:
+            detector.stop()
+            print("=== Service stopped ===")
+            save_model(recovery_path, topics, model)
