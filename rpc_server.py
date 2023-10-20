@@ -1,12 +1,9 @@
 # IMPORTS
 import datetime as dt
-import glob
 import json
-import os
 import time
 from typing import IO, Union
 
-import joblib
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
 from river import proba, utils
@@ -19,6 +16,7 @@ from functions.encryption import (
     init_rsa_security,
     sign_data,
 )
+from functions.model_persistence import load_model, save_model
 from functions.proba import MultivariateGaussian
 from functions.streamz_tools import _filt, _func, to_mqtt  # noqa: F401
 from functions.utils import common_prefix
@@ -31,37 +29,6 @@ open_files: list[IO] = []
 
 
 # DEFINITIONS
-def load_model(filename: Union[str, None], topics: list):
-    if filename:
-        model_files = glob.glob(
-            os.path.join(
-                filename, f"model_{len(topics)}_*.pkl")
-            )
-        if model_files:
-            model_files.sort(reverse=True)
-            for latest_model in model_files:
-                recovery_data = joblib.load(latest_model)
-                if recovery_data["topics"] == topics:
-                    model = recovery_data["model"]
-                    print("Latest model found:", latest_model)
-                    return model
-            print("No matching model files found in the recovery folder.")
-        else:
-            print("No model files found in the recovery folder.")
-    return None
-
-
-def save_model(filename: Union[str, None], topics: list, model):
-    if filename:
-        now = dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-        if not os.path.exists(filename):
-            os.makedirs(filename)
-        recovery_path = f"{filename}/model_{len(topics)}_{now}.pkl"
-        with open(recovery_path, 'wb') as f:
-            joblib.dump({"model": model, "topics": topics}, f)
-            print(f"Model saved to {recovery_path}")
-
-
 def print_summary(df):
     """Print a summary of the given DataFrame.
 
