@@ -12,7 +12,7 @@ from functions.encryption import (  # noqa: E402
     encode_data,
     init_rsa_security,
 )
-from functions.safe_streamz import map  # noqa: E402, F401
+from functions.streamz_tools import map  # noqa: E402, F401
 
 
 class Example(Record):
