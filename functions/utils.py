@@ -27,6 +27,10 @@ def common_prefix(topics: list) -> str:
     ...     "plant_2/emeter/0/power"]
     >>> common_prefix(topics)
     ''
+
+    >>> topics = None
+    >>> common_prefix(topics)
+    ''
     """
     if not topics:
         return ""
