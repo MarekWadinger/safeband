@@ -1,1 +1,1 @@
-rpc_server: python rpc_server.py
+aid_client: python rpc_client.py --topic "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power" "shellies/Shelly3EM-Main-Switchboard-C/emeter/1/power" "shellies/Shelly3EM-Main-Switchboard-C/emeter/2/power"
