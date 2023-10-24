@@ -361,6 +361,6 @@ def get_params() -> Config:  # pragma: no cover
 
     config = build_config(args, config_parser)
 
-    get_valid_client(config)
+    config = get_valid_client(config)
 
     return config
