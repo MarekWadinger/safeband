@@ -349,7 +349,7 @@ def decode_data(data):
                          "Expected (bytes, list, dict).")
 
 
-def init_rsa_security(key_path):
+def init_rsa_security(key_path: str):
     sender, receiver = generate_keys()
     if not os.path.exists(key_path):  # pragma: no cover
         os.makedirs(key_path, exist_ok=True)

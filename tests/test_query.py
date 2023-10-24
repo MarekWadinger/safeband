@@ -18,13 +18,16 @@ from functions.encryption import (  # noqa: E402
     sign_data,
 )
 from functions.model_persistence import load_model, save_model  # noqa: E402
+from functions.typing_extras import FileClient  # noqa: E402
 
 
-class TestQuery():
+class TestConsumer():
 
     def setup_class(self):
         self.parent_path = Path(__file__).parent
-        self.config = {"output": str(self.parent_path / 'test.json')}
+        self.config: FileClient = {
+            "path": "",
+            "output": str(self.parent_path / 'test.json')}
         self.args = argparse.Namespace()
         self.args.receiver = HumanRSA()
         self.args.receiver.generate()
@@ -61,7 +64,7 @@ class TestQuery():
         f = StringIO()
         stdout_ = sys.stdout  # Keep track of the previous value.
         sys.stdout = f
-        query_file(self.config, self.args)
+        query_file(self.config, **{"receiver": self.args.receiver})
         sys.stdout = stdout_
         assert (f.getvalue() ==
                 "{'time': datetime.datetime(2022, 1, 1, 0, 0)}\n")

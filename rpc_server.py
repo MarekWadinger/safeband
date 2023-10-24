@@ -19,6 +19,16 @@ from functions.encryption import (
 from functions.model_persistence import load_model, save_model
 from functions.proba import MultivariateGaussian
 from functions.streamz_tools import _filt, _func, to_mqtt  # noqa: F401
+from functions.typing_extras import (
+    FileClient,
+    IOConfig,
+    KafkaClient,
+    ModelConfig,
+    MQTTClient,
+    PulsarClient,
+    SetupConfig,
+    istypedinstance,
+)
 from functions.utils import common_prefix
 
 # CONSTANTS
@@ -29,6 +39,44 @@ open_files: list[IO] = []
 
 
 # DEFINITIONS
+def expand_model_params(model_params):
+    threshold = model_params.get("threshold", 0.99735)
+
+    def period_to_timedelta(
+            period: Union[str, dt.timedelta, pd.Timedelta]) -> dt.timedelta:
+        """Convert a period to a timedelta.
+
+        Args:
+            period: Timedelta convertible period.
+
+        Raises:
+            ValueError: If unsupported type provided.
+
+        Returns:
+            dt.timedelta: Converted period.
+        """
+        if not isinstance(period, dt.timedelta):
+            if isinstance(period, str):
+                period = pd.Timedelta(period).to_pytimedelta()
+            elif isinstance(period, pd.Timedelta):
+                period = period.to_pytimedelta()
+        elif isinstance(period, dt.timedelta):
+            pass
+        else:
+            raise ValueError("period must be a timedelta or convertible.")
+        return period
+
+    t_e = model_params.get("t_e")
+    if t_e is None:
+        raise ValueError("t_e cannot be None")
+    t_e = period_to_timedelta(t_e)
+    t_a = model_params.get("t_a", t_e)
+    t_a = period_to_timedelta(t_a)
+    t_g = model_params.get("t_g", t_e)
+    t_g = period_to_timedelta(t_g)
+    return threshold, t_e, t_a, t_g
+
+
 def print_summary(df):
     """Print a summary of the given DataFrame.
 
@@ -181,7 +229,7 @@ class RpcOutlierDetector:
 
     def get_source(
             self,
-            config: dict,
+            config: Union[FileClient, MQTTClient, KafkaClient, PulsarClient],
             topics: list,
             debug: bool = False):
         """Get the data source based on the provided configuration.
@@ -209,8 +257,8 @@ class RpcOutlierDetector:
 
         Examples:
         >>> config = {
-        ...     "path": "path/to/input/data.csv",
-        ...     "data": pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})}
+        ...     "path": "tests/test.csv",
+        ...     "output": "tests/output.json"}
         >>> topics = ["test"]
         >>> obj = RpcOutlierDetector()
         >>> source = obj.get_source(config, topics)
@@ -227,7 +275,7 @@ class RpcOutlierDetector:
         >>> type(source)
         <class 'streamz.core.filter'>
 
-        >>> config = {"bootstrap.servers": "kafka.server:9092",
+        >>> config = {"bootstrap_servers": "kafka.server:9092",
         ...           "group.id": "consumer-group"}
         >>> topics = ["kafka-topics"]
         >>> source = obj.get_source(config, topics)
@@ -245,33 +293,35 @@ class RpcOutlierDetector:
         >>> source = obj.get_source(config, topics)
         Traceback (most recent call last):
         ...
-        RuntimeError: Wrong data format.
+        RuntimeError: Wrong client.
         """  # noqa: E501
-        if config.get("path"):
+        if istypedinstance(config, FileClient):
             if debug:
                 source = Stream()
             else:
-                source = Stream.from_iterable(config['data'].iterrows())
-        elif config.get("host"):
+                data = pd.read_csv(config.get("path", ""), index_col=0)
+                data.index = pd.to_datetime(data.index, utc=True)
+                source = Stream.from_iterable(data.iterrows())
+        elif istypedinstance(config, MQTTClient):
             source = Stream.from_mqtt(
                 **config, topic=[(topic, 0) for topic in topics])
             source = source.accumulate(
                 _func, start={}, **{"topics": topics}).filter(_filt, topics)
-        elif config.get("bootstrap.servers"):
+        elif istypedinstance(config, KafkaClient):
             source = Stream.from_kafka(
                 topics, {**config, 'group.id': 'detection_service'})
-        elif config.get("service_url"):
+        elif istypedinstance(config, PulsarClient):
             source = Stream.from_pulsar(
                 config.get("service_url"),
                 topics,
                 subscription_name='detection_service')
         else:
-            raise RuntimeError("Wrong data format.")
+            raise RuntimeError(f"Wrong client: {config}")
         return source
 
     def get_sink(
             self,
-            config: dict[str, str],
+            config: Union[FileClient, MQTTClient, KafkaClient, PulsarClient],
             topics: list,
             detector):
         """Get the data sink based on the provided configuration.
@@ -287,18 +337,18 @@ class RpcOutlierDetector:
         prefix: str = common_prefix(topics)
         topic: str = f"{prefix}dynamic_limits"
         print(f"Sinking to '{topic}'\n")
-        if config.get("path") and config.get("output"):
+        if istypedinstance(config, FileClient):
             f = open(config.get("output", ""), 'a')
             open_files.append(f)
             detector.sink(self.dump_to_file, f)
-        elif config.get("host"):  # pragma: no cover
+        elif istypedinstance(config, MQTTClient):  # pragma: no cover
             detector.to_mqtt(
                 **config, topic=prefix, publish_kwargs={"retain": True})
         # TODO: add coverage test
-        elif config.get("bootstrap.servers"):  # pragma: no cover
+        elif istypedinstance(config, KafkaClient):  # pragma: no cover
             detector.map(lambda x: (str(x), "dynamic_limits")
                          ).to_kafka(topic, config)
-        elif config.get("service_url"):  # pragma: no cover
+        elif istypedinstance(config, PulsarClient):  # pragma: no cover
             from pulsar.schema import JsonSchema, Record, String
 
             class Example(Record):
@@ -321,11 +371,10 @@ class RpcOutlierDetector:
             debug
     ):
         # TODO: handle combination of debug and remote broker
-        if debug and config.get("path"):
+        if debug and istypedinstance(config, FileClient):
             print("=== Debugging started... ===")
             data = pd.read_csv(config['path'], index_col=0)
             data.index = pd.to_datetime(data.index, utc=True)
-            config['data'] = data
             for row in data.head().iterrows():
                 source.emit(row)
             for file in open_files:
@@ -342,16 +391,15 @@ class RpcOutlierDetector:
                 except AttributeError:
                     if source.upstreams[0].upstreams[0].stopped:
                         break
-                print("=== Service running... ===")
                 time.sleep(2)
 
     def start(
             self,
-            config: dict,
-            topics: list,
-            key_path: Union[str, None],
-            recovery_path: Union[str, None] = None,
-            debug: bool = False):
+            client: Union[FileClient, MQTTClient, KafkaClient, PulsarClient],
+            io: IOConfig,
+            model_params: ModelConfig,
+            setup: SetupConfig,
+    ):
         """Process the limits in a streaming manner.
 
         The function sets up the necessary components for streaming processing
@@ -368,34 +416,48 @@ class RpcOutlierDetector:
             debug (bool, optional): Enable debug mode. Defaults to False.
 
         Examples:
-        >>> config = {"path": "tests/test.csv", "output": "tests/output.json"}
-        >>> topics = ["A"]
+        >>> client = {"path": "tests/test.csv", "output": "tests/output.json"}
+        >>> io = {"in_topics": ["A"]}
+        >>> model_params = {"t_e": "1H"}
+        >>> setup = {"key_path": ".temp", "debug": True}
         >>> obj = RpcOutlierDetector()
-        >>> obj.start(config, topics, key_path=".temp", debug=True)
+        >>> obj.start(client, io, model_params, setup)
         Sinking to 'dynamic_limits'
         <BLANKLINE>
         === Debugging started... ===
         === Debugging finished with success... ===
         === Service stopped ===
         """
-        model = load_model(recovery_path, topics)
+        recovery_path = setup.get("recovery_path", "")
+        key_path = setup.get("key_path", "")
+        debug = setup.get("debug", False)
+
+        in_topics = io.get("in_topics", [])
+        # TODO: use out_topics
+        _ = io.get("out_topics", None)
+
+        threshold, t_e, t_a, t_g = expand_model_params(model_params)
+
+        model = load_model(recovery_path, in_topics)
 
         if model is None:
-            if len(topics) > 1:
+            if len(in_topics) > 1:
                 obj = MultivariateGaussian()
                 model = ConditionalGaussianScorer(
-                    utils.TimeRolling(obj, period=WINDOW),
+                    utils.TimeRolling(obj, period=t_e),
+                    threshold=threshold,
                     grace_period=GRACE_PERIOD)
             else:
                 obj = proba.Gaussian()
                 model = GaussianScorer(
-                    utils.TimeRolling(obj, period=WINDOW),
+                    utils.TimeRolling(obj, period=t_e),
+                    threshold=threshold,
                     grace_period=GRACE_PERIOD)
 
-        source = self.get_source(config, topics, debug)
+        source = self.get_source(client, in_topics, debug)
 
         detector = (source
-                    .map(self.preprocess, topics)
+                    .map(self.preprocess, in_topics)
                     .map(self.fit_transform, model)
                     )
 
@@ -407,11 +469,11 @@ class RpcOutlierDetector:
                         .map(decode_data)
                         )
 
-        detector = self.get_sink(config, topics, detector)
+        detector = self.get_sink(client, in_topics, detector)
 
         try:
-            self.run(config, source, detector, debug)
+            self.run(client, source, detector, debug)
         finally:
             detector.stop()
             print("=== Service stopped ===")
-            save_model(recovery_path, topics, model)
+            save_model(recovery_path, in_topics, model)

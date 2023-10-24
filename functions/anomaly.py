@@ -311,12 +311,14 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     def process_one(self, x, t=None):
         if self.gaussian.n_samples == 0:
             if hasattr(self.gaussian, 'obj'):
-                self.gaussian.obj = (  # type: ignore
-                    self.gaussian.obj._from_state(  # type: ignore
-                        1, x, 0, 1))
+                if hasattr(self.gaussian.obj, '_from_state'):
+                    self.gaussian.obj = (  # type: ignore
+                        self.gaussian.obj._from_state(  # type: ignore
+                            1, x, 0, 1))
             else:
-                self.gaussian = self.gaussian._from_state(  # type: ignore
-                    1, x, 0, 1)
+                if hasattr(self.gaussian, '_from_state'):
+                    self.gaussian = self.gaussian._from_state(  # type: ignore
+                        1, x, 0, 1)
 
         is_anomaly = self.predict_one(x)
 

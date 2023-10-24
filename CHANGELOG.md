@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Model configuration from config.ini
+
+### Changed
+
+- Updated parameter handling
+
+## [0.3.0] - 2023-10-20
+
+### Added
+
 - Added DOI to final version of publication
 - Added file output to config.ini
 - Added ConditionalGaussianScorer [2023-07-26]
@@ -56,6 +66,7 @@ and
 - [Publication](https://github.com/MarekWadinger/online_outlier_detection/tree/main/publications)
 files for papers and presentations.
 
-[unreleased]: https://github.com/MarekWadinger/online_outlier_detection/compare/0.2.0...HEAD
+[unreleased]: https://github.com/MarekWadinger/online_outlier_detection/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/MarekWadinger/online_outlier_detection/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/MarekWadinger/online_outlier_detection/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/MarekWadinger/online_outlier_detection/releases/tag/0.1.0releases/tag/0.1.0

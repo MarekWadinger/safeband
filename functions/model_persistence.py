@@ -1,12 +1,11 @@
 import datetime as dt
 import glob
 import os
-from typing import Union
 
 import joblib
 
 
-def load_model(path: Union[str, None], topics: list):
+def load_model(path: str, topics: list[str]):
     if path:
         model_files = glob.glob(
             os.path.join(
@@ -26,7 +25,7 @@ def load_model(path: Union[str, None], topics: list):
     return None
 
 
-def save_model(path: Union[str, None], topics: list, model):
+def save_model(path: str, topics: list[str], model):
     if path:
         now = dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         if not os.path.exists(path):
