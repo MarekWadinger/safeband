@@ -11,5 +11,6 @@ if __name__ == '__main__':
         client=config["client"],
         io=config["io"],
         model_params=config["model"],
-        setup=config["setup"]
+        setup=config["setup"],
+        email=config["email"],
         )

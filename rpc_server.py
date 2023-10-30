@@ -10,6 +10,7 @@ from river import proba, utils
 from streamz import Stream
 
 from functions.anomaly import ConditionalGaussianScorer, GaussianScorer
+from functions.email_client import EmailClient
 from functions.encryption import (
     decode_data,
     encrypt_data,
@@ -20,6 +21,7 @@ from functions.model_persistence import load_model, save_model
 from functions.proba import MultivariateGaussian
 from functions.streamz_tools import _filt, _func, to_mqtt  # noqa: F401
 from functions.typing_extras import (
+    EmailConfig,
     FileClient,
     IOConfig,
     KafkaClient,
@@ -227,6 +229,13 @@ class RpcOutlierDetector:
     def dump_to_file(self, x, f):  # pragma: no cover
         print(json.dumps(x), file=f)
 
+    def send_anomaly_email(
+            self,
+            xs: tuple[dict, dict],
+            email_client: EmailClient):  # pragma: no cover
+        if len(xs) == 2 and xs[1]["anomaly"] - xs[0]["anomaly"] == 1:
+            email_client.send_email(xs[1])
+
     def get_source(
             self,
             config: Union[FileClient, MQTTClient, KafkaClient, PulsarClient],
@@ -399,6 +408,7 @@ class RpcOutlierDetector:
             io: IOConfig,
             model_params: ModelConfig,
             setup: SetupConfig,
+            email: Union[EmailConfig, None] = None,
     ):
         """Process the limits in a streaming manner.
 
@@ -468,8 +478,11 @@ class RpcOutlierDetector:
                         .map(encrypt_data, sender)
                         .map(decode_data)
                         )
-
         detector = self.get_sink(client, in_topics, detector)
+        if email is not None:
+            email_client = EmailClient(subject="Anomaly detected!", **email)
+            detector.sliding_window(2).sink(
+                self.send_anomaly_email, email_client)
 
         try:
             self.run(client, source, detector, debug)

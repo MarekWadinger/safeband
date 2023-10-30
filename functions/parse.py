@@ -5,6 +5,7 @@ from typing import Union
 from pandas import Timedelta
 from typing_extensions import NotRequired, TypedDict
 from functions.typing_extras import (
+    EmailConfig,
     FileClient,
     IOConfig,
     KafkaClient,
@@ -17,6 +18,7 @@ from functions.typing_extras import (
 
 class Config(TypedDict):
     setup: SetupConfig
+    email: NotRequired[EmailConfig]
     model: ModelConfig
     io: IOConfig
     file: NotRequired[FileClient]
@@ -89,6 +91,14 @@ def get_args() -> Namespace:
     setup_arg_grp.add_argument("-d", "--debug",
                                help="Debug the file using loop as source",
                                default=False, type=bool)
+
+    mail_arg_grp = parser.add_argument_group('mail')
+    mail_arg_grp.add_argument("--sender-email", type=str,
+                              help="Senders email address")
+    mail_arg_grp.add_argument("--sender-password", type=str,
+                              help="Senders password")
+    mail_arg_grp.add_argument("--receiver-email", type=str,
+                              help="Receiver email address")
 
     model_arg_grp = parser.add_argument_group(
         'model', 'Model related parameters')
@@ -308,6 +318,7 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
     """
     config_struct = {
         "setup": SetupConfig,
+        "email": EmailConfig,
         "model": ModelConfig,
         "io": IOConfig,
         "file": FileClient,

@@ -4,6 +4,12 @@ from pandas import Timedelta
 from typing_extensions import NotRequired, TypedDict
 
 
+class EmailConfig(TypedDict):
+    sender_email: str
+    sender_password: str
+    recipient_email: str
+
+
 class FileClient(TypedDict):
     path: str
     output: str
