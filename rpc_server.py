@@ -291,11 +291,11 @@ class RpcOutlierDetector:
         >>> type(source)
         <class 'streamz.sources.from_kafka'>
 
-        >>> config = {"service_url": "pulsar://localhost:6650"}
-        >>> topics = ["pulsar-topics"]
-        >>> source = obj.get_source(config, topics)
-        >>> type(source)
-        <class 'streamz_pulsar.sources.from_pulsar.from_pulsar'>
+        # >>> config = {"service_url": "pulsar://localhost:6650"}
+        # >>> topics = ["pulsar-topics"]
+        # >>> source = obj.get_source(config, topics)
+        # >>> type(source)
+        # <class 'streamz_pulsar.sources.from_pulsar.from_pulsar'>
 
         >>> config = {"invalid": "config"}
         >>> topics = ["test"]
@@ -320,10 +320,14 @@ class RpcOutlierDetector:
             source = Stream.from_kafka(
                 topics, {**config, 'group.id': 'detection_service'})
         elif istypedinstance(config, PulsarClient):
-            source = Stream.from_pulsar(
-                config.get("service_url"),
-                topics,
-                subscription_name='detection_service')
+            import sys
+            if sys.version_info.major == 3 and sys.version_info.minor < 12:
+                source = Stream.from_pulsar(
+                    config.get("service_url"),
+                    topics,
+                    subscription_name='detection_service')
+            else:
+                raise ValueError("Pulsar client requires Python < 3.12.*")
         else:
             raise RuntimeError(f"Wrong client: {config}")
         return source

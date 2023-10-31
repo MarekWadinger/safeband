@@ -15,7 +15,7 @@ pandas-stubs==2.1.1.230928
 plotly==5.13.0
 pre-commit
 pytest==7.4.2
-scipy==1.10.0
+scipy~=1.11.3
 streamz==0.6.4
-streamz_pulsar==0.1.1
+streamz_pulsar ; implementation_version < "3.12.*"
 typing_extensions==4.7.1

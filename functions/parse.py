@@ -4,6 +4,7 @@ from typing import Union
 
 from pandas import Timedelta
 from typing_extensions import NotRequired, TypedDict
+
 from functions.typing_extras import (
     EmailConfig,
     FileClient,
@@ -177,14 +178,15 @@ def get_valid_type(type_) -> type:
         >>> get_valid_type(list[Union[int, str]])
         list[typing.Union[int, str]]
         >>> get_valid_type(list[NotRequired[Union[int, str]]])
-        list[typing_extensions.NotRequired[typing.Union[int, str]]]
+        list[typing....NotRequired[typing.Union[int, str]]]
         >>> get_valid_type(None)
         Traceback (most recent call last):
         ...
         ValueError: Invalid type: None
     """
     # TODO: get first valid type
-    if isinstance(type_, type):
+    from types import GenericAlias
+    if isinstance(type_, (type, GenericAlias)):
         return type_
     elif hasattr(type_, "__args__"):
         # if any([t is type(None) for t in type_.__args__]):
