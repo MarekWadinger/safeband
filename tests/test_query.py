@@ -19,6 +19,7 @@ from functions.encryption import (  # noqa: E402
 )
 from functions.model_persistence import load_model, save_model  # noqa: E402
 from functions.typing_extras import FileClient  # noqa: E402
+from functions.utils import common_prefix  # noqa: E402
 
 
 class TestConsumer():
@@ -79,7 +80,7 @@ class TestModelPresistence():
 
     def teardown_class(self):
         models = glob.glob(os.path.join(
-            self.path, f"model_{len(self.topics)}_*.pkl")
+            self.path, f"model_{common_prefix(self.topics)}_*.pkl")
         )
         for model in models:
             os.remove(model)
@@ -93,7 +94,7 @@ class TestModelPresistence():
         model = {"model": 1}
         save_model(self.path, self.topics, model)
         models = glob.glob(os.path.join(
-            self.path, f"model_{len(self.topics)}_*.pkl")
+            self.path, f"model_{common_prefix(self.topics)}_*.pkl")
         )
         assert len(models) == 1
 
