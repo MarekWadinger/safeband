@@ -1,5 +1,6 @@
 import collections
 import typing
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -166,7 +167,6 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if grace_period is None:
             self.grace_period = self.t_e
         elif self.t_e > 0 and grace_period > self.t_e or grace_period < 1:
-            import warnings
             warnings.warn(f"Grace period must be between 1 and "
                           f"{self.t_e} minutes or None.")
             self.grace_period = self.t_e
@@ -191,9 +191,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             else:
                 self._feature_dim_in = 1
 
-    def _get_feature_names_in(self, x):
+    def _get_feature_names_in(self, x: dict[str, float]):
         if not hasattr(self, "_feature_names_in") and isinstance(x, dict):
-            self._feature_names_in: list[str] = list(x.keys())
+            self._feature_names_in = sorted(list(x.keys()))
 
     def _learn_one(self, x, **kwargs):
         if not hasattr(self, "_feature_names_in") and isinstance(x, dict):
@@ -247,17 +247,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                         self.log_threshold_top*self._feature_dim_in < score
                         ):
                     return 1
-                else:
-                    return 0
             else:
                 if (
                         ((1-self.threshold)**self._feature_dim_in > score) or
                         (score > self.threshold**self._feature_dim_in)):
                     return 1
-                else:
-                    return 0
-        else:
-            return 0
+        return 0
 
     def limit_one(self, *args, diagonal_only=True):
         if len(args) > 0:
@@ -356,46 +351,52 @@ class ConditionalGaussianScorer(GaussianScorer):
     Gaussian scorer on rolling window
     >>> from river.utils import Rolling
     >>> from proba import MultivariateGaussian
-    >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 2),
+    >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 3),
     ...     grace_period=1, protect_anomaly_detector=False)
-    >>> isinstance(scorer, ConditionalGaussianScorer)
-    True
+
+    Initial values
     >>> scorer.gaussian.mu
     {}
     >>> scorer.limit_one({"a": 1, "b": 2})
     ({'a': nan, 'b': nan}, {'a': nan, 'b': nan})
-    >>> scorer.learn_one({"a": 0, "b": 0}).gaussian.mu
-    {'a': 0.0, 'b': 0.0}
+
+    During grace period, the score is kept 0.5 and prediction is 0
+    >>> scorer.learn_one({"a": 1.5, "b": 0.5}).gaussian.mu
+    {'a': 1.5, 'b': 0.5}
     >>> scorer.score_one({"a": 1, "b": 2})
     0.5
     >>> scorer.predict_one({"a": 1, "b": 2})
     0
     >>> scorer.limit_one({"a": 1, "b": 2})
-    ({'a': 0.0, 'b': 0.0}, {'a': 0.0, 'b': 0.0})
-    >>> scorer.learn_one({"a": 1, "b": 1}).gaussian.mu
-    {'a': 0.5, 'b': 0.5}
-    >>> scorer.gaussian.mu
-    {'a': 0.5, 'b': 0.5}
+    ({'a': 1.5, 'b': 0.5}, {'a': 1.5, 'b': 0.5})
+
+    Let's learn some more samples
+    >>> scorer.learn_one({"a": 1., "b": 2.}).gaussian.mu
+    {'a': 1.25, 'b': 1.25}
+    >>> scorer.learn_one({"a": 0.5, "b": 2.}).gaussian.mu
+    {'a': 1.0, 'b': 1.5}
     >>> scorer.gaussian.var
-         a    b
-    a  0.5  0.5
-    b  0.5  0.5
-    >>> scorer.learn_one({"a": 0, "b": 1}).gaussian.mu
-    {'a': 0.5, 'b': 1.0}
-    >>> scorer.score_one({"a": 1, "b": 2})
-    0.760...
-    >>> scorer.limit_one({"a": 1, "b": 2})
-    ({'a': 2.625..., 'b': 1.0}, {'a': -1.625..., 'b': 1.0})
-    >>> scorer.predict_one({"a": 2.626, "b": 1.0})
+           a      b
+    a  0.250 -0.375
+    b -0.375  0.750
+    >>> scorer.score_one({"a": 1., "b": 1.5})
+    0.5
+    >>> scorer.score_one({"a": 1., "b": 2.})
+    0.875...
+    >>> scorer.limit_one({"a": 1., "b": 2.})
+    ({'a': 1.501..., 'b': 2.801...}, {'a': -0.001..., 'b': 0.198...})
+    >>> scorer.limit_one({"b": 2., "a": 1.})
+    ({'a': 1.501..., 'b': 2.801...}, {'a': -0.001..., 'b': 0.198...})
+    >>> scorer.predict_one({"a": 1.0, "b": 2.802})
     1
     >>> scorer.get_root_cause()
-    'a'
-    >>> scorer.score_one({"a": 2.626, "b": 1.0})
+    'b'
+    >>> scorer.score_one({"a": 1.0, "b": 2.802})
     0.998...
-    >>> scorer.predict_one({"a": 2.620, "b": 1.0})
+    >>> scorer.predict_one({"a": 1.0, "b": 2.801})
     0
-    >>> scorer.score_one({"a": 2.500, "b": 1.0})
-    0.997...
+    >>> scorer.score_one({"a": 1.0, "b": 2.801})
+    0.99867
     """  # noqa: E501
     def __init__(self,
                  gaussian: typing.Union[
@@ -440,16 +441,14 @@ class ConditionalGaussianScorer(GaussianScorer):
         return farthest_element, farthest_index
 
     def _scores_one(self, x) -> list:
-        if isinstance(x, dict):
-            x = np.fromiter(x.values(), dtype=float)
         scores = []
-        mean = np.array([*self.gaussian.mu.values()])
+        mean = self.gaussian.mu
         covariance = self.gaussian.var
-        for var_idx in range(len(x)):
+        for var_key in x:
             cond_mean, _, cond_std = self.gaussian.mv_conditional(
-                x, var_idx, mean, covariance)
+                x, var_key, mean, covariance)
             scores.append(
-                norm.cdf(x[var_idx], loc=cond_mean[0], scale=cond_std[0]))
+                norm.cdf(x[var_key], loc=cond_mean[0], scale=cond_std[0]))
         return scores
 
     def _score_one(self, x):
@@ -467,8 +466,7 @@ class ConditionalGaussianScorer(GaussianScorer):
             scores = self._scores_one(x)
             score, idx = self._farthest_from_center(scores)
             return score if score else 1, idx
-        else:
-            return 0.5, None
+        return 0.5, None
 
     def get_root_cause(self):
         return self.root_cause
@@ -488,13 +486,11 @@ class ConditionalGaussianScorer(GaussianScorer):
             else:
                 self.root_cause = None
             return 1
-        else:
-            self.root_cause = None
-            return 0
+        self.root_cause = None
+        return 0
 
     def _get_limits(
             self,
-            confidence_level: float,
             c_mean: np.ndarray,
             c_std: np.ndarray):
         z_critical = norm.ppf(1 - self.alpha)
@@ -504,33 +500,19 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         return lower_bound[0], upper_bound[0]
 
-    def limit_one(self, x):
+    def limit_one(self, x: dict[str, float]):
         # TODO: might break the things up in Pipeline if called before
         #  predict_one or learn_one
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
-        if isinstance(x, dict):
-            x = np.fromiter(x.values(), dtype=float)
 
-        ths, tls = [], []
-        mean = np.array([*self.gaussian.mu.values()])
-        covariance = self.gaussian.var
-        if covariance.shape[0] != 0:
-            for var_idx in range(len(x)):
+        ths = {key: np.nan for key in self._feature_names_in}
+        tls = ths.copy()
+        if self.gaussian.var.shape[0] != 0:
+            for var_key in self._feature_names_in:
                 cond_mean, _, cond_std = self.gaussian.mv_conditional(
-                    x, var_idx, mean, covariance)
-                tl, th = self._get_limits(self.threshold, cond_mean, cond_std)
-                ths.append(th)
-                tls.append(tl)
-        else:
-            ths = [np.nan] * len(x) if hasattr(x, '__len__') else [np.nan]
-            tls = [np.nan] * len(x) if hasattr(x, '__len__') else [np.nan]
-        if (
-                hasattr(self, "_feature_names_in") and
-                len(ths) == len(self._feature_names_in)):
-            return (
-               dict(zip(self._feature_names_in, ths)),
-               dict(zip(self._feature_names_in, tls))
-               )
-        else:
-            return ths, tls
+                    x, var_key, self.gaussian.mu, self.gaussian.var)
+                tls[var_key], ths[var_key] = self._get_limits(
+                    cond_mean, cond_std)
+
+        return ths, tls

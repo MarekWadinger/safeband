@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 import pandas as pd
 from river import proba
@@ -25,30 +27,54 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     0.0
     >>> for x in X.to_dict(orient="records"):
     ...     p = p.update(x)
-    >>> p.mv_conditional(X.iloc[0].values, 0, p.mu, p.var)
-    (array([0.61329773]), array([[0.07246737]]), array([0.26919764]))
+    >>> p.mu
+    {'blue': 0.517..., 'green': 0.386..., 'red': 0.415...}
+    >>> p.mv_conditional(p.mu, "red", p.mu, p.var)
+    (array([0.415...]), array([[0.053...]]), array([0.232...]))
+    >>> p.mv_conditional(x, "red", p.mu, p.var)
+    (array([0.461...]), array([[0.053...]]), array([0.232...]))
 
-    TODO: for some reason, first value changed from 0.51220852 to 0.61329773
-    in commit 4bb519bcb6312c8761bd25074c5e39d88e195fc4
+    >>> p.mv_conditional([0., 0.], 0, np.array([0., 1.]),
+    ...                  np.array([[1., 0], [0.5, 1.]]))
+    (array([-0.5]), array([[0.75]]), array([0.866...]))
 
-    >>> p.mv_conditional([0.], 0, np.array([0.]), np.array([[1.]]))
-    (array([0.]), array([[1.]]), array([1.]))
+    >>> p.mv_conditional(list(x.values()), 0, p.mu, p.var)
+    Traceback (most recent call last):
+    ...
+    ValueError: Arguments must be either dict, str, dict, pd.DataFrame or
+    np.ndarray, int, np.ndarray, np.ndarray.
     """
 
     def __init__(self, seed=None):
         super().__init__(seed=seed)
 
-    # TODO: allow any iterable
     def mv_conditional(
             self,
-            observed_values: np.ndarray,
-            var_idx: int,
-            mean: np.ndarray,
-            covariance: np.ndarray):
-        if isinstance(mean, dict):
+            observed_values: Union[dict[str, float], np.ndarray],
+            var_idx: Union[str, int],
+            mean: Union[dict[str, float], np.ndarray],
+            covariance: Union[pd.DataFrame, np.ndarray]):
+        if (
+                isinstance(observed_values, dict) and
+                isinstance(mean, dict) and
+                isinstance(var_idx, str) and
+                isinstance(covariance, pd.DataFrame)):
+            observed_values = np.array([observed_values[key]
+                                        for key in mean.keys()])
+            var_idx = list(mean.keys()).index(var_idx)
             mean = np.array([*mean.values()])
-        if isinstance(covariance, pd.DataFrame):
             covariance = covariance.values
+        elif (
+                isinstance(observed_values, (list, np.ndarray)) and
+                isinstance(mean, np.ndarray) and
+                isinstance(var_idx, int) and
+                isinstance(covariance, np.ndarray)):
+            pass
+        else:
+            raise ValueError(
+                "Arguments must be either dict, str, dict, pd.DataFrame or "
+                "np.ndarray, int, np.ndarray, np.ndarray."
+            )
         var_idx_: list[int] = [var_idx]
         if len(mean) == 1:  # Univariate case
             conditional_mean = mean
