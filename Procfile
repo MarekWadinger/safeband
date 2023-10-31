@@ -1,1 +1,2 @@
-aid_client: python rpc_client.py --in-topics "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power" "shellies/Shelly3EM-Main-Switchboard-C/emeter/1/power" "shellies/Shelly3EM-Main-Switchboard-C/emeter/2/power"
+detector-B: python rpc_client.py --in-topics "shellies/Shelly3EM-Main-Switchboard-B/emeter/0/power" "shellies/Shelly3EM-Main-Switchboard-B/emeter/1/power" "shellies/Shelly3EM-Main-Switchboard-B/emeter/2/power"
+detector-C: python rpc_client.py --in-topics "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power" "shellies/Shelly3EM-Main-Switchboard-C/emeter/1/power" "shellies/Shelly3EM-Main-Switchboard-C/emeter/2/power"
