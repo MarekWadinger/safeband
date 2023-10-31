@@ -1,6 +1,8 @@
+import json
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Union
 
 
 class EmailClient:
@@ -8,29 +10,29 @@ class EmailClient:
             self,
             sender_email: str,
             sender_password: str,
-            recipient_email: str,
-            subject: str):
+            recipient_email: str):
         self.sender_email = sender_email
         self.sender_password = sender_password
         self.recipient_email = recipient_email
-        self.subject = subject
 
     def send_email(
         self,
-        msg,
+        subject: str,
+        msg: Union[str, dict],
     ):
         # Create the email message
         body = MIMEMultipart()
         body['From'] = self.sender_email
         body['To'] = self.recipient_email
-        body['Subject'] = self.subject
+        body['Subject'] = subject
 
         # Attach the message to the email
         if isinstance(msg, dict):
             msg = (f"Anomaly detected at {msg['time']}.\n\n"
                    f"Current upper limits on signals are:\n"
-                   f"{msg['level_high']}\n\n"
-                   f"Current lower operating limits are:\n{msg['level_low']}")
+                   f"{json.dumps(msg['level_high'], indent=2)}\n\n"
+                   f"Current lower operating limits are:\n"
+                   f"{json.dumps(msg['level_low'], indent=2)}")
         body.attach(MIMEText(msg, 'plain'))
 
         # Try to automatically select server based on sender email

@@ -232,9 +232,12 @@ class RpcOutlierDetector:
     def send_anomaly_email(
             self,
             xs: tuple[dict, dict],
-            email_client: EmailClient):  # pragma: no cover
+            email_client: EmailClient,
+            model: ConditionalGaussianScorer):  # pragma: no cover
         if len(xs) == 2 and xs[1]["anomaly"] - xs[0]["anomaly"] == 1:
-            email_client.send_email(xs[1])
+            email_client.send_email(
+                f"AID Alert: Anomaly detected in {model.get_root_cause()}",
+                xs[1])
 
     def get_source(
             self,
@@ -483,10 +486,10 @@ class RpcOutlierDetector:
                         .map(decode_data)
                         )
         detector = self.get_sink(client, in_topics, detector)
-        if email is not None:
-            email_client = EmailClient(subject="Anomaly detected!", **email)
+        if email is not None and email.get("sender_email") is not None:
+            email_client = EmailClient(**email)
             detector.sliding_window(2).sink(
-                self.send_anomaly_email, email_client)
+                self.send_anomaly_email, email_client, model)
 
         try:
             self.run(client, source, detector, debug)
