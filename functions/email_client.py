@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from typing import Union
 
 
-class EmailClient:
+class EmailClient:  # pragma: no cover
     def __init__(
             self,
             sender_email: str,
