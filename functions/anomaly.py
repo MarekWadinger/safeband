@@ -23,7 +23,9 @@ class Distribution(typing.Protocol):  # pragma: no cover
 
 
 @typing.runtime_checkable
-class ConditionableDistribution(Distribution, typing.Protocol):  # pragma: no cover  # noqa: E501
+class ConditionableDistribution(
+    Distribution, typing.Protocol
+):  # pragma: no cover  # noqa: E501
     mu: dict[str, float]
     sigma: pd.DataFrame
     var: pd.DataFrame
@@ -36,8 +38,8 @@ class ConditionableDistribution(Distribution, typing.Protocol):  # pragma: no co
         ...
 
     def mv_conditional(
-            self, *args, **kwargs
-            ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self, *args, **kwargs
+    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
         ...
 
 
@@ -144,31 +146,35 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer.predict_one({"a": -2.160, "b": -1.160})
     0
     """  # noqa: E501
-    def __init__(self,
-                 gaussian: typing.Union[
-                     Distribution, Rolling, TimeRolling],
-                 threshold: float = 0.99735,
-                 log_threshold: typing.Union[float, None] = None,
-                 grace_period: typing.Union[int, None] = None,
-                 t_a: typing.Union[int, None] = None,
-                 protect_anomaly_detector: bool = True,
-                 ):
+
+    def __init__(
+        self,
+        gaussian: typing.Union[Distribution, Rolling, TimeRolling],
+        threshold: float = 0.99735,
+        log_threshold: typing.Union[float, None] = None,
+        grace_period: typing.Union[int, None] = None,
+        t_a: typing.Union[int, None] = None,
+        protect_anomaly_detector: bool = True,
+    ):
         if not isinstance(gaussian, Distribution):
             raise ValueError(
-                f"{gaussian} does not satisfy the necessary protocol")
+                f"{gaussian} does not satisfy the necessary protocol"
+            )
         self.gaussian = gaussian
 
-        if hasattr(gaussian, 'window_size'):
+        if hasattr(gaussian, "window_size"):
             self.t_e = gaussian.window_size  # type: ignore
-        elif hasattr(gaussian, 'period'):
-            self.t_e = int(gaussian.period.total_seconds()/60)  # type: ignore
+        elif hasattr(gaussian, "period"):
+            self.t_e = int(gaussian.period.total_seconds() / 60)
         else:
             self.t_e = 0
         if grace_period is None:
             self.grace_period = self.t_e
         elif self.t_e > 0 and grace_period > self.t_e or grace_period < 1:
-            warnings.warn(f"Grace period must be between 1 and "
-                          f"{self.t_e} minutes or None.")
+            warnings.warn(
+                f"Grace period must be between 1 and "
+                f"{self.t_e} minutes or None."
+            )
             self.grace_period = self.t_e
         else:
             self.grace_period = grace_period
@@ -182,11 +188,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if self.protect_anomaly_detector:
             self.t_a: int = t_a if t_a else self.t_e
             self.buffer: collections.deque = collections.deque(
-                maxlen=round(self.t_a))
+                maxlen=round(self.t_a)
+            )
 
     def _get_feature_dim_in(self, x):
         if not hasattr(self, "_feature_dim_in"):
-            if hasattr(x, '__len__'):
+            if hasattr(x, "__len__"):
                 self._feature_dim_in: int = len(x)
             else:
                 self._feature_dim_in = 1
@@ -207,7 +214,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         len_ = len(self.buffer)
         if len_ > 0:
             # return sum(self.buffer) / len_ > 1 - self.alpha
-            return (sum(self.buffer) / len_ > (self.threshold))
+            return sum(self.buffer) / len_ > (self.threshold)
         else:
             return False
 
@@ -238,19 +245,19 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         score = self.score_one(x)
         if (
-                self.gaussian.n_samples > self.grace_period and
-                self._feature_dim_in):
+            self.gaussian.n_samples > self.grace_period
+            and self._feature_dim_in
+        ):
             if self.log_threshold:
                 score = -np.inf if score <= 0 else np.log(score)
                 if (
-                        (score < self.log_threshold*self._feature_dim_in) or
-                        self.log_threshold_top*self._feature_dim_in < score
-                        ):
+                    score < self.log_threshold * self._feature_dim_in
+                ) or self.log_threshold_top * self._feature_dim_in < score:
                     return 1
             else:
-                if (
-                        ((1-self.threshold)**self._feature_dim_in > score) or
-                        (score > self.threshold**self._feature_dim_in)):
+                if ((1 - self.threshold) ** self._feature_dim_in > score) or (
+                    score > self.threshold**self._feature_dim_in
+                ):
                     return 1
         return 0
 
@@ -259,16 +266,16 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             self._get_feature_dim_in(args[0])
             self._get_feature_names_in(args[0])
 
-        kwargs = {"loc": [*self.gaussian.mu.values()]
-                  if isinstance(self.gaussian.mu, dict)
-                  else self.gaussian.mu,
-                  "scale": self.gaussian.sigma}
-        if (
-                diagonal_only and
-                isinstance(kwargs["scale"], pd.DataFrame)):
+        kwargs = {
+            "loc": [*self.gaussian.mu.values()]
+            if isinstance(self.gaussian.mu, dict)
+            else self.gaussian.mu,
+            "scale": self.gaussian.sigma,
+        }
+        if diagonal_only and isinstance(kwargs["scale"], pd.DataFrame):
             kwargs["scale"] = [
-                kwargs["scale"][i][i]
-                for i in kwargs["scale"].columns]
+                kwargs["scale"][i][i] for i in kwargs["scale"].columns
+            ]
         # TODO: consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO: following code changes the limits given by former
@@ -278,42 +285,46 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             _feature_dim_in = self._feature_dim_in
         if self.log_threshold:
             thresh_high = norm.ppf(
-                np.exp(self.log_threshold_top*_feature_dim_in),
-                **kwargs)
+                np.exp(self.log_threshold_top * _feature_dim_in), **kwargs
+            )
             thresh_low = norm.ppf(
-                np.exp(self.log_threshold*_feature_dim_in), **kwargs)
+                np.exp(self.log_threshold * _feature_dim_in), **kwargs
+            )
         else:
-            thresh_high = norm.ppf(
-                self.threshold**_feature_dim_in, **kwargs)
+            thresh_high = norm.ppf(self.threshold**_feature_dim_in, **kwargs)
             thresh_low = norm.ppf(
-                (1-self.threshold)**_feature_dim_in, **kwargs)
+                (1 - self.threshold) ** _feature_dim_in, **kwargs
+            )
         if (
-                hasattr(self, "_feature_names_in") and
-                isinstance(self.gaussian.mu, dict) and
-                len(thresh_high) == len(self._feature_names_in)
-                ):
+            hasattr(self, "_feature_names_in")
+            and isinstance(self.gaussian.mu, dict)
+            and len(thresh_high) == len(self._feature_names_in)
+        ):
             thresh_high = dict(zip(self.gaussian.mu.keys(), thresh_high))
             thresh_low = dict(zip(self.gaussian.mu.keys(), thresh_low))
         elif hasattr(self, "_feature_names_in"):
-            thresh_high = dict(zip(
-                self._feature_names_in,
-                [np.nan] * self._feature_dim_in))
-            thresh_low = dict(zip(
-                self._feature_names_in,
-                [np.nan] * self._feature_dim_in))
+            thresh_high = dict(
+                zip(self._feature_names_in, [np.nan] * self._feature_dim_in)
+            )
+            thresh_low = dict(
+                zip(self._feature_names_in, [np.nan] * self._feature_dim_in)
+            )
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
         if self.gaussian.n_samples == 0:
-            if hasattr(self.gaussian, 'obj'):
-                if hasattr(self.gaussian.obj, '_from_state'):
+            if hasattr(self.gaussian, "obj"):
+                if hasattr(self.gaussian.obj, "_from_state"):
                     self.gaussian.obj = (  # type: ignore
                         self.gaussian.obj._from_state(  # type: ignore
-                            1, x, 0, 1))
+                            1, x, 0, 1
+                        )
+                    )
             else:
-                if hasattr(self.gaussian, '_from_state'):
+                if hasattr(self.gaussian, "_from_state"):
                     self.gaussian = self.gaussian._from_state(  # type: ignore
-                        1, x, 0, 1)
+                        1, x, 0, 1
+                    )
 
         is_anomaly = self.predict_one(x)
 
@@ -398,24 +409,28 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> scorer.score_one({"a": 1.0, "b": 2.801})
     0.99867
     """  # noqa: E501
-    def __init__(self,
-                 gaussian: typing.Union[
-                     ConditionableDistribution, Rolling, TimeRolling],
-                 threshold: float = 0.99735,
-                 grace_period: typing.Union[int, None] = None,
-                 t_a: typing.Union[int, None] = None,
-                 protect_anomaly_detector: bool = True
-                 ):
+
+    def __init__(
+        self,
+        gaussian: typing.Union[
+            ConditionableDistribution, Rolling, TimeRolling
+        ],
+        threshold: float = 0.99735,
+        grace_period: typing.Union[int, None] = None,
+        t_a: typing.Union[int, None] = None,
+        protect_anomaly_detector: bool = True,
+    ):
         if not isinstance(gaussian, ConditionableDistribution):
             raise ValueError(
-                f"{gaussian} does not satisfy the necessary protocol")
+                f"{gaussian} does not satisfy the necessary protocol"
+            )
         super().__init__(
             gaussian=gaussian,
             threshold=threshold,
             grace_period=grace_period,
             t_a=t_a,
-            protect_anomaly_detector=protect_anomaly_detector
-            )
+            protect_anomaly_detector=protect_anomaly_detector,
+        )
         self.gaussian = gaussian
         self.root_cause = None
         self.alpha = (1 - threshold) / 2
@@ -425,7 +440,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         #  difference
         farthest_element = None
         farthest_index = None
-        max_difference = float('-inf')
+        max_difference = float("-inf")
 
         for index, value in enumerate(input_list):
             # Calculate the abs difference between the current value and 0.5
@@ -446,18 +461,20 @@ class ConditionalGaussianScorer(GaussianScorer):
         covariance = self.gaussian.var
         for var_key in x:
             cond_mean, _, cond_std = self.gaussian.mv_conditional(
-                x, var_key, mean, covariance)
+                x, var_key, mean, covariance
+            )
             scores.append(
-                norm.cdf(x[var_key], loc=cond_mean[0], scale=cond_std[0]))
+                norm.cdf(x[var_key], loc=cond_mean[0], scale=cond_std[0])
+            )
         return scores
 
     def _score_one(self, x):
         # TODO: find out why return different results on each invocation
         #   Due to scipy's cdf function
         if (
-                not self.grace_period or
-                self.gaussian.n_samples > self.grace_period
-                ):
+            not self.grace_period
+            or self.gaussian.n_samples > self.grace_period
+        ):
             # Deactivate grace period after first invocation
             self.grace_period = None
             # TODO: generally score is None when the
@@ -489,10 +506,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         self.root_cause = None
         return 0
 
-    def _get_limits(
-            self,
-            c_mean: np.ndarray,
-            c_std: np.ndarray):
+    def _get_limits(self, c_mean: np.ndarray, c_std: np.ndarray):
         z_critical = norm.ppf(1 - self.alpha)
 
         lower_bound = c_mean - z_critical * c_std
@@ -511,8 +525,10 @@ class ConditionalGaussianScorer(GaussianScorer):
         if self.gaussian.var.shape[0] != 0:
             for var_key in self._feature_names_in:
                 cond_mean, _, cond_std = self.gaussian.mv_conditional(
-                    x, var_key, self.gaussian.mu, self.gaussian.var)
+                    x, var_key, self.gaussian.mu, self.gaussian.var
+                )
                 tls[var_key], ths[var_key] = self._get_limits(
-                    cond_mean, cond_std)
+                    cond_mean, cond_std
+                )
 
         return ths, tls

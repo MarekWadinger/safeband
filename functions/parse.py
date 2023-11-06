@@ -82,54 +82,73 @@ def get_args() -> Namespace:
     parser = ArgumentParser()
 
     setup_arg_grp = parser.add_argument_group(
-        'setup', 'setup related parameters')
+        "setup", "setup related parameters"
+    )
     setup_arg_grp.add_argument(
-        '-f', '--config-file', type=FileType('r'),
-        default='config.ini')
-    setup_arg_grp.add_argument('-r', '--recovery-path',
-                               help='Path to store recovery models')
-    setup_arg_grp.add_argument('-k', '--key-path', help='Path to RSA keys')
-    setup_arg_grp.add_argument("-d", "--debug",
-                               help="Debug the file using loop as source",
-                               default=False, type=bool)
+        "-f", "--config-file", type=FileType("r"), default="config.ini"
+    )
+    setup_arg_grp.add_argument(
+        "-r", "--recovery-path", help="Path to store recovery models"
+    )
+    setup_arg_grp.add_argument("-k", "--key-path", help="Path to RSA keys")
+    setup_arg_grp.add_argument(
+        "-d",
+        "--debug",
+        help="Debug the file using loop as source",
+        default=False,
+        type=bool,
+    )
 
-    mail_arg_grp = parser.add_argument_group('mail')
-    mail_arg_grp.add_argument("--sender-email", type=str,
-                              help="Senders email address")
-    mail_arg_grp.add_argument("--sender-password", type=str,
-                              help="Senders password")
-    mail_arg_grp.add_argument("--receiver-email", type=str,
-                              help="Receiver email address")
+    mail_arg_grp = parser.add_argument_group("mail")
+    mail_arg_grp.add_argument(
+        "--sender-email", type=str, help="Senders email address"
+    )
+    mail_arg_grp.add_argument(
+        "--sender-password", type=str, help="Senders password"
+    )
+    mail_arg_grp.add_argument(
+        "--receiver-email", type=str, help="Receiver email address"
+    )
 
     model_arg_grp = parser.add_argument_group(
-        'model', 'Model related parameters')
-    model_arg_grp.add_argument('--threshold', type=float)
-    model_arg_grp.add_argument('--t-e', type=Timedelta)
-    model_arg_grp.add_argument('--t-a', type=Timedelta)
-    model_arg_grp.add_argument('--t-g', type=Timedelta)
+        "model", "Model related parameters"
+    )
+    model_arg_grp.add_argument("--threshold", type=float)
+    model_arg_grp.add_argument("--t-e", type=Timedelta)
+    model_arg_grp.add_argument("--t-a", type=Timedelta)
+    model_arg_grp.add_argument("--t-g", type=Timedelta)
 
-    io_arg_grp = parser.add_argument_group('io')
-    io_arg_grp.add_argument("-t", "--in-topics", nargs='*', type=str,
-                            help="Topic of MQTT or Column of pd.DataFrame")
-    io_arg_grp.add_argument('--out-topics', nargs='*', type=str)
+    io_arg_grp = parser.add_argument_group("io")
+    io_arg_grp.add_argument(
+        "-t",
+        "--in-topics",
+        nargs="*",
+        type=str,
+        help="Topic of MQTT or Column of pd.DataFrame",
+    )
+    io_arg_grp.add_argument("--out-topics", nargs="*", type=str)
 
     file_arg_grp = parser.add_argument_group(
-        'file client', "File source related parameters")
-    file_arg_grp.add_argument('--path', type=str)
-    file_arg_grp.add_argument('--output', type=str)
+        "file client", "File source related parameters"
+    )
+    file_arg_grp.add_argument("--path", type=str)
+    file_arg_grp.add_argument("--output", type=str)
 
     mqtt_arg_grp = parser.add_argument_group(
-        'mqtt client', "MQTT source related parameters")
-    mqtt_arg_grp.add_argument('--host', type=str)
-    mqtt_arg_grp.add_argument('--port', type=int)
+        "mqtt client", "MQTT source related parameters"
+    )
+    mqtt_arg_grp.add_argument("--host", type=str)
+    mqtt_arg_grp.add_argument("--port", type=int)
 
     kafka_arg_grp = parser.add_argument_group(
-        'kafka client', "Kafka source related parameters")
-    kafka_arg_grp.add_argument('--bootstrap-servers', type=str)
+        "kafka client", "Kafka source related parameters"
+    )
+    kafka_arg_grp.add_argument("--bootstrap-servers", type=str)
 
     pulsar_arg_grp = parser.add_argument_group(
-        'pulsar client', "Pulsar source related parameters")
-    pulsar_arg_grp.add_argument('--service-url', type=str)
+        "pulsar client", "Pulsar source related parameters"
+    )
+    pulsar_arg_grp.add_argument("--service-url", type=str)
 
     args = parser.parse_args()
 
@@ -186,6 +205,7 @@ def get_valid_type(type_) -> type:
     """
     # TODO: get first valid type
     from types import GenericAlias
+
     if isinstance(type_, (type, GenericAlias)):
         return type_
     elif hasattr(type_, "__args__"):
@@ -342,14 +362,16 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
                 param_value = None
 
             if (
-                    param_value is not None and
-                    param_value != "None" and
-                    param_value != ""):
+                param_value is not None
+                and param_value != "None"
+                and param_value != ""
+            ):
                 config[section][param] = type_(param_value)
             elif (
-                    param_value is None or
-                    param_value == "None" or
-                    param_value == ""):
+                param_value is None
+                or param_value == "None"
+                or param_value == ""
+            ):
                 config[section][param] = None
 
     return config

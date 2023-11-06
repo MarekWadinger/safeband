@@ -3,7 +3,7 @@ from rpc_server import RpcOutlierDetector
 
 RPC_ENDPOINT = "rpc_online_outlier_detection"
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     config = get_params()
 
     client: RpcOutlierDetector = RpcOutlierDetector()
@@ -13,4 +13,4 @@ if __name__ == '__main__':
         model_params=config["model"],
         setup=config["setup"],
         email=config["email"],
-        )
+    )

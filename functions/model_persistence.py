@@ -32,6 +32,6 @@ def save_model(path: str, topics: list[str], model):
         if not os.path.exists(path):
             os.makedirs(path)
         recovery_path = f"{path}/{model_prefix}_{now}.pkl"
-        with open(recovery_path, 'wb') as f:
+        with open(recovery_path, "wb") as f:
             joblib.dump({"model": model, "topics": topics}, f)
             print(f"Model saved to {recovery_path}")

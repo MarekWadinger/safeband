@@ -22,8 +22,11 @@ class Example(Record):
 
     def __getitem__(self, key):
         return {
-            k: v for k, v in self.__dict__.items()
-            if k not in ['_required', '_default', '_required_default']}[key]
+            k: v
+            for k, v in self.__dict__.items()
+            if k not in ["_required", "_default", "_required_default"]
+        }[key]
+
     time = String()
     anomaly = String()
     level_high = String()
@@ -31,32 +34,24 @@ class Example(Record):
 
 
 def decryption_service(
-        in_topic: list,
-        out_topic: str,
-        subscription_name: str,
-        service_url: str
-        ):
+    in_topic: list, out_topic: str, subscription_name: str, service_url: str
+):
     _, receiver = init_rsa_security(".security")
 
     source = Stream.from_pulsar(
         service_url,
         in_topic,
         subscription_name=subscription_name,
-        consumer_params={"schema": JsonSchema(Example)}
-        )
+        consumer_params={"schema": JsonSchema(Example)},
+    )
     source.map(lambda x: x.decode())
-    decrypter = (
-        source
-        .map(dict)
-        .map(encode_data)
-        .map(decrypt_data, receiver)
-        )
+    decrypter = source.map(dict).map(encode_data).map(decrypt_data, receiver)
 
     if args.out_topic is not None:
         producer = decrypter.to_pulsar(
             service_url,
             out_topic,
-            )
+        )
         L = None
     else:
         L = decrypter.sink_to_list()
@@ -79,28 +74,33 @@ def decryption_service(
             raise e
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
-        '-i', '--in-topic',
+        "-i",
+        "--in-topic",
         default="dynamic_limits",
         help="The topic to consume messages from. Allows multiply defined.",
-        nargs='*', type=str)
+        nargs="*",
+        type=str,
+    )
     parser.add_argument(
-        '-o', '--out-topic',
-        help="The topic to produce messages to.",
-        type=str)
+        "-o", "--out-topic", help="The topic to produce messages to.", type=str
+    )
     parser.add_argument(
-        '--subscription-name',
+        "--subscription-name",
         default="decryption_service",
         help="Name consumer's subscription.",
-        type=str)
+        type=str,
+    )
     parser.add_argument(
-        '--service-url',
+        "--service-url",
         default="pulsar://localhost:6650",
         help="The scheme and broker as 'scheme://IP:port.",
-        type=str)
+        type=str,
+    )
     args = parser.parse_args()
 
-    decryption_service(args.in_topic, args.out_topic, args.subscription_name,
-                       args.service_url)
+    decryption_service(
+        args.in_topic, args.out_topic, args.subscription_name, args.service_url
+    )

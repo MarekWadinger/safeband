@@ -46,9 +46,10 @@ def on_message(self, userdata, msg):
         >>> on_message(obj, usr, msg)
         Received message at 1970-01-01 ...: Hello
     """
-    if isinstance(userdata, Namespace) and 'receiver' in userdata:
-        item = verify_and_decrypt_data(json.loads(msg.payload.decode()),
-                                       userdata.receiver)
+    if isinstance(userdata, Namespace) and "receiver" in userdata:
+        item = verify_and_decrypt_data(
+            json.loads(msg.payload.decode()), userdata.receiver
+        )
         item = json.dumps(item)
     else:
         item = msg.payload.decode()
@@ -71,12 +72,12 @@ def query_file(config: FileClient, **kwargs):
         {'time': datetime.datetime(2023, 1, 1, 0, 0), 'anomaly': 0, ...}
     """
     # Load the JSON file as a list of dictionaries
-    with open(config.get("output", ""), encoding='utf-8') as f:
+    with open(config.get("output", ""), encoding="utf-8") as f:
         data: list[dict] = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects
     for item in data:
-        if 'receiver' in kwargs and not item['time'].isascii():
+        if "receiver" in kwargs and not item["time"].isascii():
             item = verify_and_decrypt_data(item, kwargs["receiver"])
         item["time"] = dt.datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
 
@@ -86,8 +87,9 @@ def query_file(config: FileClient, **kwargs):
     # Find the closest past item
     for item in data:
         if item["time"] <= dt.datetime.strptime(
-            dt.datetime.utcnow().strftime(
-                "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"):
+            dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "%Y-%m-%d %H:%M:%S",
+        ):
             closest_item = item
             break
 
@@ -125,11 +127,11 @@ def query_mqtt(config: MQTTClient):
     return client
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     config = get_params()
 
-    if "key_path" in config['setup']:
-        _, receiver = init_rsa_security(config['setup']["key_path"])
+    if "key_path" in config["setup"]:
+        _, receiver = init_rsa_security(config["setup"]["key_path"])
 
     if istypedinstance(config["client"], FileClient):
         query_file(config["client"])
