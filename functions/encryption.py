@@ -57,7 +57,7 @@ def load_public_key(key_path, key: HumanRSA):
         >>> load_public_key('public_key.pem', key)  # doctest: +SKIP
     """
     with open(key_path) as pub:
-        key.load_public_pem(''.join(pub))
+        key.load_public_pem("".join(pub))
 
 
 def load_private_key(key_path, key: HumanRSA):
@@ -74,7 +74,7 @@ def load_private_key(key_path, key: HumanRSA):
         >>> load_private_key('private_key.pem', key)  # doctest: +SKIP
     """
     with open(key_path) as pub:
-        key.load_private_pem(''.join(pub))
+        key.load_private_pem("".join(pub))
 
 
 def split_string(string, max_length):
@@ -92,7 +92,9 @@ def split_string(string, max_length):
         >>> split_string("Hello, World!", 5)
         ['Hello', ', Wor', 'ld!']
     """
-    return [string[i:i+max_length] for i in range(0, len(string), max_length)]
+    return [
+        string[i : i + max_length] for i in range(0, len(string), max_length)
+    ]
 
 
 def generate_keys():
@@ -140,7 +142,7 @@ def encrypt_data(data, key: HumanRSA):
         else:
             return key.encrypt(data)
     else:
-        return encrypt_data(str(data).encode('utf-8'), key)
+        return encrypt_data(str(data).encode("utf-8"), key)
 
 
 def decrypt_data(data, key: HumanRSA):
@@ -169,10 +171,12 @@ def decrypt_data(data, key: HumanRSA):
         return key.decrypt(data)
     elif isinstance(data, list):
         dec = [decrypt_data(d, key) for d in data]
-        return b''.join(dec).decode('utf-8')
+        return b"".join(dec).decode("utf-8")
     else:
-        raise ValueError(f"Wrong type of data. Got {type(data)}. "
-                         "Expected (bytes, list, dict).")
+        raise ValueError(
+            f"Wrong type of data. Got {type(data)}. "
+            "Expected (bytes, list, dict)."
+        )
 
 
 def sign_data(data, key: HumanRSA):
@@ -199,12 +203,12 @@ def sign_data(data, key: HumanRSA):
         for x in data:
             if not isinstance(data[x], str):
                 data[x] = str(data[x])
-        data["signature"] = key.sign(json.dumps(data).encode('utf-8'))
+        data["signature"] = key.sign(json.dumps(data).encode("utf-8"))
         return data
     elif isinstance(data, bytes):
         return key.sign(data)
     else:
-        return key.sign(str(data).encode('utf-8'))
+        return key.sign(str(data).encode("utf-8"))
 
 
 def verify_signature(data, signature, key: HumanRSA):
@@ -231,9 +235,10 @@ def verify_signature(data, signature, key: HumanRSA):
     if isinstance(data, dict):
         for x in data:
             if isinstance(data[x], bytes):
-                data[x] = data[x].decode('utf-8')
-        return verify_signature(json.dumps(data).encode('utf-8'),
-                                signature, key)
+                data[x] = data[x].decode("utf-8")
+        return verify_signature(
+            json.dumps(data).encode("utf-8"), signature, key
+        )
     else:
         return key.verify(data, signature)
 
@@ -254,7 +259,7 @@ def verify_and_decrypt_data(item, key: HumanRSA):
     """
     item = encode_data(item)
     item = decrypt_data(item, key)
-    sign = item.pop('signature')
+    sign = item.pop("signature")
     verify = verify_signature(item, sign, key)
     if verify is not True:
         raise InvalidSignature("Signature verification failed.")
@@ -291,7 +296,7 @@ def encode_data(data):
     """
     for k, v in data.items():
         if isinstance(v, str):
-            data[k] = v.encode('latin1')
+            data[k] = v.encode("latin1")
         elif isinstance(v, list):
             data[k] = [s.encode("latin1") for s in v]
         else:
@@ -339,14 +344,16 @@ def decode_data(data):
         data = [decode_data(s) for s in data]
         return data
     elif isinstance(data, bytes):
-        return data.decode('latin1')
+        return data.decode("latin1")
     elif isinstance(data, (int, float, complex)) or data is None:
         return str(data)
     elif isinstance(data, str):
         return data
     else:
-        raise ValueError(f"Wrong type of data. Got {type(data)}. "
-                         "Expected (bytes, list, dict).")
+        raise ValueError(
+            f"Wrong type of data. Got {type(data)}. "
+            "Expected (bytes, list, dict)."
+        )
 
 
 def init_rsa_security(key_path: str):
@@ -359,20 +366,18 @@ def init_rsa_security(key_path: str):
         save_public_key(key_path + "/receiver_pem.pub", receiver)
         load_public_key(key_path + "/receiver_pem.pub", sender)
     else:  # pragma: no cover
-        if (
-                os.path.exists(key_path + "/sender_pem") and
-                os.path.exists(key_path + "/sender_pem.pub")
-                ):
+        if os.path.exists(key_path + "/sender_pem") and os.path.exists(
+            key_path + "/sender_pem.pub"
+        ):
             load_private_key(key_path + "/sender_pem", sender)
             load_public_key(key_path + "/sender_pem.pub", receiver)
         else:
             save_private_key(key_path + "/sender_pem", sender)
             save_public_key(key_path + "/sender_pem.pub", sender)
 
-        if (
-                os.path.exists(key_path + "/receiver_pem") and
-                os.path.exists(key_path + "/receiver_pem.pub")
-                ):
+        if os.path.exists(key_path + "/receiver_pem") and os.path.exists(
+            key_path + "/receiver_pem.pub"
+        ):
             load_private_key(key_path + "/receiver_pem", receiver)
             load_public_key(key_path + "/receiver_pem.pub", sender)
         else:

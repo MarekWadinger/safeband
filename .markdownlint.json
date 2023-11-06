@@ -1,0 +1,9 @@
+{
+    "no-duplicate-heading": {
+    "siblings_only": true,
+    "allow_different_nesting": true},
+    "line-length": {
+        "stern": true,
+        "code_blocks": true
+    }
+}

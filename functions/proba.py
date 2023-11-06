@@ -49,26 +49,30 @@ class MultivariateGaussian(proba.MultivariateGaussian):
         super().__init__(seed=seed)
 
     def mv_conditional(
-            self,
-            observed_values: Union[dict[str, float], np.ndarray],
-            var_idx: Union[str, int],
-            mean: Union[dict[str, float], np.ndarray],
-            covariance: Union[pd.DataFrame, np.ndarray]):
+        self,
+        observed_values: Union[dict[str, float], np.ndarray],
+        var_idx: Union[str, int],
+        mean: Union[dict[str, float], np.ndarray],
+        covariance: Union[pd.DataFrame, np.ndarray],
+    ):
         if (
-                isinstance(observed_values, dict) and
-                isinstance(mean, dict) and
-                isinstance(var_idx, str) and
-                isinstance(covariance, pd.DataFrame)):
-            observed_values = np.array([observed_values[key]
-                                        for key in mean.keys()])
+            isinstance(observed_values, dict)
+            and isinstance(mean, dict)
+            and isinstance(var_idx, str)
+            and isinstance(covariance, pd.DataFrame)
+        ):
+            observed_values = np.array(
+                [observed_values[key] for key in mean.keys()]
+            )
             var_idx = list(mean.keys()).index(var_idx)
             mean = np.array([*mean.values()])
             covariance = covariance.values
         elif (
-                isinstance(observed_values, (list, np.ndarray)) and
-                isinstance(mean, np.ndarray) and
-                isinstance(var_idx, int) and
-                isinstance(covariance, np.ndarray)):
+            isinstance(observed_values, (list, np.ndarray))
+            and isinstance(mean, np.ndarray)
+            and isinstance(var_idx, int)
+            and isinstance(covariance, np.ndarray)
+        ):
             pass
         else:
             raise ValueError(
@@ -90,20 +94,18 @@ class MultivariateGaussian(proba.MultivariateGaussian):
             cov_ZZ = covariance[np.ix_(var_idx_, var_idx_)]
 
             regression_coefficients = np.dot(cov_XZ.T, np.linalg.pinv(cov_XY))
-            conditional_mean = (
-                mean[var_idx_] + np.dot(
-                    regression_coefficients,
-                    (observed_values - mean[obs_idxs])
-                    )
-                )
-            conditional_covariance = (
-                cov_ZZ - np.dot(regression_coefficients, cov_XZ)
-                )
+            conditional_mean = mean[var_idx_] + np.dot(
+                regression_coefficients, (observed_values - mean[obs_idxs])
+            )
+            conditional_covariance = cov_ZZ - np.dot(
+                regression_coefficients, cov_XZ
+            )
             # TODO: handle very small negative covariance using tolerance
             conditional_std = np.sqrt(np.diag(conditional_covariance))
         return conditional_mean, conditional_covariance, conditional_std
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

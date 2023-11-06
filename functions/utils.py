@@ -57,11 +57,11 @@ def common_prefix(topics: list) -> str:
             break
 
     # Find the last '/' character in the common prefix
-    slash_index = prefix.rfind('/')
+    slash_index = prefix.rfind("/")
 
     # If a '/' character is found, return everything before it (including
     # the '/')
     if slash_index >= 0:
-        return prefix[:slash_index + 1]
+        return prefix[: slash_index + 1]
 
     return ""

@@ -81,9 +81,9 @@ def istypedinstance(obj, type_):
     for property_name, property_type in type_.__annotations__.items():
         value = obj.get(property_name, None)
         if (
-                "NotRequired" in str(property_type) or
-                str(type(property_type)) ==
-                "<class 'typing._GenericAlias'>"):
+            "NotRequired" in str(property_type)
+            or str(type(property_type)) == "<class 'typing._GenericAlias'>"
+        ):
             if hasattr(property_type, "__args__"):
                 property_type = Union[property_type.__args__[0], None]
             else:
@@ -93,7 +93,8 @@ def istypedinstance(obj, type_):
         except TypeError:
             if hasattr(property_type, "__args__"):
                 return isinstance(
-                    value, (property_type.__args__[0], type(None)))
+                    value, (property_type.__args__[0], type(None))
+                )
             else:
                 return False
     return True

@@ -30,7 +30,7 @@ def convert_to_nested_dict(d):
     """
     result: dict = {}
     for key, value in d.items():
-        parts = key.split('__')
+        parts = key.split("__")
         if len(parts) <= 2:
             current = result
             for part in parts[:-1]:
@@ -107,6 +107,7 @@ def build_model(steps: list, params: dict):
     return model
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

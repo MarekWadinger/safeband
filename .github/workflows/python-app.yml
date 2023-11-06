@@ -37,6 +37,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest pytest-html pytest-cov "genbadge[all]"
         pip install -r requirements.txt
+    - name: Check with ruff
+      uses: chartboost/ruff-action@v1
+      with:
+        args: --line-length=79
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names

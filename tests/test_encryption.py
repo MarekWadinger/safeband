@@ -22,8 +22,7 @@ from functions.encryption import (  # noqa: E402
 )
 
 
-class TestSecurity():
-
+class TestSecurity:
     def setup_class(self):
         self.parent_path = Path(__file__).parent
         self.security_dir = self.parent_path / ".security"
@@ -79,44 +78,44 @@ class TestSecurity():
         assert self.receiver.private_pem() == remote_sender.private_pem()
 
     def test_bytes_encryption_and_decryption(self):
-        control_action = b'4.20'
+        control_action = b"4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
         assert control_action == decrypted_c_a
 
     def test_bytes_signing_and_verification(self):
-        control_action = b'4.20'
+        control_action = b"4.20"
         signature = sign_data(control_action, self.sender)
-        verified = verify_signature(
-            control_action, signature, self.receiver)
+        verified = verify_signature(control_action, signature, self.receiver)
         assert verified is True
 
     def test_str_encryption_and_decryption(self):
-        control_action = '4.20'
+        control_action = "4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
-        assert control_action.encode('utf-8') == decrypted_c_a
+        assert control_action.encode("utf-8") == decrypted_c_a
         with pytest.raises(ValueError):
             decrypted_c_a = decrypt_data(control_action, self.receiver)
 
     def test_str_signing_and_verification(self):
-        control_action = '4.20'
+        control_action = "4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(
-            control_action.encode('utf-8'), signature, self.receiver)
+            control_action.encode("utf-8"), signature, self.receiver
+        )
         assert verified is True
 
     def test_message_signing_encryption_decryption_and_verification(self):
-        msg = {'a': 1}
+        msg = {"a": 1}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
         plaintext = decrypt_data(ciphertext, self.receiver)
-        sign = plaintext.pop('signature')
+        sign = plaintext.pop("signature")
         verify = verify_signature(plaintext, sign, self.receiver)
         assert verify is True
 
     def test_message_signing_encryption_dump_verify_and_decrypt(self):
-        msg = {'a': 1}
+        msg = {"a": 1}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
         ciphertext = decode_data(ciphertext)
@@ -124,10 +123,10 @@ class TestSecurity():
         assert msg == item
 
     def test_message_signing_encryption_dump_fail_verify(self):
-        msg = {'a': 1}
+        msg = {"a": 1}
         signed_msg = sign_data(msg, self.sender)
-        other_msg = sign_data({'a': 2}, self.sender)
-        signed_msg['signature'] = other_msg['signature']
+        other_msg = sign_data({"a": 2}, self.sender)
+        signed_msg["signature"] = other_msg["signature"]
         ciphertext = encrypt_data(signed_msg, self.sender)
         ciphertext = decode_data(ciphertext)
         with pytest.raises(InvalidSignature):

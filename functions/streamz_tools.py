@@ -13,7 +13,7 @@ class map(Stream):
     def __init__(self, upstream, func, *args, **kwargs):
         self.func = func
         # this is one of a few stream specific kwargs
-        stream_name = kwargs.pop('stream_name', None)
+        stream_name = kwargs.pop("stream_name", None)
         self.kwargs = kwargs
         self.args = args
 
@@ -93,9 +93,18 @@ class to_mqtt(Sink):
 
     >>> mqtt_sink.destroy()
     """
-    def __init__(self, upstream, host, port, topic, keepalive=60,
-                 client_kwargs=None, publish_kwargs=None,
-                 **kwargs):
+
+    def __init__(
+        self,
+        upstream,
+        host,
+        port,
+        topic,
+        keepalive=60,
+        client_kwargs=None,
+        publish_kwargs=None,
+        **kwargs,
+    ):
         self.host = host
         self.port = port
         self.c_kw = client_kwargs or {}
@@ -108,25 +117,31 @@ class to_mqtt(Sink):
     def update(self, x, who=None, metadata=None):
         if self.client is None:
             self.client = mqtt.Client(clean_session=True)
-            self.client.connect(self.host, self.port, self.keepalive,
-                                **self.c_kw)
+            self.client.connect(
+                self.host, self.port, self.keepalive, **self.c_kw
+            )
         # TODO: wait on successful delivery
         if isinstance(x, bytes):
             self.client.publish(self.topic, x, **self.p_kw)
         else:
             self.client.publish(
-                f"{self.topic}anomaly", x['anomaly'], **self.p_kw)
-            if isinstance(x['level_high'], dict):
-                for key in x['level_high']:
+                f"{self.topic}anomaly", x["anomaly"], **self.p_kw
+            )
+            if isinstance(x["level_high"], dict):
+                for key in x["level_high"]:
                     self.client.publish(
-                        f"{key}_DOL_high", x['level_high'][key], **self.p_kw)
+                        f"{key}_DOL_high", x["level_high"][key], **self.p_kw
+                    )
                     self.client.publish(
-                        f"{key}_DOL_low", x['level_low'][key], **self.p_kw)
+                        f"{key}_DOL_low", x["level_low"][key], **self.p_kw
+                    )
             else:
                 self.client.publish(
-                    f"{self.topic}_DOL_high", x['level_high'], **self.p_kw)
+                    f"{self.topic}_DOL_high", x["level_high"], **self.p_kw
+                )
                 self.client.publish(
-                    f"{self.topic}_DOL_low", x['level_low'], **self.p_kw)
+                    f"{self.topic}_DOL_low", x["level_low"], **self.p_kw
+                )
 
     def destroy(self):
         if self.client is not None:
