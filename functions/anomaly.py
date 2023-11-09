@@ -293,13 +293,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if isinstance(self.grace_period, timedelta) and isinstance(
             self.gaussian, TimeRolling
         ):
-            if len(self.gaussian._timestamps) == 0:
+            # TODO: remove this statement after river ~= 0.20.0 is buildable
+            if hasattr(self.gaussian, "_timestamps"):
+                timestamps = self.gaussian._timestamps
+            else:
+                timestamps = [event[0] for event in self.gaussian.events]
+            if len(timestamps) == 0:
                 n_seen = timedelta(0)
             else:
-                n_seen = (
-                    self.gaussian._timestamps[-1]
-                    - self.gaussian._timestamps[0]
-                )
+                n_seen = timestamps[-1] - timestamps[0]
         else:
             n_seen = self.gaussian.n_samples
         return n_seen
