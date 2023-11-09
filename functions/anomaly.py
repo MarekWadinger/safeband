@@ -1,6 +1,7 @@
 import collections
-import typing
 import warnings
+from datetime import timedelta
+from typing import Protocol, Tuple, Union, runtime_checkable
 
 import numpy as np
 import pandas as pd
@@ -9,11 +10,11 @@ from river.utils import Rolling, TimeRolling
 from scipy.stats import norm
 
 
-@typing.runtime_checkable
-class Distribution(typing.Protocol):  # pragma: no cover
-    mu: typing.Union[float, dict[str, float]]
-    sigma: typing.Union[float, pd.DataFrame]
-    n_samples: typing.Union[float, int]
+@runtime_checkable
+class Distribution(Protocol):  # pragma: no cover
+    mu: Union[float, dict[str, float]]
+    sigma: Union[float, pd.DataFrame]
+    n_samples: Union[float, int]
 
     def update(self, *args, **kwargs):
         ...
@@ -22,14 +23,14 @@ class Distribution(typing.Protocol):  # pragma: no cover
         ...
 
 
-@typing.runtime_checkable
+@runtime_checkable
 class ConditionableDistribution(
-    Distribution, typing.Protocol
+    Distribution, Protocol
 ):  # pragma: no cover  # noqa: E501
     mu: dict[str, float]
     sigma: pd.DataFrame
     var: pd.DataFrame
-    n_samples: typing.Union[float, int]
+    n_samples: Union[float, int]
 
     def update(self, *args, **kwargs):
         ...
@@ -39,8 +40,64 @@ class ConditionableDistribution(
 
     def mv_conditional(
         self, *args, **kwargs
-    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         ...
+
+
+class Store:
+    """
+    A custom store that implements basic list-like functionality.
+
+    This class provides a custom store with list-like behavior. It supports
+    iteration, indexing, length calculation, appending, updating, and reverting
+    operations.
+
+    Example:
+    >>> my_store = Store()
+    >>> my_store.append(1)
+    >>> my_store.append(2)
+    >>> my_store.append(3)
+    >>> my_store[1]
+    2
+    >>> len(my_store)
+    3
+    >>> for item in my_store:
+    ...     print(item)
+    1
+    2
+    3
+    >>> my_store.update(4)
+    >>> my_store[-1]
+    4
+    >>> my_store.revert()
+    >>> len(my_store)
+    3
+    """
+
+    def __init__(self):
+        self.x: list = []
+
+    def __iter__(self):
+        yield from self.x
+
+    def __getitem__(self, idx):
+        return self.x[idx]
+
+    def __len__(self):
+        return len(self.x)
+
+    def append(self, *args, **kwargs):
+        self.x.append(args[0])
+
+    def update(self, *args, **kwargs):
+        self.x.append(args[0])
+
+    def revert(self, *args, **kwargs):
+        self.x.pop(0)
+
+
+# TODO: Find a better way to expose __len__ of parent class
+TimeRolling.__len__ = lambda self: len(self.x)  # type: ignore
 
 
 class GaussianScorer(anomaly.base.AnomalyDetector):
@@ -110,8 +167,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> from river.utils import TimeRolling
     >>> scorer = GaussianScorer(
     ...     TimeRolling(Gaussian(),
-    ...     period=dt.timedelta(hours=24*7)),
-    ...     grace_period=2)
+    ...     period=dt.timedelta(hours=24*7)))
     >>> scorer.process_one(1, t=dt.datetime(2022,2,2))
     (0, nan, nan)
 
@@ -149,11 +205,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
     def __init__(
         self,
-        gaussian: typing.Union[Distribution, Rolling, TimeRolling],
+        gaussian: Union[Distribution, Rolling, TimeRolling],
         threshold: float = 0.99735,
-        log_threshold: typing.Union[float, None] = None,
-        grace_period: typing.Union[int, None] = None,
-        t_a: typing.Union[int, None] = None,
+        log_threshold: Union[float, None] = None,
+        grace_period: Union[timedelta, int, None] = None,
+        t_a: Union[timedelta, int, None] = None,
         protect_anomaly_detector: bool = True,
     ):
         if not isinstance(gaussian, Distribution):
@@ -162,20 +218,34 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             )
         self.gaussian = gaussian
 
-        if hasattr(gaussian, "window_size"):
-            self.t_e = gaussian.window_size  # type: ignore
-        elif hasattr(gaussian, "period"):
-            self.t_e = int(gaussian.period.total_seconds() / 60)
+        if isinstance(gaussian, Rolling):
+            self.t_e = gaussian.window_size if gaussian.window_size else 0
+        elif isinstance(gaussian, TimeRolling):
+            self.t_e = gaussian.period
         else:
             self.t_e = 0
         if grace_period is None:
             self.grace_period = self.t_e
-        elif self.t_e > 0 and grace_period > self.t_e or grace_period < 1:
+        elif (
+            isinstance(self.t_e, int)
+            and isinstance(grace_period, int)
+            and self.t_e > 0
+            and grace_period > self.t_e
+        ) or (
+            isinstance(self.t_e, timedelta)
+            and isinstance(grace_period, timedelta)
+            and (grace_period > self.t_e)
+        ):
             warnings.warn(
                 f"Grace period must be between 1 and "
                 f"{self.t_e} minutes or None."
             )
             self.grace_period = self.t_e
+        elif not isinstance(grace_period, type(self.t_e)):
+            raise TypeError(
+                "Grace_period must be of the same type as t_e."
+                f"Got {type(grace_period)} instead of {type(self.t_e)}."
+            )
         else:
             self.grace_period = grace_period
 
@@ -186,10 +256,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
-            self.t_a: int = t_a if t_a else self.t_e
-            self.buffer: collections.deque = collections.deque(
-                maxlen=round(self.t_a)
-            )
+            self.t_a = t_a if t_a else self.t_e
+            if isinstance(self.t_a, int):
+                self.buffer = collections.deque(maxlen=round(self.t_a))
+            if isinstance(self.t_a, timedelta):
+                self.buffer = TimeRolling(Store(), period=self.t_a)
 
     def _get_feature_dim_in(self, x):
         if not hasattr(self, "_feature_dim_in"):
@@ -211,12 +282,27 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self
 
     def _drift_detected(self) -> bool:
-        len_ = len(self.buffer)
+        len_ = len(self.buffer)  # type: ignore
         if len_ > 0:
             # return sum(self.buffer) / len_ > 1 - self.alpha
-            return sum(self.buffer) / len_ > (self.threshold)
+            return sum(self.buffer) / len_ > (self.threshold)  # type: ignore
         else:
             return False
+
+    def n_seen(self):
+        if isinstance(self.grace_period, timedelta) and isinstance(
+            self.gaussian, TimeRolling
+        ):
+            if len(self.gaussian._timestamps) == 0:
+                n_seen = timedelta(0)
+            else:
+                n_seen = (
+                    self.gaussian._timestamps[-1]
+                    - self.gaussian._timestamps[0]
+                )
+        else:
+            n_seen = self.gaussian.n_samples
+        return n_seen
 
     def learn_one(self, x, **learn_kwargs):
         if self.protect_anomaly_detector:
@@ -231,13 +317,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
     def score_one(self, x) -> float:
         # TODO: find out why return different results on each invocation
-        if self.gaussian.n_samples < self.grace_period:
-            if not hasattr(self, "_feature_dim_in"):
-                return 0.5
-            else:
-                return 0.5**self._feature_dim_in
-        # return 2 * abs(self.gaussian.cdf(x) - 0.5)
-        return self.gaussian.cdf(x)
+        if self.n_seen() >= self.grace_period:  # type: ignore
+            return self.gaussian.cdf(x)
+        if not hasattr(self, "_feature_dim_in"):
+            return 0.5
+        else:
+            return 0.5**self._feature_dim_in
 
     def predict_one(self, x) -> int:
         self._get_feature_dim_in(x)
@@ -245,7 +330,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         score = self.score_one(x)
         if (
-            self.gaussian.n_samples > self.grace_period
+            self.n_seen() > self.grace_period  # type: ignore
             and self._feature_dim_in
         ):
             if self.log_threshold:
@@ -313,7 +398,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
     def process_one(self, x, t=None):
         if self.gaussian.n_samples == 0:
-            if hasattr(self.gaussian, "obj"):
+            if isinstance(self.gaussian, (Rolling, TimeRolling)):
                 if hasattr(self.gaussian.obj, "_from_state"):
                     self.gaussian.obj = (  # type: ignore
                         self.gaussian.obj._from_state(  # type: ignore
@@ -412,12 +497,10 @@ class ConditionalGaussianScorer(GaussianScorer):
 
     def __init__(
         self,
-        gaussian: typing.Union[
-            ConditionableDistribution, Rolling, TimeRolling
-        ],
+        gaussian: Union[ConditionableDistribution, Rolling, TimeRolling],
         threshold: float = 0.99735,
-        grace_period: typing.Union[int, None] = None,
-        t_a: typing.Union[int, None] = None,
+        grace_period: Union[timedelta, int, None] = None,
+        t_a: Union[timedelta, int, None] = None,
         protect_anomaly_detector: bool = True,
     ):
         if not isinstance(gaussian, ConditionableDistribution):

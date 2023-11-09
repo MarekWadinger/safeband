@@ -34,8 +34,6 @@ from functions.typing_extras import (
 from functions.utils import common_prefix
 
 # CONSTANTS
-GRACE_PERIOD = 60 * 2
-WINDOW = dt.timedelta(hours=24 * 1)
 
 open_files: list[IO] = []
 
@@ -198,8 +196,8 @@ class RpcOutlierDetector:
         >>> x = {"time": dt.datetime(2022,1,1),
         ...      "data": {"feature1": 0.5, "feature2": 1.2, "feature3": -0.8}}
         >>> model = model = GaussianScorer(
-        ...     utils.TimeRolling(proba.Gaussian(), period=WINDOW),
-        ...     grace_period=GRACE_PERIOD)
+        ...     utils.TimeRolling(proba.Gaussian(), period=dt.timedelta(1)),
+        ...     grace_period=dt.timedelta(1))
         >>> obj = RpcOutlierDetector()
         >>> result = obj.fit_transform(x, model)
         >>> sorted(result.keys())
@@ -470,14 +468,16 @@ class RpcOutlierDetector:
                 model = ConditionalGaussianScorer(
                     utils.TimeRolling(obj, period=t_e),
                     threshold=threshold,
-                    grace_period=GRACE_PERIOD,
+                    grace_period=t_g,
+                    t_a=t_a,
                 )
             else:
                 obj = proba.Gaussian()
                 model = GaussianScorer(
                     utils.TimeRolling(obj, period=t_e),
                     threshold=threshold,
-                    grace_period=GRACE_PERIOD,
+                    grace_period=t_g,
+                    t_a=t_a,
                 )
 
         source = self.get_source(client, in_topics, debug)
