@@ -297,7 +297,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             if hasattr(self.gaussian, "_timestamps"):
                 timestamps = self.gaussian._timestamps
             else:
-                timestamps = [event[0] for event in self.gaussian.events]
+                timestamps = [event[0] for event in self.gaussian._events]
             if len(timestamps) == 0:
                 n_seen = timedelta(0)
             else:
