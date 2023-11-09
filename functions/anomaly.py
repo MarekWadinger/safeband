@@ -554,10 +554,7 @@ class ConditionalGaussianScorer(GaussianScorer):
     def _score_one(self, x):
         # TODO: find out why return different results on each invocation
         #   Due to scipy's cdf function
-        if (
-            not self.grace_period
-            or self.gaussian.n_samples > self.grace_period
-        ):
+        if not self.grace_period or self.n_seen() > self.grace_period:
             # Deactivate grace period after first invocation
             self.grace_period = None
             # TODO: generally score is None when the
