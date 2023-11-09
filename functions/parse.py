@@ -1,5 +1,6 @@
 from argparse import ArgumentParser, FileType, Namespace
 from configparser import ConfigParser
+from os import getenv
 from typing import Union
 
 from pandas import Timedelta
@@ -101,13 +102,22 @@ def get_args() -> Namespace:
 
     mail_arg_grp = parser.add_argument_group("mail")
     mail_arg_grp.add_argument(
-        "--sender-email", type=str, help="Senders email address"
+        "--sender-email",
+        type=str,
+        help="Senders email address",
+        default=getenv("SENDER_EMAIL"),
     )
     mail_arg_grp.add_argument(
-        "--sender-password", type=str, help="Senders password"
+        "--sender-password",
+        type=str,
+        help="Senders password",
+        default=getenv("SENDER_PASSWORD"),
     )
     mail_arg_grp.add_argument(
-        "--receiver-email", type=str, help="Receiver email address"
+        "--receiver-email",
+        type=str,
+        help="Receiver email address",
+        default=getenv("RECEIVER_EMAIL"),
     )
 
     model_arg_grp = parser.add_argument_group(
