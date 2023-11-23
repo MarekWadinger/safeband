@@ -1,0 +1,198 @@
+\documentclass{article}
+\usepackage{color}
+%% The amsthm package provides extended theorem environments
+%% \usepackage{amsthm}
+%% The amsmath package provides equation environment
+\usepackage{amsmath}
+
+\title{List of Changes and Answers to Reviewers}
+% \title{}
+\author{Adaptable and Interpretable Framework for Anomaly\\Detection in SCADA-based Industrial Systems
+  \\M. Wadinger, M. Kvasnica}
+\makeatletter
+\newenvironment{comment}{
+\begin{sloppypar}\slshape
+\vspace{5 mm}
+\color{blue}
+%$\rightarrow$
+ \@beginparpenalty\@M
+  \begin{list}{}{\setlength{\topsep}{0ex}%
+  \setlength{\leftmargin}{\rightmargin}}\item[]
+ \@beginparpenalty\@endparpenalty
+}
+{\end{list}
+\end{sloppypar}
+%$\leftarrow$
+}
+\makeatother
+
+\def\RIsatmax{\overline{\mathcal{R}}}
+\def\RIsatmin{\underline{\mathcal{R}}}
+\def\RIunsat{\mathcal{U}}
+
+\bibliographystyle{alpha}
+
+\begin{document}
+\maketitle
+
+
+\section{List of Changes}
+
+List of main changes:
+\begin{enumerate}
+
+  \item The manuscript was shortened to $7$ pages.
+  \item The leading paragraph of Section 4 was reworded to address
+        reviewers' comments on SVMs.
+  \item Section 4.1 was removed, linear separation is now tackled as a
+        special case in the {\em Polynomial Separation} section (labeled as
+        Section 4.1 in the revision).
+  \item Big-O notation in Section 5 was replaced by hard figures
+        indicating required computation and consumed memory.
+  \item Section 6.2 was enriched to address reviewers' comments.
+  \item Conclusions was modified according to reviewers' requests.
+  \item Figure 2 was added to illustrate the definition of anomalies.
+  \item Captions in Figures 5,6,7 (labeled as Figures 4,5,6 in the previous manuscript) were reworded to make them more clear.
+  \item Table 2 was transposed to allow for new metrics to be added.
+  \item False Alarm Rate, AUC, and Mean of Rolling AUC were added to the results in Table 2.
+  \item Added reference to~\cite{Deldari2021} in the Introduction.
+\end{enumerate}
+
+\section{Answers to Reviewers and to the Associate Editor}
+
+We would like to thank all reviewers and to the associate editor for
+encouraging comments and hints. We have tried to address all of them
+appropriately.
+
+\subsection*{Associate Editor}
+
+\begin{comment}
+Reviewers have now commented on your paper. You will see that they are advising that you revise your manuscript. If you are prepared to undertake the work required, I would be pleased to reconsider my decision.
+
+For your guidance, reviewers' comments are appended below.
+
+If you decide to revise the work, please submit a list of changes or a rebuttal against each point raised by the reviewers. You can upload this as the 'Detailed Response to Reviewers' when you submit the revised manuscript.
+\end{comment}
+{\bf Response:}
+We would like to thank the associate editor for his/her evaluation. We
+believe that the modifications, described in more detail below,
+address all issues pointed out by the reviewers.
+
+\subsection*{Reviewer 1}
+\begin{comment}
+This paper proposes a new online anomlay detection method and verifies its effectiveness on real-world datasets. However, there are some limitations as follows:
+\end{comment}
+
+\begin{enumerate}
+
+  \item
+        \begin{comment}
+        There is no clear definitions of point anomaly, collective anomalies and concept changes. Figure 2 does not illustrate their differences either.
+        \end{comment}
+        {\bf Response:}
+        While we tried to establish the notation of anomalies and their categorization used throughout our paper in Section 2.6, the visualization would be more illuminating.
+
+        Indeed, the work would benefit from more clarity in the definition of point anomaly, collective anomalies, and concept changes.
+
+        Therefore, we have added Figure 2 to illustrate the definition of anomalies.
+
+  \item
+        \begin{comment}
+        The captions of Figures 4,5,6 are similar but the labels are different. It is a bit confused as which one is the ground truth.
+        \end{comment}
+        {\bf Response:}
+        Figures 4,5,6 were indeed carrying identical captions. We realize that our effort to describe elements of the figure in the caption compromised the delivery of the key messages they represented.
+
+        Thanks to the reviewer's comment, we have reworded the captions to make them more clear. Please note that due to the addition of Figure 2, Figures 4,5,6 in question are now labeled as Figures 5, 6, and 7 in the revision.
+
+        However, the ground truth information remains undisclosed in the Figures. This is due to the fact that operators did not provide us with information about the exact time of abnormal events, which has shown ambiguity. Therefore, in Section 4.1, we refer to the dates of the events. Moreover, picking the time of the anomaly based on observation for plotting purposes would be arbitrary, which would compromise the objectivity of the results.
+
+  \item
+        \begin{comment}
+        There are other self-supervised change-point detection method, such as ~\cite{Deldari2021}.
+        \end{comment}
+        {\bf Response:}
+        Our aim was to provide a comprehensive review of the state-of-the-art methods for self-supervised adaptive detection methods with interpretability. Though making attempt to cover the most relevant self-supervised change-point detection methods, the review was not exhaustive in this matter.
+
+        We would like to thank the reviewer for pointing out this reference, which, after examination, proved to be relevant in the paragraph concerning the need for early change point detection. We have added it to the Introduction section of the thesis.
+
+  \item
+        \begin{comment}
+        It seems that using ARIMA or moving average can easily detect the anomalies or change points on the real-world datasets.
+        \end{comment}
+        {\bf Response:}
+        While we agree that the impression from the figures may be that the anomalies are easy to detect by ARIMA or moving average, we would like to point out that our proposed method considers interactions between the variables while providing diagnostic capabilities.
+
+        As we broadened the scope of our research on the current state of research, we found that Vector Autoregression, the multivariate extension of ARIMA, is a promising choice for anomaly detection in multivariate time series, capturing interactions. We found at least two papers dealing with offline trained anomaly detection methods based on vector autoregression \cite{Melnyk2016, Zhang2023}. Our paper, on the other hand, deals with online anomaly detection. Therefore, we believe that our method provides a unique combination of features relevant to real-world scenarios. Nevertheless, we are aware of the existence of online trained ARIMA methods, which gives a promise of extension to its multivariate counterpart.
+        
+        Fortunately, ARIMA could be effectively combined with our method during feature engineering, which could further enhance the performance of the proposed method, similar to the utilization of the physics-based model in Section 4.1.
+        %  https://stats.stackexchange.com/questions/437326/anomaly-detection-using-vector-autoregression
+
+  \item
+        \begin{comment}
+        It would be better to use AUC rather than F1 to measure the anomaly detection performance. Moreover, range-based AUC is even better and more fair for streaming or sliding window-based method.
+        \end{comment}
+        {\bf Response:}
+        We agree with the reviewer that AUC, in general, is a better metric for imbalanced datasets. However, due to the poor convergence of the reference methods on benchmark data during hyperparameter optimization, we decided to use F1 score, which showed better convergence for all three compared methods. Nevertheless, we have added AUC to the results in Table 2. as it might be of interest to the reader.
+
+        To our surprise, we were not aware of the range-based AUC metric during the time of paper writing and result collection. We have added it to the results in Table 1. using implementation from~\cite{Brzezinski2017}.
+
+        Moreover, we tried to use the range-based AUC metric for hyperparameter optimization. Due to little improvement in convergence, we decided to keep the F1 score as the main metric and not include the results obtained using the range-based AUC metric in the cost function of hyperparameter optimization in the paper. As proof, the results are provided in this response in Table 1.
+
+
+\end{enumerate}
+
+
+\begin{table}[htbp]
+  \caption{Evaluation of models optimized for Rolling AUC score on SKAB dataset. The best-performing model is highlighted in bold. Values in brackets represent macro values of the metric.}
+  \begin{center}
+    \label{tab:perf_comp_f1}
+    \begin{tabular}{|l|c|c|c|c|}
+      \hline
+      \textbf{Algorithm}      & AID                    & HS-Trees            & OC-SVM              \\
+      \hline
+      Precision [$\%$]        & $\boldsymbol{47}$ (60) & 30 (47)             & 32 (48)             \\
+      \hline
+      Recall [$\%$]           & $\boldsymbol{55}$ (61) & 4 (50)              & 3 (50)              \\
+      \hline
+      F1 [$\%$]               & $\boldsymbol{51}$ (60) & 7 (42)              & 6 (42)              \\
+      \hline
+      AUC [$\%$]              & $\boldsymbol{61}$      & 50                  & 50                  \\
+      \hline
+      Mean Rolling AUC [$\%$] & $\boldsymbol{60}$      & 50                  & 49                  \\
+      \hline
+      FPR [$\%$]              & $\boldsymbol{38}$      & 37                  & 37                  \\
+      \hline
+      Avg. Latency [ms]       & 1.45                   & $\boldsymbol{0.05}$ & $\boldsymbol{0.05}$ \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{table}
+
+\subsection*{Reviewer 2}
+\begin{comment}
+This paper presents an interesting and potentially useful framework called AID for anomaly detection and root cause diagnosis in industrial internet-of-things (IoT) systems. It incorporates dynamic conditional probability distribution modeling to adapt to non-stationary data streams, which is crucial for industrial systems. And industrial case studies demonstrate capabilities on real systems. However, i still have following concerns.
+\end{comment}
+
+\begin{enumerate}
+  \item
+        \begin{comment}
+        More analysis of computational complexity and scalability limitations for high-dimensional industrial systems would strengthen the work.
+        \end{comment}
+        {\bf Response:}
+  \item
+        \begin{comment}
+        While the paper mentions comparisons with other methods, it lacks detailed benchmarking data, such as false positive rates.
+        \end{comment}
+        {\bf Response:}
+        We added a False Positive Rate to the results in Table 2. Please note that thanks to the point of the other reviewer, we also added AUC and Mean of Rolling AUC, which are both relevant metrics for imbalanced datasets and might illuminate the performance of the proposed method. 
+  \item
+        \begin{comment}
+        Comparing diagnosis accuracy for root causes against other interpretable methods could better highlight capabilities.
+        \end{comment}
+        {\bf Response:}
+\end{enumerate}
+
+\bibliography{revision}
+
+\end{document}

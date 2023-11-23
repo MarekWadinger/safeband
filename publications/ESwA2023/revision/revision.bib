@@ -1,0 +1,67 @@
+@inproceedings{Deldari2021,
+  author    = {Deldari, Shohreh and Smith, Daniel V. and Xue, Hao and Salim, Flora D.},
+  title     = {Time Series Change Point Detection with Self-Supervised Contrastive Predictive Coding},
+  year      = {2021},
+  isbn      = {9781450383127},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/3442381.3449903},
+  doi       = {10.1145/3442381.3449903},
+  abstract  = {Change Point Detection (CPD) methods identify the times associated with changes in the trends and properties of time series data in order to describe the underlying behaviour of the system. For instance, detecting the changes and anomalies associated with web service usage, application usage or human behaviour can provide valuable insights for downstream modelling tasks. We propose a novel approach for self-supervised Time Series Change Point detection method based on Contrastive Predictive coding (TS - CP2). TS - CP2 is the first approach to employ a contrastive learning strategy for CPD by learning an embedded representation that separates pairs of embeddings of time adjacent intervals from pairs of interval embeddings separated across time. Through extensive experiments on three diverse, widely used time series datasets, we demonstrate that our method outperforms five state-of-the-art CPD methods, which include unsupervised and semi-supervised approaches. TS - CP2 is shown to improve the performance of methods that use either handcrafted statistical or temporal features by 79.4\% and deep learning-based methods by 17.0\% with respect to the F1-score averaged across the three datasets.},
+  booktitle = {Proceedings of the Web Conference 2021},
+  pages     = {3124-3135},
+  numpages  = {12},
+  keywords  = {Time series change point detection, Anomaly detection, Unsupervised learning, Contrastive learning},
+  location  = {Ljubljana, Slovenia},
+  series    = {WWW '21}
+}
+
+@article{Brzezinski2017,
+  author   = {Brzezinski, Dariusz
+              and Stefanowski, Jerzy},
+  title    = {Prequential AUC: properties of the area under the ROC curve for data streams with concept drift},
+  journal  = {Knowledge and Information Systems},
+  year     = {2017},
+  month    = {Aug},
+  day      = {01},
+  volume   = {52},
+  number   = {2},
+  pages    = {531-562},
+  abstract = {Modern data-driven systems often require classifiers capable of dealing with streaming imbalanced data and concept changes. The assessment of learning algorithms in such scenarios is still a challenge, as existing online evaluation measures focus on efficiency, but are susceptible to class ratio changes over time. In case of static data, the area under the receiver operating characteristics curve, or simply AUC, is a popular measure for evaluating classifiers both on balanced and imbalanced class distributions. However, the characteristics of AUC calculated on time-changing data streams have not been studied. This paper analyzes the properties of our recent proposal, an incremental algorithm that uses a sorted tree structure with a sliding window to compute AUC with forgetting. The resulting evaluation measure, called prequential AUC, is studied in terms of: visualization over time, processing speed, differences compared to AUC calculated on blocks of examples, and consistency with AUC calculated traditionally. Simulation results show that the proposed measure is statistically consistent with AUC computed traditionally on streams without drift and comparably fast to existing evaluation procedures. Finally, experiments on real-world and synthetic data showcase characteristic properties of prequential AUC compared to classification accuracy, G-mean, Kappa, Kappa M, and recall when used to evaluate classifiers on imbalanced streams with various difficulty factors.},
+  issn     = {0219-3116},
+  doi      = {10.1007/s10115-017-1022-8},
+  url      = {https://doi.org/10.1007/s10115-017-1022-8}
+}
+
+@inproceedings{Melnyk2016,
+  author    = {Melnyk, Igor and Banerjee, Arindam and Matthews, Bryan and Oza, Nikunj},
+  title     = {Semi-Markov Switching Vector Autoregressive Model-Based Anomaly Detection in Aviation Systems},
+  year      = {2016},
+  isbn      = {9781450342322},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/2939672.2939789},
+  doi       = {10.1145/2939672.2939789},
+  abstract  = {In this work we consider the problem of anomaly detection in heterogeneous, multivariate, variable-length time series datasets. Our focus is on the aviation safety domain, where data objects are flights and time series are sensor readings and pilot switches. In this context the goal is to detect anomalous flight segments, due to mechanical, environmental, or human factors in order to identifying operationally significant events and highlight potential safety risks. For this purpose, we propose a framework which represents each flight using a semi-Markov switching vector autoregressive (SMS-VAR) model. Detection of anomalies is then based on measuring dissimilarities between the model's prediction and data observation. The framework is scalable, due to the inherent parallel nature of most computations, and can be used to perform online anomaly detection. Extensive experimental results on simulated and real datasets illustrate that the framework can detect various types of anomalies along with the key parameters involved.},
+  booktitle = {Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+  pages     = {1065–1074},
+  numpages  = {10},
+  keywords  = {time series analysis, anomaly detection, graphical model},
+  location  = {San Francisco, California, USA},
+  series    = {KDD '16}
+}
+
+@article{Zhang2023,
+  author   = {Zhang, Ruiyao and Zhou, Ping and Qiao, Junfei},
+  journal  = {IEEE Transactions on Reliability},
+  title    = {Anomaly Detection of Nonstationary Long-Memory Processes Based on Fractional Cointegration Vector Autoregression},
+  year     = {2023},
+  volume   = {},
+  number   = {},
+  pages    = {1-12},
+  abstract = {Aiming at the nonstationary characteristics of many practical industrial systems as well as the long memory and seasonality of some process data, this article proposes a novel nonstationary process anomaly detection method based on fractional cointegration vector autoregression (FCVAR). First, the augmented Dickey–Fuller (ADF) test is used to divide the variables into stationary and nonstationary categories. For the nonstationary variables, the trend extraction algorithm is used to extract the nonstationary trend of the variables to avoid the trend information from being overwhelmed due to the strong seasonality of the process data. Meanwhile, considering that the extracted trend time series have a long-memory characteristic and the fractional cointegration describes the intrinsic long-term equilibrium relationship of the trend series better than the integer cointegration, a novel anomaly detection algorithm based on the FCVAR model is proposed. For the stationary variables, including the original stationary variables and the detrended series of nonstationary variables after trend extraction, the proposed method merges the two components into a new matrix and establishes an anomaly detection model based on the kernel principal component analysis (kpca) algorithm. Finally, simulations using wastewater treatment process (WWTP) data have indicated that the proposed method achieves the desired results and exhibits high detection performance, particularly in the detection of tiny gradual-type anomalies.},
+  keywords = {},
+  doi      = {10.1109/TR.2023.3314429},
+  issn     = {1558-1721},
+  month    = {}
+}

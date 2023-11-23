@@ -20,7 +20,7 @@ Figure \ref{fig:terra_no_change} depicts the average cell temperature measuremen
 \begin{figure}
  \centering
  \resizebox{\linewidth}{!}{\includegraphics{figures/TERRA_thresh_single_4days_shift_no_change_adapt.pdf}}
- \caption{Time series of TERRA measurements observed over 9 days (blue line). The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$. The light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot. Orange bars represent the times, at which changepoints were detected. Grace period is grayed out.}
+ \caption{\replaced{Normalized average cell temperature of TERRA}{Time series of TERRA measurements} observed over 9 days (blue line).\deleted{ The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$.} The \replaced{model \textbf{without} adaptation to change points holds dynamic operating limits (light red area) unchanged, and anomaly (red dots) alerted for approximately three days.}{light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot.} Orange bars represent the times, at which changepoints were detected. Grace period is grayed out.}
  \label{fig:terra_no_change}
 \end{figure}
 
@@ -29,7 +29,7 @@ In Figure \ref{fig:terra_change} we depict the same measurement with a changepoi
 \begin{figure}
  \centering
  \resizebox{\linewidth}{!}{\includegraphics{figures/TERRA_thresh_single_4days_shift_change_adapt.pdf}}
- \caption{Time series of TERRA measurements observed over 9 days (blue line). The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$. The light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot. Orange bars represent the times, at which changepoints were detected. Grace period is grayed out.}
+ \caption{\replaced{Normalized average cell temperature of TERRA}{Time series of TERRA measurements} observed over 9 days (blue line).\deleted{ The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$.} The \replaced{model \textbf{with} adaptation to change points starts to update dynamic operating limits (light red area) within 3 hours and alerts anomaly (red dots) for approximately 10 hours.}{light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot.} Orange bars represent the times, at which changepoints were detected. Grace period is grayed out.}
  \label{fig:terra_change}
 \end{figure}
 
@@ -38,7 +38,7 @@ The default sampling rate of the incoming signal measurements is 1 minute. Howev
 \begin{figure}[htbp]
  \centering
  \resizebox{\linewidth}{!}{\includegraphics{figures/TERRA_thresh_single_4days_sampling.pdf}}
- \caption{Time series of TERRA measurements observed over 9 days (blue line). The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$. The light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot. Orange bars represent the times, at which changepoints were detected. Green bars represent periods where sampling anomaly was alerted. Grace period is grayed out.}
+ \caption{\replaced{Normalized average cell temperature of TERRA}{Time series of TERRA measurements} observed over 9 days (blue line).\deleted{ The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$.} The \replaced{model \textbf{with} adaptation to change points and sampling nonuniformity alerts}{light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot.}\added{ Green bars represent the times, at which sampling anomalies are detected, while zoomed areas focus on short events of abnormal sampling.} Orange bars represent the times, at which changepoints were detected. Grace period is grayed out.}
  \label{fig:terra_sampling}
 \end{figure}
 
@@ -133,24 +133,32 @@ HS-Trees &
 \end{table}
 
 
-The results for models optimized for the F1 score are summarized in Table \ref{tab:perf_comp_f1}, which includes precision, recall, F1 score, and average latency. Macro values are enclosed in brackets, representing the mean of the metric for both anomalies and normal data. A perfect detection achieves 100\% in each metric. According to the Scoreboard for various algorithms on SKAB's Kaggle page, all iterative approaches perform comparably to the batch-trained isolation forest and autoencoder, validating the optimization process. Notably, the proposed AID method outperforms both reference methods in terms of F1 score, recall, and precision, despite having a 30-fold higher latency per sample. This highlights the scalability as a candidate for further development. Nevertheless, in this case, sampling of the benchmark data still offers enough time to deliver predictions with sufficient frequency.
+The results for models optimized for the F1 score are summarized in Table \ref{tab:perf_comp_f1}, which includes precision, recall, F1 score, and average latency. Macro values are enclosed in brackets, representing the mean of the metric for both anomalies and normal data. A perfect detection achieves 100\% in each metric \added{but false positive rate (FAR), where perfect detector achieves 0\%}. According to the Scoreboard for various algorithms on SKAB's Kaggle page, all iterative approaches perform comparably to the batch-trained isolation forest and autoencoder, validating the optimization process. Notably, the proposed AID method outperforms both reference methods in terms of \replaced{precision, recall, F1 score, area under curve, and false positive rate}{F1 score, recall, and precision}, despite having a 30-fold higher latency per sample. This highlights the scalability as a candidate for further development. Nevertheless, in this case, sampling of the benchmark data still offers enough time to deliver predictions with sufficient frequency.
 
 \begin{table}[htbp]
-\caption{Evaluation of models optimized for F1 score on SKAB dataset \citep{skab2020}. The best-performing model is highlighted in bold. Values in brackets represent macro values of the metric.}
-\begin{center}
-\label{tab:perf_comp_f1}
-\begin{tabular}{|l|c|c|c|c|}
- \hline
- \textbf{Algorithm} & Precision [$\%$] & Recall [$\%$] & F1 [$\%$] & Avg. Latency [ms] \\
- \hline
- AID & $\boldsymbol{41}$ (59) & $\boldsymbol{80}$ (59) & $\boldsymbol{54}$ (53) & 1.45 \\
- \hline
- HS-Trees & 36 (51) & 74 (51) & 48 (44) & $\boldsymbol{0.05}$ \\
- \hline
- OC-SVM & 39 (54) & 63 (54) & 48 (52) & $\boldsymbol{0.05}$ \\
- \hline
-\end{tabular}
-\end{center}
+    \caption{Evaluation of models optimized for F1 score on SKAB dataset \citep{skab2020}. The best-performing model is highlighted in bold. Values in brackets represent macro values of the metric.}
+    \begin{center}
+        \label{tab:perf_comp_f1}
+        \begin{tabular}{|l|c|c|c|c|}
+            \hline
+            \textbf{Algorithm}              & AID                       & HS-Trees            & OC-SVM              \\
+            \hline
+            Precision [$\%$]                & $\boldsymbol{41}$ (59)    & 36 (51)             & 39 (54)             \\
+            \hline
+            Recall [$\%$]                   & $\boldsymbol{80}$ (59)    & 74 (51)             & 63 (54)             \\
+            \hline
+            F1 [$\%$]                       & $\boldsymbol{54}$ (53)    & 48 (44)             & 48 (52)             \\
+            \hline
+            \added{AUC [$\%$]}              & \added{$\boldsymbol{59}$} & \added{51}          & \added{54}          \\
+            \hline
+            \added{Mean Rolling AUC [$\%$]} & \added{$\boldsymbol{57}$} & \added{50}          & \added{53}          \\
+            \hline
+            \added{FPR [$\%$]}              & \added{$\boldsymbol{47}$} & \added{56}          & \added{48}          \\
+            \hline
+            Avg. Latency [ms]               & 1.45                      & $\boldsymbol{0.05}$ & $\boldsymbol{0.05}$ \\
+            \hline
+        \end{tabular}
+    \end{center}
 \end{table}
 
 Optimal hyperparameters found during Bayesian Optimization are detailed in Table \ref{tab:hyperparam_f1}. None of the parameters are at the edge of the provided ranges, serving as necessary proof of ranges being broad enough. Nevertheless, sufficient proof is not possible as multiple parameter ranges are not bounded by designed limits.
