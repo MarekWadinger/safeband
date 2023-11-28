@@ -1,3 +1,5 @@
+from functools import partial
+
 from river import compose
 
 
@@ -64,7 +66,12 @@ def nest_step(steps, params):
         first_step = steps[0]
         remaining_steps = steps[1::].copy()[0]
         nested_result = nest_step(remaining_steps, params)
-        return first_step(nested_result, **params.get(first_step.__name__, {}))
+        name = (
+            first_step.func.__name__
+            if isinstance(first_step, partial)
+            else first_step.__name__
+        )
+        return first_step(nested_result, **params.get(name, {}))
 
 
 def build_model(steps: list, params: dict):
