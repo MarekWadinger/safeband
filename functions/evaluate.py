@@ -4,19 +4,20 @@ from typing import Union
 
 import pandas as pd
 from river.compose import Pipeline
-from river.metrics.base import BinaryMetric
+from river.metrics.base import BinaryMetric, MultiClassMetric
 
 
 def progressive_val_predict(  # noqa: C901
     model,
     dataset: pd.DataFrame,
-    metrics: Union[list[BinaryMetric], None] = None,
+    metrics: Union[list[Union[BinaryMetric, MultiClassMetric]], None] = None,
     print_every: int = 0,
     print_final: bool = True,
     compute_limits: bool = False,
     detect_signal: bool = False,
     detect_change: bool = False,
     sampling_model=None,
+    compute_latency: bool = False,
     **kwargs,
 ):
     # CREATE REFERENCE TO LAST STEP OF PIPELINE (TRACK STATE OF MDOEL)
@@ -34,21 +35,34 @@ def progressive_val_predict(  # noqa: C901
         meta["Changepoint"] = []
     if sampling_model is not None:
         meta["Sampling Anomaly"] = []
+    if compute_latency:
+        meta["Latency"] = []
     t_prev = pd.Timestamp.utcnow()
 
     start = time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
+        if compute_latency:
+            start_i = time.time()
         # PREPOCESSING
         if isinstance(t, pd.Timestamp):
             t = t.tz_localize(None)
         x_: dict[str, float] = x.to_dict()
         if "anomaly" in x_:
-            y = x_.pop("anomaly")
+            y = x_.pop("anomaly", "")
         else:
             y = None
-
         # PREDICT
-        is_anomaly = model.predict_one(x_)
+        if (
+            metrics is not None
+            and all(
+                [isinstance(metric, MultiClassMetric) for metric in metrics]
+            )
+            and hasattr(model, "get_root_cause")
+        ):
+            is_anomaly = model.get_root_cause()
+        else:
+            is_anomaly = model.predict_one(x_)
+
         y_pred.append(is_anomaly)
 
         # EVALUATE
@@ -109,6 +123,9 @@ def progressive_val_predict(  # noqa: C901
             model = model.learn_one(x_, **{"t": t})
         else:
             model = model.learn_one(x_)
+
+        if compute_latency:
+            meta["Latency"].append((time.time() - start_i) * 1000)
 
     # POSTPROCESSING FOR SYNCHRONEOUS SAMPLING EVALUATION
     if sampling_model is not None:
