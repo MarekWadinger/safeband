@@ -135,8 +135,8 @@ This paper proposes a new online anomlay detection method and verifies its effec
         It would be better to use AUC rather than F1 to measure the anomaly detection performance. Moreover, range-based AUC is even better and more fair for streaming or sliding window-based method.
         \end{comment}
         {\bf Response:}
-        We agree with the reviewer that AUC, in general, is a better metric for imbalanced datasets. However, due to the poor convergence of the reference methods on benchmark data during hyperparameter optimization with AUC, we decided to use the F1 score, which showed better convergence for all three compared methods. 
-        
+        We agree with the reviewer that AUC, in general, is a better metric for imbalanced datasets. However, due to the poor convergence of the reference methods on benchmark data during hyperparameter optimization with AUC, we decided to use the F1 score, which showed better convergence for all three compared methods.
+
         In response to the reviewer's recommendation, we have included AUC in the results presented in Table 2 of the revised paper. The addition of AUC provides an alternative perspective on performance that may be of interest to the reader.
 
         Additionally, we were not aware of the range-based AUC metric during the time of paper writing and result collection. After discovering this suggestion, we computed the mean value of range-based AUC using the implementation from~\cite{Brzezinski2017} and enriched the results in Table 2.
@@ -205,14 +205,14 @@ This paper presents an interesting and potentially useful framework called AID f
         To address this concern, we decided to compare our proposed method with DBStream~\cite{Hahsler2016}, an online version of DBScan designed for evolving data streams. It is an unsupervised method with the ability to disregard anomalies and capture clusters of various sizes and densities. It has been successfully used throughout the literature for diagnostic purposes. In~\cite{Li2019}, DBScan was used for thermal runaway diagnosis of battery systems in electric vehicles, relying on engineered features reflecting battery performance. Other applications include power transformer fault diagnosis~\cite{Liu2020} and fault diagnosis of rolling bearing~\cite{Li2020}.
         Its usage in these applications, with expert knowledge of the system, involves mapping clusters to root causes, making it a promising method for our comparison.
 
-        The comparison was performed on the Controlled Anomalies Time Series (CATS) Dataset, a simulated complex dynamical system with 200 injected anomalies. This dataset is publicly available and suitable for root cause analysis, as disclosed in the dataset's description. We performed two types of comparisons. 
-        
+        The comparison was performed on the Controlled Anomalies Time Series (CATS) Dataset, a simulated complex dynamical system with 200 injected anomalies. This dataset is publicly available and suitable for root cause analysis, as disclosed in the dataset's description. We performed two types of comparisons.
+
         Firstly, we assessed clustering performance, a key feature of DBStream. This analysis demonstrated the capability of both methods to separate various groups of anomalies from normal data. Both methods were optimized to maximize the adjusted mutual information score, a metric that showed the best convergence for both methods on dummy data. The results of this comparison are presented in Table 2.
-        
+
         Secondly, we compared the ability to detect root causes. Since DBStream does not inherently provide information about root causes, we introduced expert knowledge a posteriori by mapping clusters to ground truth root causes based on the highest overlap. While this approach is artificial, it facilitated a comparison of the methods in root cause detection, with a slight benefit given to DBStream.
 
         It's important to note that the cluster-to-root cause mapping was also performed during the optimization of DBStream's hyperparameters, resulting in a slightly unfair comparison for our proposed method.
-        
+
         The detailed analysis revealed that our proposed method exhibits a higher precision in detecting root causes compared to DBStream. We have disclosed the results of this comparison in Table 3.
 
         \begin{table}[htbp]
