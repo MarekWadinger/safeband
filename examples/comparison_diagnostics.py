@@ -34,13 +34,13 @@ random.seed(RANDOM_STATE)
 np.random.seed(RANDOM_STATE)
 
 # DATA
-df = pd.read_csv("examples/data/multivariate/cats/data_1t_agg_last.csv", index_col=0)
+df = pd.read_csv("data/multivariate/cats/data_1t_agg_last.csv", index_col=0)
 df.index = pd.to_datetime(df.index, utc=True)
 
 df_y = df[["y", "category"]]
 df = df.drop(columns=["y", "category"])
 
-df_meta = pd.read_csv("examples/data/multivariate/cats/metadata.csv")
+df_meta = pd.read_csv("data/multivariate/cats/metadata.csv")
 df_meta.start_time = pd.to_datetime(df_meta.start_time, utc=True)
 df_meta.end_time = pd.to_datetime(df_meta.end_time, utc=True)
 
@@ -267,7 +267,7 @@ if __name__ == "__main__":
                 # USE TUNED MODEL
                 # PROGRESSIVE PREDICT
                 y_pred, _ = progressive_val_predict(
-                    model, df, metrics=[AdjustedMutualInfo()]
+                    model, df, metrics=[]
                 )
 
                 # SAVE PREDICITONS
