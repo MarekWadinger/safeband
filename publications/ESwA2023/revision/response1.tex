@@ -41,21 +41,22 @@
 List of main changes:
 \begin{enumerate}
 
-  \item The manuscript was shortened to $7$ pages.
-  \item The leading paragraph of Section 4 was reworded to address
-        reviewers' comments on SVMs.
-  \item Section 4.1 was removed, linear separation is now tackled as a
-        special case in the {\em Polynomial Separation} section (labeled as
-        Section 4.1 in the revision).
-  \item Big-O notation in Section 5 was replaced by hard figures
-        indicating required computation and consumed memory.
-  \item Section 6.2 was enriched to address reviewers' comments.
-  \item Conclusions was modified according to reviewers' requests.
-  \item Figure 2 was added to illustrate the definition of anomalies.
-  \item Captions in Figures 5,6,7 (labeled as Figures 4,5,6 in the previous manuscript) were reworded to make them more clear.
+%   \item The manuscript was shortened to $7$ pages.
+%   \item The leading paragraph of Section 4 was reworded to address
+%         reviewers' comments on SVMs.
+%   \item Section 4.1 was removed, linear separation is now tackled as a
+%         special case in the {\em Polynomial Separation} section (labeled as
+%         Section 4.1 in the revision).
+%   \item Big-O notation in Section 5 was replaced by hard figures
+%         indicating required computation and consumed memory.
+%   \item Section 6.2 was enriched to address reviewers' comments.
+%   \item Conclusions was modified according to reviewers' requests.
+  \item Figure 2 was added to illustrate the definition of anomalies to address reviewers' comments.
+  \item Captions in Figures 5,6,7 (labeled as Figures 4,5,6 in the previous manuscript) were reworded to make them more illuminating.
+  \item Added other self-supervised change-point detection method from~\cite{Deldari2021} in the Introduction.
   \item Table 2 was transposed to allow for new metrics to be added.
-  \item False Alarm Rate, AUC, and Mean of Rolling AUC were added to the results in Table 2.
-  \item Added reference to~\cite{Deldari2021} in the Introduction.
+  \item False Alarm Rate, AUC, and Mean of Rolling AUC were added to the results in Table 2 to address reviewers' comments.
+  \item Section 4.4 was added to address reviewers' suggestion on scalability analysis.
 \end{enumerate}
 
 \section{Answers to Reviewers and to the Associate Editor}
@@ -92,53 +93,57 @@ This paper proposes a new online anomlay detection method and verifies its effec
         {\bf Response:}
         While we tried to establish the notation of anomalies and their categorization used throughout our paper in Section 2.6, the visualization would be more illuminating.
 
-        Indeed, the work would benefit from more clarity in the definition of point anomaly, collective anomalies, and concept changes.
+        Indeed, the work would benefit from more clarity in defining point anomalies, collective anomalies, and concept changes.
 
-        Therefore, we have added Figure 2 to illustrate the definition of anomalies.
+        Therefore, we have added Figure 2 in the revision to illustrate the distinctions between these anomaly types. Figure 2, previously in question, is now labeled as Figure 3 in the revision.
 
   \item
         \begin{comment}
         The captions of Figures 4,5,6 are similar but the labels are different. It is a bit confused as which one is the ground truth.
         \end{comment}
         {\bf Response:}
-        Figures 4,5,6 were indeed carrying identical captions. We realize that our effort to describe elements of the figure in the caption compromised the delivery of the key messages they represented.
+        We appreciate the reviewer's keen observation regarding the similarity in captions for Figures 4, 5, and 6. Recognizing the importance of conveying clear messages through captions, we have revised the captions to eliminate any confusion. Please note that Figures 4, 5, and 6 in the initial submission are now labeled as Figures 5, 6, and 7 in the revised manuscript due to the addition of Figure 2 to address the previous reviewer's comment.
 
-        Thanks to the reviewer's comment, we have reworded the captions to make them more clear. Please note that due to the addition of Figure 2, Figures 4,5,6 in question are now labeled as Figures 5, 6, and 7 in the revision.
+        The changes made to the captions include a description of the experiment's setup and the proposed method's allowed features to illuminate their contribution to the whole framework.
 
-        However, the ground truth information remains undisclosed in the Figures. This is due to the fact that operators did not provide us with information about the exact time of abnormal events, which has shown ambiguity. Therefore, in Section 4.1, we refer to the dates of the events. Moreover, picking the time of the anomaly based on observation for plotting purposes would be arbitrary, which would compromise the objectivity of the results.
+        It is important to note that the challenge of obtaining precise ground truth information remains. Operators did not inform us about the exact time of abnormal events, introducing ambiguity. While we refer to the dates of the events in Section 4.1, selecting the time of the anomaly for plotting purposes would be arbitrary and compromise the objectivity of the results.
 
   \item
         \begin{comment}
         There are other self-supervised change-point detection method, such as ~\cite{Deldari2021}.
         \end{comment}
         {\bf Response:}
-        Our aim was to provide a comprehensive review of the state-of-the-art methods for self-supervised adaptive detection methods with interpretability. Though making attempt to cover the most relevant self-supervised change-point detection methods, the review was not exhaustive in this matter.
+        We appreciate the reviewer's suggestion and acknowledgment of the reference ~\cite{Deldari2021}. Our primary goal was to offer a comprehensive review of state-of-the-art self-supervised adaptive detection methods with interpretability. While our review aimed to cover the most relevant self-supervised change-point detection methods, we acknowledge that it may not be exhaustive in this regard.
 
-        We would like to thank the reviewer for pointing out this reference, which, after examination, proved to be relevant in the paragraph concerning the need for early change point detection. We have added it to the Introduction section of the thesis.
+        Upon careful examination of the suggested reference, we found it to be highly relevant, particularly in the paragraph discussing the need for an early change point detection mechanism. We have incorporated the reference into the Introduction section of the paper to enrich the discussion.
 
   \item
         \begin{comment}
         It seems that using ARIMA or moving average can easily detect the anomalies or change points on the real-world datasets.
         \end{comment}
         {\bf Response:}
-        While we agree that the impression from the figures may be that the anomalies are easy to detect by ARIMA or moving average, we would like to point out that our proposed method considers interactions between the variables while providing diagnostic capabilities.
+        While we acknowledge that the figures may suggest that anomalies are easily detected by ARIMA or moving average methods, we want to emphasize the unique features of our proposed method that differentiate it in the context of online anomaly detection for evolving data streams.
 
-        As we broadened the scope of our research on the current state of research, we found that Vector Autoregression, the multivariate extension of ARIMA, is a promising choice for anomaly detection in multivariate time series, capturing interactions. We found at least two papers dealing with offline trained anomaly detection methods based on vector autoregression \cite{Melnyk2016, Zhang2023}. Our paper, on the other hand, deals with online anomaly detection. Therefore, we believe that our method provides a unique combination of features relevant to real-world scenarios. Nevertheless, we are aware of the existence of online trained ARIMA methods, which gives a promise of extension to its multivariate counterpart.
-        
-        Fortunately, ARIMA could be effectively combined with our method during feature engineering, which could further enhance the performance of the proposed method, similar to the utilization of the physics-based model in Section 4.1.
-        %  https://stats.stackexchange.com/questions/437326/anomaly-detection-using-vector-autoregression
+        Our proposed method considers interactions between variables, providing diagnostic capabilities that may be crucial in real-world scenarios. As part of our extensive literature review, we discovered that Vector Autoregression, the multivariate extension of ARIMA, shows promise for anomaly detection in multivariate time series by capturing complex interactions. Notably, papers such as \cite{Melnyk2016, Zhang2023} explore offline trained anomaly detection methods based on vector autoregression.
+
+        Our research focuses on online anomaly detection for evolving data streams, a problem requiring a unique combination of features relevant to real-world scenarios. Although we are aware of the existence of online-trained ARIMA methods \cite{Anava2013}, a vectorized implementation of online-trained ARIMA is currently lacking. This limitation impeded its inclusion in our comparison.
+
+        We believe that integrating our proposed method with ARIMA during feature engineering, as shown in Section 4.1 for physics-based model utilization, showcases a promising direction for enhancing performance. Future research could explore extending ARIMA to its multivariate counterpart for online training.
 
   \item
         \begin{comment}
         It would be better to use AUC rather than F1 to measure the anomaly detection performance. Moreover, range-based AUC is even better and more fair for streaming or sliding window-based method.
         \end{comment}
         {\bf Response:}
-        We agree with the reviewer that AUC, in general, is a better metric for imbalanced datasets. However, due to the poor convergence of the reference methods on benchmark data during hyperparameter optimization, we decided to use F1 score, which showed better convergence for all three compared methods. Nevertheless, we have added AUC to the results in Table 2. as it might be of interest to the reader.
+        We agree with the reviewer that AUC, in general, is a better metric for imbalanced datasets. However, due to the poor convergence of the reference methods on benchmark data during hyperparameter optimization with AUC, we decided to use the F1 score, which showed better convergence for all three compared methods. 
+        
+        In response to the reviewer's recommendation, we have included AUC in the results presented in Table 2 of the revised paper. The addition of AUC provides an alternative perspective on performance that may be of interest to the reader.
 
-        To our surprise, we were not aware of the range-based AUC metric during the time of paper writing and result collection. We have added it to the results in Table 1. using implementation from~\cite{Brzezinski2017}.
+        Additionally, we were not aware of the range-based AUC metric during the time of paper writing and result collection. After discovering this suggestion, we computed the mean value of range-based AUC using the implementation from~\cite{Brzezinski2017} and enriched the results in Table 2.
 
-        Moreover, we tried to use the range-based AUC metric for hyperparameter optimization. Due to little improvement in convergence, we decided to keep the F1 score as the main metric and not include the results obtained using the range-based AUC metric in the cost function of hyperparameter optimization in the paper. As proof, the results are provided in this response in Table 1.
+        We also attempted to use the mean value of range-based AUC for hyperparameter optimization. However, due to minimal improvement in convergence compared to regular AUC, we decided to retain the F1 score as the optimized metric. The results obtained using the range-based AUC metric in the hyperparameter optimization cost function are provided in Table 1 for reference.
 
+        We hope these additions and explanations enhance the transparency and completeness of our evaluation.
 
 \end{enumerate}
 
@@ -161,9 +166,7 @@ This paper proposes a new online anomlay detection method and verifies its effec
       \hline
       Mean Rolling AUC [$\%$] & $\boldsymbol{60}$      & 50                  & 49                  \\
       \hline
-      FPR [$\%$]              & $\boldsymbol{38}$      & 37                  & 37                  \\
-      \hline
-      Avg. Latency [ms]       & 1.45                   & $\boldsymbol{0.05}$ & $\boldsymbol{0.05}$ \\
+      FPR [$\%$]              & 38      & $\boldsymbol{37}$                  & $\boldsymbol{37}$               \\
       \hline
     \end{tabular}
   \end{center}
@@ -180,17 +183,78 @@ This paper presents an interesting and potentially useful framework called AID f
         More analysis of computational complexity and scalability limitations for high-dimensional industrial systems would strengthen the work.
         \end{comment}
         {\bf Response:}
+        Thank you for bringing attention to the importance of computational complexity and scalability in the context of high-dimensional industrial systems. To address this suggestion, we have incorporated Section 4.4 into our paper, providing a dedicated analysis of scalability and time complexity.
+
+        In Section 4.4, we delve into the computational complexities and scalability limitations of our proposed method, in the context of high-dimensional industrial systems. The section aims to offer insight into the scalability of the proposed method for anomaly detection tasks and in the context of SCADA-based systems, where dynamic limits are of interest. We hope that this addition will enhance the completeness of our work.
+
   \item
         \begin{comment}
         While the paper mentions comparisons with other methods, it lacks detailed benchmarking data, such as false positive rates.
         \end{comment}
         {\bf Response:}
-        We added a False Positive Rate to the results in Table 2. Please note that thanks to the point of the other reviewer, we also added AUC and Mean of Rolling AUC, which are both relevant metrics for imbalanced datasets and might illuminate the performance of the proposed method. 
+        We appreciate the reviewer's insightful comment regarding the need for more detailed benchmarking data, particularly including false positive rates. In response, we have added a False Positive Rate to the results in Table 2, addressing this specific concern.
+
+        Additionally, to provide a more comprehensive view of the model's performance on imbalanced datasets while addressing other reviewers' comments, we have included AUC and mean of range-based AUC in Table 2. These metrics offer further insights into the detection capabilities of our proposed method.
   \item
         \begin{comment}
         Comparing diagnosis accuracy for root causes against other interpretable methods could better highlight capabilities.
         \end{comment}
         {\bf Response:}
+        We appreciate the reviewer's suggestion regarding the comparison of diagnosis accuracy for root causes against other interpretable methods. While adapting other interpretable methods for diagnostic purposes, from cited publications, proved challenging due to undisclosed or non-adaptable code, we recognized the importance of addressing this aspect.
+
+        To address this concern, we decided to compare our proposed method with DBStream~\cite{Hahsler2016}, an online version of DBScan designed for evolving data streams. It is an unsupervised method with the ability to disregard anomalies and capture clusters of various sizes and densities. It has been successfully used throughout the literature for diagnostic purposes. In~\cite{Li2019}, DBScan was used for thermal runaway diagnosis of battery systems in electric vehicles, relying on engineered features reflecting battery performance. Other applications include power transformer fault diagnosis~\cite{Liu2020} and fault diagnosis of rolling bearing~\cite{Li2020}.
+        Its usage in these applications, with expert knowledge of the system, involves mapping clusters to root causes, making it a promising method for our comparison.
+
+        The comparison was performed on the Controlled Anomalies Time Series (CATS) Dataset, a simulated complex dynamical system with 200 injected anomalies. This dataset is publicly available and suitable for root cause analysis, as disclosed in the dataset's description. We performed two types of comparisons. 
+        
+        Firstly, we assessed clustering performance, a key feature of DBStream. This analysis demonstrated the capability of both methods to separate various groups of anomalies from normal data. Both methods were optimized to maximize the adjusted mutual information score, a metric that showed the best convergence for both methods on dummy data. The results of this comparison are presented in Table 2.
+        
+        Secondly, we compared the ability to detect root causes. Since DBStream does not inherently provide information about root causes, we introduced expert knowledge a posteriori by mapping clusters to ground truth root causes based on the highest overlap. While this approach is artificial, it facilitated a comparison of the methods in root cause detection, with a slight benefit given to DBStream.
+
+        It's important to note that the cluster-to-root cause mapping was also performed during the optimization of DBStream's hyperparameters, resulting in a slightly unfair comparison for our proposed method.
+        
+        The detailed analysis revealed that our proposed method exhibits a higher precision in detecting root causes compared to DBStream. We have disclosed the results of this comparison in Table 3.
+
+        \begin{table}[htbp]
+            \caption{Evaluation of AID and DBStream models optimized for adjusted mutual information score on CATS dataset. The best-performing model is highlighted in bold. Perfect clustering achieves 100\% in each metric.}
+            \begin{center}
+                \label{tab:perf_comp_cluster}
+                \begin{tabular}{|l|c|c|}
+                    \hline
+                    \textbf{Algorithm}          & AID               & DBStream \\
+                    \hline
+                    Adjusted Mutual Info [$\%$] & $\boldsymbol{}$ &         \\
+                    \hline
+                    Adjusted Rand [$\%$]        & $\boldsymbol{}$ &         \\
+                    \hline
+                    Completeness [$\%$]         & $\boldsymbol{}$ &        \\
+                    \hline
+                    Fowlkes-Mallows [$\%$]      & $\boldsymbol{}$ &        \\
+                    \hline
+                    VBeta [$\%$]                & $\boldsymbol{}$ &        \\
+                    \hline
+                \end{tabular}
+            \end{center}
+        \end{table}
+
+        \begin{table}[htbp]
+            \caption{Evaluation of AID and DBStream models optimized for Weighted Precision score on SKAB dataset. The best-performing model is highlighted in bold. Perfect clustering achieves 100\% in each metric. Values in brackets represent macro values of the metric.}
+            \begin{center}
+                \label{tab:perf_comp_multiclass}
+                \begin{tabular}{|l|c|c|}
+                    \hline
+                    \textbf{Algorithm}        & AID               & DBStream \\
+                    \hline
+                    Weighted Precision [$\%$] & $\boldsymbol{}$ &        \\
+                    \hline
+                    Weighted Recall [$\%$]    & $\boldsymbol{}$ &         \\
+                    \hline
+                    Weighted F1 [$\%$]        & $\boldsymbol{}$ &         \\
+                    \hline
+                \end{tabular}
+            \end{center}
+        \end{table}
+
 \end{enumerate}
 
 \bibliography{revision}

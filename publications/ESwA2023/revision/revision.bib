@@ -65,3 +65,78 @@
   issn     = {1558-1721},
   month    = {}
 }
+
+@article{Anava2013,
+  author     = {Oren Anava and
+                Elad Hazan and
+                Shie Mannor and
+                Ohad Shamir},
+  title      = {Online Learning for Time Series Prediction},
+  journal    = {CoRR},
+  volume     = {abs/1302.6927},
+  year       = {2013},
+  url        = {http://arxiv.org/abs/1302.6927},
+  eprinttype = {arXiv},
+  eprint     = {1302.6927},
+  timestamp  = {Mon, 13 Aug 2018 16:48:39 +0200},
+  biburl     = {https://dblp.org/rec/journals/corr/abs-1302-6927.bib},
+  bibsource  = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{Li2019,
+  author  = {Li, Da and Zhang, Zhaosheng and Liu, Peng and Wang, Zhenpo},
+  year    = {2019},
+  month   = {08},
+  pages   = {2977},
+  title   = {DBSCAN-Based Thermal Runaway Diagnosis of Battery Systems for Electric Vehicles},
+  volume  = {12},
+  journal = {Energies},
+  doi     = {10.3390/en12152977}
+}
+
+@article{Liu2020,
+  author         = {Liu, Yongxin and Song, Bin and Wang, Linong and Gao, Jiachen and Xu, Rihong},
+  title          = {Power Transformer Fault Diagnosis Based on Dissolved Gas Analysis by Correlation Coefficient-DBSCAN},
+  journal        = {Applied Sciences},
+  volume         = {10},
+  year           = {2020},
+  number         = {13},
+  article-number = {4440},
+  url            = {https://www.mdpi.com/2076-3417/10/13/4440},
+  issn           = {2076-3417},
+  abstract       = {The transformers work in a complex environment, which makes them prone to failure. Dissolved gas analysis (DGA) is one of the most important methods for oil-immersed transformers&rsquo; internal insulation fault diagnosis. In view of the high correlation of the same fault data of transformers, this paper proposes a new method for transformers&rsquo; fault diagnosis based on correlation coefficient density clustering, which uses density clustering to extrapolate the correlation coefficient of DGA data. Firstly, we calculated the correlation coefficient of dissolved gas content in the fault transformers oil and enlarged the correlation of the same fault category by introducing the amplification coefficient, and finally we used the density clustering method to cluster diagnosis. The experimental results show that the accuracy of clustering is improved by 32.7% compared with the direct clustering judgment without using correlation coefficient, which can effectively cluster different types of transformers fault modes. This method provides a new idea for transformers fault identification, and has practical application value.},
+  doi            = {10.3390/app10134440}
+}
+
+@article{Li2020,
+  title    = {Fault diagnosis of rolling bearing using symmetrized dot pattern and density-based clustering},
+  journal  = {Measurement},
+  volume   = {152},
+  pages    = {107293},
+  year     = {2020},
+  issn     = {0263-2241},
+  doi      = {https://doi.org/10.1016/j.measurement.2019.107293},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0263224119311571},
+  author   = {Hai Li and Wei Wang and Pu Huang and Qingzhao Li},
+  keywords = {Rolling bearing, Fault diagnosis, Symmetrized dot pattern analysis, Density-based clustering},
+  abstract = {The rolling bearing usually works under complex working conditions, which makes it more susceptible to mechanical failure. The vibration signals are usually complex, nonlinear and non-stationary. This paper proposed a novel diagnosis method for rolling bearing combined with the adaptive symmetrized dot pattern and density-based spatial clustering of applications with noise (ASDP-DBSCAN). Firstly, the SDP technique is briefly introduced and then the vibration signals are reconstructed by the SDP pattern. Secondly, in order to maximize the difference between SDP patterns, a novel parameter optimization method of SDP pattern is presented combined with Hill function and genetic algorithm (HFGA), which is conducive to improve diagnostic accuracy. Then, an improved DBSCAN is used to generate clustering template so as to reduce the effect of noise on diagnostic accuracy. Furthermore, the similarity analysis between clustering template and unknown SDP pattern is used to fault classification. Finally, the proposed method is applied to fault diagnosis for the rolling bearing. The experimental results validate that the proposed method is more effective than other methods for rolling bearing fault diagnosis.}
+}
+
+@article{Hahsler2016,
+author = {Hahsler, Michael and Bolaos, Matthew},
+title = {Clustering Data Streams Based on Shared Density between Micro-Clusters},
+year = {2016},
+issue_date = {June 2016},
+publisher = {IEEE Educational Activities Department},
+address = {USA},
+volume = {28},
+number = {6},
+issn = {1041-4347},
+url = {https://doi.org/10.1109/TKDE.2016.2522412},
+doi = {10.1109/TKDE.2016.2522412},
+abstract = {As more and more applications produce streaming data, clustering data streams has become an important technique for data and knowledge engineering. A typical approach is to summarize the data stream in real-time with an online process into a large number of so called micro-clusters. Micro-clusters represent local density estimates by aggregating the information of many data points in a defined area. On demand, a (modified) conventional clustering algorithm is used in a second offline step to recluster the micro-clusters into larger final clusters. For reclustering, the centers of the micro-clusters are used as pseudo points with the density estimates used as their weights. However, information about density in the area between micro-clusters is not preserved in the online process and reclustering is based on possibly inaccurate assumptions about the distribution of data within and between micro-clusters (e.g., uniform or Gaussian). This paper describes DBSTREAM, the first micro-cluster-based online clustering component that explicitly captures the density between micro-clusters via a shared density graph. The density information in this graph is then exploited for reclustering based on actual density between adjacent micro-clusters. We discuss the space and time complexity of maintaining the shared density graph. Experiments on a wide range of synthetic and real data sets highlight that using shared density improves clustering quality over other popular data stream clustering methods which require the creation of a larger number of smaller micro-clusters to achieve comparable results.},
+journal = {IEEE Trans. on Knowl. and Data Eng.},
+month = {jun},
+pages = {1449–1461},
+numpages = {13}
+}

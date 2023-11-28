@@ -164,24 +164,50 @@ The results for models optimized for the F1 score are summarized in Table \ref{t
 Optimal hyperparameters found during Bayesian Optimization are detailed in Table \ref{tab:hyperparam_f1}. None of the parameters are at the edge of the provided ranges, serving as necessary proof of ranges being broad enough. Nevertheless, sufficient proof is not possible as multiple parameter ranges are not bounded by designed limits.
 
 \begin{table}[ht]
- \centering
- \caption{Optimal hyperparameters of methods optimized for F1 score}
- \label{tab:hyperparam_f1}
- \begin{tabular}{|l|l|c|}
- \hline
- \textbf{Algorithm} & \textbf{Hyperparameters} & \textbf{Found} \\
- \hline
- AID &
- \begin{tabular}[c]{@{}l@{}}Threshold\\$\ui{t}{e}$\\$\ui{t}{a}$\\$\ui{t}{g}$\end{tabular} &
- \begin{tabular}[c]{@{}c@{}}0.96442\\1136\\396\\546\end{tabular} \\
- \hline
- OC-SVM &
- \begin{tabular}[c]{@{}l@{}}Threshold\\Learning Rate\end{tabular} &
- \begin{tabular}[c]{@{}c@{}}0.86411\\0.01956\end{tabular} \\
- \hline
- HS-Trees &
- \begin{tabular}[c]{@{}l@{}}Threshold\\N Trees\\Max Height\\Window Size\end{tabular} &
- \begin{tabular}[c]{@{}c@{}}0.99715\\1\\7\\283\end{tabular} \\
- \hline
- \end{tabular}
+    \centering
+    \caption{Optimal hyperparameters of methods optimized for F1 score}
+    \label{tab:hyperparam_f1}
+    \begin{tabular}{|l|l|c|}
+        \hline
+        \textbf{Algorithm}                                                                       & \textbf{Hyperparameters} & \textbf{Found} \\
+        \hline
+        AID                                                                                      &
+        \begin{tabular}[c]{@{}l@{}}Threshold\\$\ui{t}{e}$\\$\ui{t}{a}$\\$\ui{t}{g}$\end{tabular} &
+        \begin{tabular}[c]{@{}c@{}}0.96442\\1136\\396\\546\end{tabular}                                                                      \\
+        \hline
+        OC-SVM                                                                                   &
+        \begin{tabular}[c]{@{}l@{}}Threshold\\Learning Rate\end{tabular}                         &
+        \begin{tabular}[c]{@{}c@{}}0.86411\\0.01956\end{tabular}                                                                             \\
+        \hline
+        HS-Trees                                                                                 &
+        \begin{tabular}[c]{@{}l@{}}Threshold\\N Trees\\Max Height\\Window Size\end{tabular}      &
+        \begin{tabular}[c]{@{}c@{}}0.99715\\1\\7\\283\end{tabular}                                                                           \\
+        \hline
+    \end{tabular}
 \end{table}
+
+\subsection{Scalability Analysis}\label{AA:Scalability}
+
+The scalability of the proposed method is evaluated on the temperature data of 10 battery modules with 6 points of temperature measurements in the TERRA system. The data are sampled at 30 second intervals and streamed to the AID system. The AID system is initialized with the same parameters as in Subsection \ref{AA:Kokam}. The data are processed in a streamed manner, simulating the real production environment. The latency of the system is measured as the time between the arrival of the sample and the delivery of the prediction. The latency is measured on a machine with an 8-core Apple M1 CPU and 8 GB RAM. The latency is measured for 20160 samples from 2023-08-21 to 2023-08-27. The latency analysis is performed for detection task alone and for the combined task of detection and dynamic process limits establishmend. The results are depicted in Table \ref{tab:latency}.
+
+\begin{table}[htbp]
+    \caption{Latency analysis of the proposed method.}
+    \begin{center}
+        \label{tab:latency}
+        \begin{tabular}{|l|c|c|}
+            \hline
+            \textbf{Features} & \begin{tabular}[c]{@{}c@{}}\textbf{Detection}\\$\mu \pm \sigma$ ($\min$, $\max$) [ms]\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{Detection + Limits}\\$\mu \pm \sigma$ ($\min$, $\max$) [ms]\end{tabular} \\
+            \hline
+            1 & $0.337 \pm 0.500~(0.100, 0.600)$ & $0.337 \pm 0.500~(0.100, 0.600)$ \\
+            10 & & \\
+            20 & & \\
+            30 & & \\
+            40 & & \\
+            50 & & \\
+            60 & & \\
+            \hline
+        \end{tabular}
+    \end{center}
+\end{table}
+
+The time complexity of the detection task to number of features is cubic
