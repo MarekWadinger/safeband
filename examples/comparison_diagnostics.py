@@ -18,7 +18,7 @@ from bayes_opt import (
 from bayes_opt.event import Events
 from bayes_opt.logger import JSONLogger
 from river import anomaly, cluster, utils
-from river.metrics import AdjustedMutualInfo
+from river.metrics import WeightedF1
 from river.metrics.base import MultiClassMetric
 from sklearn.decomposition import PCA
 
@@ -75,7 +75,7 @@ def cluster_map(y_true, y_pred):
 def tune_train_model(steps, df, val_kwargs: dict = {}, **params):
     params = convert_to_nested_dict(params)
     model = build_model(steps, params)
-    metric: MultiClassMetric = AdjustedMutualInfo()
+    metric: MultiClassMetric = WeightedF1()
     try:
         val_kwargs.update(params.get("Val", {}))
         y_pred, _ = progressive_val_predict(
