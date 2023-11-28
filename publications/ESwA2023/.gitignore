@@ -26,6 +26,8 @@
 *.nav
 *.snm
 *.vrb
+*.loc
+*.soc
 
 # Auxiliary files
 *.spl
