@@ -18,7 +18,7 @@ from bayes_opt import (
 from bayes_opt.event import Events
 from bayes_opt.logger import JSONLogger
 from river import anomaly, cluster, utils
-from river.metrics import WeightedPrecision
+from river.metrics import AdjustedMutualInfo
 from river.metrics.base import MultiClassMetric
 from sklearn.decomposition import PCA
 
@@ -34,9 +34,8 @@ random.seed(RANDOM_STATE)
 np.random.seed(RANDOM_STATE)
 
 # DATA
-df = pd.read_csv("data/multivariate/cats/data.csv", index_col=0)
+df = pd.read_csv("data/multivariate/cats/data_1t_agg_last.csv", index_col=0)
 df.index = pd.to_datetime(df.index, utc=True)
-df = df.resample("1t").last()
 
 df_y = df[["y", "category"]]
 df = df.drop(columns=["y", "category"])
@@ -76,7 +75,7 @@ def cluster_map(y_true, y_pred):
 def tune_train_model(steps, df, val_kwargs: dict = {}, **params):
     params = convert_to_nested_dict(params)
     model = build_model(steps, params)
-    metric: MultiClassMetric = WeightedPrecision()
+    metric: MultiClassMetric = AdjustedMutualInfo()
     try:
         val_kwargs.update(params.get("Val", {}))
         y_pred, _ = progressive_val_predict(
@@ -250,9 +249,7 @@ with warnings.catch_warnings():
                 verbose=2,
                 random_state=RANDOM_STATE,
                 allow_duplicate_points=True,
-                # bounds_transformer=SequentialDomainReductionTransformer(
-                #     minimum_window=0.5
-                # ),
+                bounds_transformer=SequentialDomainReductionTransformer(),
             )
             logger = JSONLogger(
                 path=f"./.results/{dataset['name']}-{alg[0]}.log"
@@ -269,7 +266,7 @@ with warnings.catch_warnings():
             # USE TUNED MODEL
             # PROGRESSIVE PREDICT
             y_pred, _ = progressive_val_predict(
-                model, df, metrics=[WeightedPrecision()]
+                model, df, metrics=[AdjustedMutualInfo()]
             )
 
             # SAVE PREDICITONS
