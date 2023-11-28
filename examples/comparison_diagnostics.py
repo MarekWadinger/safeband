@@ -34,13 +34,13 @@ random.seed(RANDOM_STATE)
 np.random.seed(RANDOM_STATE)
 
 # DATA
-df = pd.read_csv("data/multivariate/cats/data_1t_agg_last.csv", index_col=0)
+df = pd.read_csv("examples/data/multivariate/cats/data_1t_agg_last.csv", index_col=0)
 df.index = pd.to_datetime(df.index, utc=True)
 
 df_y = df[["y", "category"]]
 df = df.drop(columns=["y", "category"])
 
-df_meta = pd.read_csv("data/multivariate/cats/metadata.csv")
+df_meta = pd.read_csv("examples/data/multivariate/cats/metadata.csv")
 df_meta.start_time = pd.to_datetime(df_meta.start_time, utc=True)
 df_meta.end_time = pd.to_datetime(df_meta.end_time, utc=True)
 
@@ -214,65 +214,66 @@ datasets = [
 ]
 
 # RUN
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    for dataset in datasets:
-        # PREPROCESS DATA
-        df = dataset["data"]
-        df.index = pd.to_timedelta(
-            range(0, len(df)), "T"
-        ) + pd.Timestamp.utcnow().replace(microsecond=0)
-        if isinstance(dataset["anomaly_col"], str):
-            df = df.rename(columns={dataset["anomaly_col"]: "anomaly"})
-        elif isinstance(dataset["anomaly_col"], pd.Series):
-            df_y = dataset["anomaly_col"]
-            df["anomaly"] = df_y.rename("anomaly").values
-        if dataset["drop"] is not None:
-            df = df.drop(columns=dataset["drop"])
-        print(f"\n=== {dataset['name']} === [{len(df)}]".ljust(80, "="))
+if __name__ == "__main__":
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for dataset in datasets:
+            # PREPROCESS DATA
+            df = dataset["data"]
+            df.index = pd.to_timedelta(
+                range(0, len(df)), "T"
+            ) + pd.Timestamp.utcnow().replace(microsecond=0)
+            if isinstance(dataset["anomaly_col"], str):
+                df = df.rename(columns={dataset["anomaly_col"]: "anomaly"})
+            elif isinstance(dataset["anomaly_col"], pd.Series):
+                df_y = dataset["anomaly_col"]
+                df["anomaly"] = df_y.rename("anomaly").values
+            if dataset["drop"] is not None:
+                df = df.drop(columns=dataset["drop"])
+            print(f"\n=== {dataset['name']} === [{len(df)}]".ljust(80, "="))
 
-        df_ys = df[["anomaly"]].copy()
-        # RUN EACH MODEL AGAINST DATASET
-        for alg in detection_algorithms:
-            print(f"\n===== {alg[0]}".ljust(80, "="))
-            # INITIALIZE OPTIMIZER
-            pbounds = alg[2]
-            mod_fun = partial(tune_train_model, alg[1], df, {})
+            df_ys = df[["anomaly"]].copy()
+            # RUN EACH MODEL AGAINST DATASET
+            for alg in detection_algorithms:
+                print(f"\n===== {alg[0]}".ljust(80, "="))
+                # INITIALIZE OPTIMIZER
+                pbounds = alg[2]
+                mod_fun = partial(tune_train_model, alg[1], df, {})
 
-            # INITIALIZE METRICS
-            metrics_list = []
+                # INITIALIZE METRICS
+                metrics_list = []
 
-            # TUNE HYPERPARAMETERS
-            optimizer = BayesianOptimization(
-                f=mod_fun,
-                pbounds=pbounds,
-                verbose=2,
-                random_state=RANDOM_STATE,
-                allow_duplicate_points=True,
-                bounds_transformer=SequentialDomainReductionTransformer(),
-            )
-            logger = JSONLogger(
-                path=f"./.results/{dataset['name']}-{alg[0]}.log"
-            )
-            optimizer.subscribe(Events.OPTIMIZATION_END, logger)
-            optimizer.maximize()  # init_points=1, n_iter=5)
-            params = convert_to_nested_dict(optimizer.max["params"])
-            print(params)
-            model = build_model(alg[1], params)
-            if hasattr(model, "seed"):
-                model.seed = RANDOM_STATE  # type: ignore
-            if hasattr(model, "random_state"):
-                model.random_state = RANDOM_STATE  # type: ignore
-            # USE TUNED MODEL
-            # PROGRESSIVE PREDICT
-            y_pred, _ = progressive_val_predict(
-                model, df, metrics=[AdjustedMutualInfo()]
-            )
+                # TUNE HYPERPARAMETERS
+                optimizer = BayesianOptimization(
+                    f=mod_fun,
+                    pbounds=pbounds,
+                    verbose=2,
+                    random_state=RANDOM_STATE,
+                    allow_duplicate_points=True,
+                    bounds_transformer=SequentialDomainReductionTransformer(),
+                )
+                logger = JSONLogger(
+                    path=f"./.results/{dataset['name']}-{alg[0]}.log"
+                )
+                optimizer.subscribe(Events.OPTIMIZATION_END, logger)
+                optimizer.maximize()  # init_points=1, n_iter=5)
+                params = convert_to_nested_dict(optimizer.max["params"])
+                print(params)
+                model = build_model(alg[1], params)
+                if hasattr(model, "seed"):
+                    model.seed = RANDOM_STATE  # type: ignore
+                if hasattr(model, "random_state"):
+                    model.random_state = RANDOM_STATE  # type: ignore
+                # USE TUNED MODEL
+                # PROGRESSIVE PREDICT
+                y_pred, _ = progressive_val_predict(
+                    model, df, metrics=[AdjustedMutualInfo()]
+                )
 
-            # SAVE PREDICITONS
-            df_ys[f"{alg[0]}__{params}"] = y_pred
+                # SAVE PREDICITONS
+                df_ys[f"{alg[0]}__{params}"] = y_pred
 
-        # LOAD RESULTS
-        #  Save
-        dir_path = f".results/{dataset['name']}"
-        save_results_y(df_ys, f".results/{dataset['name']}")
+            # LOAD RESULTS
+            #  Save
+            dir_path = f".results/{dataset['name']}"
+            save_results_y(df_ys, f".results/{dataset['name']}")
