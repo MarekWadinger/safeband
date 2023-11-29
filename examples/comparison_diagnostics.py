@@ -1,6 +1,7 @@
 # IMPORTS
 import ast
 import os
+import pickle
 import random
 import sys
 import warnings
@@ -18,7 +19,7 @@ from bayes_opt import (
 from bayes_opt.event import Events
 from bayes_opt.logger import JSONLogger
 from river import anomaly, cluster, utils
-from river.metrics import WeightedF1
+from river.metrics import MacroF1
 from river.metrics.base import MultiClassMetric
 from sklearn.decomposition import PCA
 
@@ -72,10 +73,23 @@ def cluster_map(y_true, y_pred):
     ]
 
 
+def drop_no_support_labels(metric):
+    for c in metric.cm.classes:
+        if metric.cm.support(c) == 0.0:
+            if c in metric.cm.data:
+                metric.cm.data.pop(c)
+            for label in metric.cm.data:
+                if c in metric.cm.data[label]:
+                    metric.cm.data[label].pop(c)
+            metric.cm.sum_row.pop(c)
+            metric.cm.sum_col.pop(c)
+    return metric
+
+
 def tune_train_model(steps, df, val_kwargs: dict = {}, **params):
     params = convert_to_nested_dict(params)
     model = build_model(steps, params)
-    metric: MultiClassMetric = WeightedF1()
+    metric: MultiClassMetric = MacroF1()
     try:
         val_kwargs.update(params.get("Val", {}))
         y_pred, _ = progressive_val_predict(
@@ -84,6 +98,7 @@ def tune_train_model(steps, df, val_kwargs: dict = {}, **params):
         y_pred = cluster_map(df_ys.anomaly, y_pred)
         for yt, yp in zip(df.anomaly, y_pred):
             metric.update(yt, yp)
+        metric = drop_no_support_labels(metric)
         return metric.get()
     except Exception as e:
         print(e)
@@ -140,6 +155,14 @@ def plot_detection(df: pd.DataFrame, y_pred):
         )  # type: ignore
         plt.xticks(())
         plt.yticks(())
+
+
+def save_model(model, path):
+    dir_path = path
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    with open(f"{dir_path}/{alg[0]}.pkl", "wb") as f:
+        pickle.dump(model, f)
 
 
 def save_results_y(df_ys, path):
@@ -266,14 +289,15 @@ if __name__ == "__main__":
                     model.random_state = RANDOM_STATE  # type: ignore
                 # USE TUNED MODEL
                 # PROGRESSIVE PREDICT
-                y_pred, _ = progressive_val_predict(
-                    model, df, metrics=[]
-                )
+                y_pred, _ = progressive_val_predict(model, df, metrics=[])
 
                 # SAVE PREDICITONS
                 df_ys[f"{alg[0]}__{params}"] = y_pred
 
+                dir_path = f".results/{dataset['name']}"
+                # SAVE MODEL
+                save_model(model, dir_path)
+
             # LOAD RESULTS
             #  Save
-            dir_path = f".results/{dataset['name']}"
             save_results_y(df_ys, f".results/{dataset['name']}")
