@@ -60,6 +60,8 @@ def progressive_val_predict(  # noqa: C901
             and hasattr(model, "get_root_cause")
         ):
             is_anomaly = model.get_root_cause()
+        elif hasattr(model, "forecast"):
+            is_anomaly = model.forecast(1)[0]
         else:
             is_anomaly = model.predict_one(x_)
 
@@ -121,6 +123,8 @@ def progressive_val_predict(  # noqa: C901
             model.gaussian.update
         ).parameters.get("t"):
             model = model.learn_one(x_, **{"t": t})
+        elif hasattr(model, "_supervised") and model._supervised:
+            model = model.learn_one(x_, y)
         else:
             model = model.learn_one(x_)
 
