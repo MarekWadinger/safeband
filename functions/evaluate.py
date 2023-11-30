@@ -6,7 +6,9 @@ from typing import Literal, Union
 
 import pandas as pd
 from river.compose import Pipeline
-from river.metrics.base import BinaryMetric, MultiClassMetric
+from river.metrics.base import BinaryMetric, Metric, MultiClassMetric
+
+from functions.compose import build_model, convert_to_nested_dict  # noqa: E402
 
 
 def progressive_val_predict(  # noqa: C901
@@ -273,3 +275,30 @@ def batch_save_evaluate_metrics(
                         map_cluster_to_rc,
                         drop_no_support,
                     )
+
+
+def build_fit_evaluate(
+    steps,
+    df,
+    metric: Metric,
+    map_cluster_to_rc: bool = False,  # 2023-10-30 - ADD: DBStream comparison
+    drop_no_support: bool = False,  # 2023-10-30 - ADD: DBStream comparison
+    **params,
+):
+    params = convert_to_nested_dict(params)
+    model = build_model(steps, params)
+    metric = metric.__class__()  # Make sure metric is fresh
+    try:
+        y_pred, _ = progressive_val_predict(
+            model, df, [], print_every=0, print_final=False
+        )
+        if map_cluster_to_rc:
+            y_pred = cluster_map(df.anomaly, y_pred)
+        for yt, yp in zip(df.anomaly, y_pred):
+            metric.update(yt, yp)
+        if drop_no_support:
+            metric = drop_no_support_labels(metric)
+        return metric.get() if metric.bigger_is_better else -metric.get()
+    except Exception as e:
+        print(e)
+        return 0 if metric.bigger_is_better else -float("inf")

@@ -8,7 +8,6 @@ import warnings
 from functools import partial
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from bayes_opt import (
@@ -17,18 +16,15 @@ from bayes_opt import (
 )
 from bayes_opt.event import Events
 from bayes_opt.logger import JSONLogger
-from river import anomaly, cluster, metrics, utils
+from river import cluster, metrics, utils
 from river.metrics import MacroF1
-from river.metrics.base import MultiClassMetric
-from sklearn.decomposition import PCA
 
 sys.path.insert(1, str(Path().resolve().parent))
 from functions.anomaly import ConditionalGaussianScorer  # noqa: E402
 from functions.compose import build_model, convert_to_nested_dict  # noqa: E402
 from functions.evaluate import (  # noqa: E402
     batch_save_evaluate_metrics,
-    cluster_map,
-    drop_no_support_labels,
+    build_fit_evaluate,
     progressive_val_predict,
 )
 from functions.proba import MultivariateGaussian  # noqa: E402
@@ -40,113 +36,15 @@ np.random.seed(RANDOM_STATE)
 
 
 # FUNCTIONS
-def tune_train_model(steps, df, val_kwargs: dict = {}, **params):
-    params = convert_to_nested_dict(params)
-    model = build_model(steps, params)
-    metric: MultiClassMetric = MacroF1()
-    try:
-        val_kwargs.update(params.get("Val", {}))
-        y_pred, _ = progressive_val_predict(
-            model, df, [], print_every=0, print_final=False, **val_kwargs
-        )
-        y_pred = cluster_map(df_ys.anomaly, y_pred)
-        for yt, yp in zip(df.anomaly, y_pred):
-            metric.update(yt, yp)
-        metric = drop_no_support_labels(metric)
-        return metric.get()
-    except Exception as e:
-        print(e)
-        return 0
-
-
-def get_random_samples(df: pd.DataFrame, num_samples=10000):
-    if len(df) <= num_samples:
-        return df
-    else:
-        return df.sample(n=num_samples, random_state=RANDOM_STATE)
-
-
-def plot_detection(df: pd.DataFrame, y_pred):
-    df["pred"] = y_pred
-    if "anomaly" in df.columns:
-        df = get_random_samples(df)
-        if len(df.columns) >= 4:
-            # Separate the feature columns from the target column ("anomaly")
-            X = df.drop(columns=["anomaly", "pred"])
-            y = df["anomaly"]
-            y_pred = df["pred"]
-
-            # Apply PCA to reduce the feature columns to 2 components
-            pca = PCA(n_components=2)
-            X_pca = pca.fit_transform(X)
-
-            # Create a new DataFrame with the reduced components and "anomaly" column
-            df_pca = pd.DataFrame(X_pca, columns=["PC1", "PC2"])
-            df_pca["anomaly"] = y.values
-            df_pca["pred"] = y_pred.values
-        else:
-            print(True)
-            df_pca = pd.DataFrame(df.reset_index().copy())
-            df_pca.columns = ["PC1", "PC2", "anomaly", "pred"]
-
-        # Plot the 2D scatter plot
-        plt.scatter(
-            df_pca[df_pca["anomaly"] == 0]["PC1"],
-            df_pca[df_pca["anomaly"] == 0]["PC2"],
-        )
-        plt.scatter(
-            df_pca[df_pca["anomaly"] == 1]["PC1"],
-            df_pca[df_pca["anomaly"] == 1]["PC2"],
-            facecolors="none",
-            edgecolors="r",
-            linewidths=0.5,
-        )
-        plt.scatter(
-            df_pca[df_pca["pred"] == 1]["PC1"],
-            df_pca[df_pca["pred"] == 1]["PC2"],
-            marker="x",
-            linewidths=1,
-        )  # type: ignore
-        plt.xticks(())
-        plt.yticks(())
-
-
 def save_model(model, path):
-    dir_path = path
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    with open(f"{dir_path}/{alg[0]}.pkl", "wb") as f:
+    os.makedirs(path, exist_ok=True)
+    with open(f"{path}/{alg[0]}.pkl", "wb") as f:
         pickle.dump(model, f)
 
 
 def save_results_y(df_ys, path):
-    dir_path = path
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    df_ys.to_csv(f"{dir_path}/ys.csv", index=False)
-
-
-def save_results_metrics(metrics_res, path):
-    dir_path = path
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-    metrics_res.to_csv(f"{dir_path}/metrics.csv")
-
-
-# MODS
-class QuantileFilter(anomaly.QuantileFilter):
-    def __init__(
-        self, anomaly_detector, q: float, protect_anomaly_detector=True
-    ):
-        super().__init__(
-            anomaly_detector=anomaly_detector,
-            protect_anomaly_detector=protect_anomaly_detector,
-            q=q,
-        )
-
-    def predict_one(self, *args):
-        score = self.score_one(*args)
-        return self.classify(score)
+    os.makedirs(path, exist_ok=True)
+    df_ys.to_csv(f"{path}/ys.csv", index=False)
 
 
 # DETECTION ALGORITHMS
@@ -234,10 +132,14 @@ if __name__ == "__main__":
                 print(f"\n===== {alg[0]}".ljust(80, "="))
                 # INITIALIZE OPTIMIZER
                 pbounds = alg[2]
-                mod_fun = partial(tune_train_model, alg[1], df, {})
-
-                # INITIALIZE METRICS
-                metrics_list = []
+                mod_fun = partial(
+                    build_fit_evaluate,
+                    alg[1],
+                    df,
+                    MacroF1(),
+                    map_cluster_to_rc=True,
+                    drop_no_support=True,
+                )
 
                 # TUNE HYPERPARAMETERS
                 optimizer = BayesianOptimization(
