@@ -54,7 +54,8 @@ def convert_to_nested_dict(d):
 
 
 def init_step(step, params):
-    return step(**params.get(step.__name__, {}))
+    name = step.func.__name__ if isinstance(step, partial) else step.__name__
+    return step(**params.get(name, {}))
 
 
 def nest_step(steps, params):
