@@ -5,7 +5,6 @@ import pickle
 import random
 import sys
 import warnings
-from collections import defaultdict
 from functools import partial
 from pathlib import Path
 
@@ -18,7 +17,7 @@ from bayes_opt import (
 )
 from bayes_opt.event import Events
 from bayes_opt.logger import JSONLogger
-from river import anomaly, cluster, utils
+from river import anomaly, cluster, metrics, utils
 from river.metrics import MacroF1
 from river.metrics.base import MultiClassMetric
 from sklearn.decomposition import PCA
@@ -26,7 +25,12 @@ from sklearn.decomposition import PCA
 sys.path.insert(1, str(Path().resolve().parent))
 from functions.anomaly import ConditionalGaussianScorer  # noqa: E402
 from functions.compose import build_model, convert_to_nested_dict  # noqa: E402
-from functions.evaluate import progressive_val_predict  # noqa: E402
+from functions.evaluate import (  # noqa: E402
+    batch_save_evaluate_metrics,
+    cluster_map,
+    drop_no_support_labels,
+    progressive_val_predict,
+)
 from functions.proba import MultivariateGaussian  # noqa: E402
 
 # CONSTANTS
@@ -34,58 +38,8 @@ RANDOM_STATE = 42
 random.seed(RANDOM_STATE)
 np.random.seed(RANDOM_STATE)
 
-# DATA
-df = pd.read_csv("data/multivariate/cats/data_1t_agg_last.csv", index_col=0)
-df.index = pd.to_datetime(df.index, utc=True)
-
-df_y = df[["y", "category"]]
-df = df.drop(columns=["y", "category"])
-
-df_meta = pd.read_csv("data/multivariate/cats/metadata.csv")
-df_meta.start_time = pd.to_datetime(df_meta.start_time, utc=True)
-df_meta.end_time = pd.to_datetime(df_meta.end_time, utc=True)
-
-df_y["rc"] = None
-df_y["affected"] = None
-for i in range(len(df_meta)):
-    start = df_meta.start_time[i]
-    end = df_meta.end_time[i]
-    df_y.loc[start:end, "rc"] = df_meta.root_cause[i]
-    df_y.loc[start:end, "affected"] = ast.literal_eval(df_meta.affected[i])[0]
-
-# df["is_anomaly"] = df_y.category.replace({None: ""})
-df["is_anomaly"] = df_y.rc.replace({None: ""})
-
 
 # FUNCTIONS
-def cluster_map(y_true, y_pred):
-    # Create a dictionary to store the counts of overlaps
-    overlap_counts = defaultdict(lambda: defaultdict(int))
-
-    # Iterate over y_true and y_pred to count overlaps
-    for true_val, pred_val in zip(y_true, y_pred):
-        overlap_counts[pred_val][true_val] += 1
-
-    # Map values in y_pred to values in y_true based on maximum overlap count
-    return [
-        max(overlap_counts[pred_val], key=overlap_counts[pred_val].get)
-        for pred_val in y_pred
-    ]
-
-
-def drop_no_support_labels(metric):
-    for c in metric.cm.classes:
-        if metric.cm.support(c) == 0.0:
-            if c in metric.cm.data:
-                metric.cm.data.pop(c)
-            for label in metric.cm.data:
-                if c in metric.cm.data[label]:
-                    metric.cm.data[label].pop(c)
-            metric.cm.sum_row.pop(c)
-            metric.cm.sum_col.pop(c)
-    return metric
-
-
 def tune_train_model(steps, df, val_kwargs: dict = {}, **params):
     params = convert_to_nested_dict(params)
     model = build_model(steps, params)
@@ -195,8 +149,6 @@ class QuantileFilter(anomaly.QuantileFilter):
         return self.classify(score)
 
 
-# SETTINGS
-
 # DETECTION ALGORITHMS
 detection_algorithms = [
     (
@@ -227,6 +179,27 @@ detection_algorithms = [
 ]
 
 # DATASETS
+df = pd.read_csv("data/multivariate/cats/data_1t_agg_last.csv", index_col=0)
+df.index = pd.to_datetime(df.index, utc=True)
+
+df_y = df[["y", "category"]]
+df = df.drop(columns=["y", "category"])
+
+df_meta = pd.read_csv("data/multivariate/cats/metadata.csv")
+df_meta.start_time = pd.to_datetime(df_meta.start_time, utc=True)
+df_meta.end_time = pd.to_datetime(df_meta.end_time, utc=True)
+
+df_y["rc"] = None
+df_y["affected"] = None
+for i in range(len(df_meta)):
+    start = df_meta.start_time[i]
+    end = df_meta.end_time[i]
+    df_y.loc[start:end, "rc"] = df_meta.root_cause[i]
+    df_y.loc[start:end, "affected"] = ast.literal_eval(df_meta.affected[i])[0]
+
+# df["is_anomaly"] = df_y.category.replace({None: ""})
+df["is_anomaly"] = df_y.rc.replace({None: ""})
+
 datasets = [
     {
         "name": "CATS",
@@ -301,3 +274,34 @@ if __name__ == "__main__":
             # LOAD RESULTS
             #  Save
             save_results_y(df_ys, f".results/{dataset['name']}")
+
+            metrics_clustering = [
+                metrics.Completeness(),
+                metrics.AdjustedMutualInfo(),
+                metrics.AdjustedRand(),
+                metrics.FowlkesMallows(),
+                metrics.VBeta(),
+                metrics.Rand(),
+                metrics.MutualInfo(),
+            ]
+
+            metrics_classification = [
+                metrics.Precision(),
+                metrics.Recall(),
+                metrics.F1(),
+                metrics.ClassificationReport(),
+            ]
+
+            path = ".results/MF1_opt_rc"
+
+            batch_save_evaluate_metrics(
+                metrics_clustering, path, task="clustering"
+            )
+
+            batch_save_evaluate_metrics(
+                metrics_classification,
+                path,
+                task="classification",
+                map_cluster_to_rc=True,
+                drop_no_support=True,
+            )
