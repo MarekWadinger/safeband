@@ -15,6 +15,7 @@ plt.rcParams.update(
     {
         "text.usetex": False,
         "font.family": "Times New Roman",
+        "font.serif": "Times New Roman",
         "axes.labelsize": 8,
         "axes.grid": True,
         "font.size": 8,

@@ -16,6 +16,21 @@
   series    = {WWW '21}
 }
 
+@article{Tartakovsky2013,
+  author   = {Tartakovsky, Alexander G. and Polunchenko, Aleksey S. and Sokolov, Grigory},
+  journal  = {IEEE Journal of Selected Topics in Signal Processing},
+  title    = {Efficient Computer Network Anomaly Detection by Changepoint Detection Methods},
+  year     = {2013},
+  volume   = {7},
+  number   = {1},
+  pages    = {4-11},
+  abstract = {We consider the problem of efficient on-line anomaly detection in computer network traffic. The problem is approached statistically, as that of sequential (quickest) changepoint detection. A multi-cyclic setting of quickest change detection is a natural fit for this problem. We propose a novel score-based multi-cyclic detection algorithm. The algorithm is based on the so-called Shiryaev-Roberts procedure. This procedure is as easy to employ in practice and as computationally inexpensive as the popular Cumulative Sum chart and the Exponentially Weighted Moving Average scheme. The likelihood ratio based Shiryaev-Roberts procedure has appealing optimality properties, particularly it is exactly optimal in a multi-cyclic setting geared to detect a change occurring at a far time horizon. It is therefore expected that an intrusion detection algorithm based on the Shiryaev-Roberts procedure will perform better than other detection schemes. This is confirmed experimentally for real traces. We also discuss the possibility of complementing our anomaly detection algorithm with a spectral-signature intrusion detection system with false alarm filtering and true attack confirmation capability, so as to obtain a synergistic system.},
+  keywords = {},
+  doi      = {10.1109/JSTSP.2012.2233713},
+  issn     = {1941-0484},
+  month    = {Feb}
+}
+
 @article{Brzezinski2017,
   author   = {Brzezinski, Dariusz
               and Stefanowski, Jerzy},
@@ -59,7 +74,7 @@
   volume   = {},
   number   = {},
   pages    = {1-12},
-  abstract = {Aiming at the nonstationary characteristics of many practical industrial systems as well as the long memory and seasonality of some process data, this article proposes a novel nonstationary process anomaly detection method based on fractional cointegration vector autoregression (FCVAR). First, the augmented Dickey–Fuller (ADF) test is used to divide the variables into stationary and nonstationary categories. For the nonstationary variables, the trend extraction algorithm is used to extract the nonstationary trend of the variables to avoid the trend information from being overwhelmed due to the strong seasonality of the process data. Meanwhile, considering that the extracted trend time series have a long-memory characteristic and the fractional cointegration describes the intrinsic long-term equilibrium relationship of the trend series better than the integer cointegration, a novel anomaly detection algorithm based on the FCVAR model is proposed. For the stationary variables, including the original stationary variables and the detrended series of nonstationary variables after trend extraction, the proposed method merges the two components into a new matrix and establishes an anomaly detection model based on the kernel principal component analysis (kpca) algorithm. Finally, simulations using wastewater treatment process (WWTP) data have indicated that the proposed method achieves the desired results and exhibits high detection performance, particularly in the detection of tiny gradual-type anomalies.},
+  abstract = {Aiming at the nonstationary characteristics of many practical industrial systems as well as the long memory and seasonality of some process data, this article proposes a novel nonstationary process anomaly detection method based on fractional cointegration vector autoregression (FCVAR). First, the augmented Dickey-Fuller (ADF) test is used to divide the variables into stationary and nonstationary categories. For the nonstationary variables, the trend extraction algorithm is used to extract the nonstationary trend of the variables to avoid the trend information from being overwhelmed due to the strong seasonality of the process data. Meanwhile, considering that the extracted trend time series have a long-memory characteristic and the fractional cointegration describes the intrinsic long-term equilibrium relationship of the trend series better than the integer cointegration, a novel anomaly detection algorithm based on the FCVAR model is proposed. For the stationary variables, including the original stationary variables and the detrended series of nonstationary variables after trend extraction, the proposed method merges the two components into a new matrix and establishes an anomaly detection model based on the kernel principal component analysis (kpca) algorithm. Finally, simulations using wastewater treatment process (WWTP) data have indicated that the proposed method achieves the desired results and exhibits high detection performance, particularly in the detection of tiny gradual-type anomalies.},
   keywords = {},
   doi      = {10.1109/TR.2023.3314429},
   issn     = {1558-1721},
@@ -81,6 +96,34 @@
   timestamp  = {Mon, 13 Aug 2018 16:48:39 +0200},
   biburl     = {https://dblp.org/rec/journals/corr/abs-1302-6927.bib},
   bibsource  = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{Yang2022,
+  title    = {An interpretable unsupervised Bayesian network model for fault detection and diagnosis},
+  journal  = {Control Engineering Practice},
+  volume   = {127},
+  pages    = {105304},
+  year     = {2022},
+  issn     = {0967-0661},
+  doi      = {https://doi.org/10.1016/j.conengprac.2022.105304},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0967066122001502},
+  author   = {Wei-Ting Yang and Marco S. Reis and Valeria Borodin and Michel Juge and Agnès Roussy},
+  keywords = {Bayesian Network (BN), eXplanatory Artificial Intelligence (XAI), Fault detection, Fault diagnosis, Interpretable machine learning},
+  abstract = {Process monitoring is a critical activity in manufacturing industries. A wide variety of data-driven approaches have been developed and employed for fault detection and fault diagnosis. Analyzing the existing process monitoring schemes, prediction accuracy of the process status is usually the primary focus while the explanation (diagnosis) of a detected fault is relegated to a secondary role. In this paper, an interpretable unsupervised machine learning model based on Bayesian Networks (BN) is proposed to be the fundamental model supporting the process monitoring scheme. The proposed methodology is aligned with the recent efforts of eXplanatory Artificial Intelligence (XAI) for knowledge induction and decision making, now brought to the scope of advanced process monitoring. A BN is capable of combining data-driven induction with existing domain knowledge about the process and to display the underlying causal interactions of a process system in an easily interpretable graphical form. The proposed fault detection scheme consists of two levels of monitoring. In the first level, a global index is computed and monitored to detect any deviation from normal operation conditions. In the second level, two local indices are proposed to examine the fine structure of the fault, once it is signaled at the first level. These local indices support the diagnosis of the fault, and are based on the individual unconditional and conditional distributions of the monitored variables. A new labeling procedure is also proposed to narrow down the search and identify the fault type. Unlike many existing diagnosis methods that require access to faulty data (supervised diagnosis methods), the proposed diagnosis methodology belongs to the class that only requires data under normal conditions (unsupervised diagnosis methods). The effectiveness of the proposed monitoring scheme is demonstrated and validated through simulated datasets and an industrial dataset from semiconductor manufacturing.}
+}
+
+@article{Steenwinckel2021,
+  title    = {FLAGS: A methodology for adaptive anomaly detection and root cause analysis on sensor data streams by fusing expert knowledge with machine learning},
+  journal  = {Future Generation Computer Systems},
+  volume   = {116},
+  pages    = {30-48},
+  year     = {2021},
+  issn     = {0167-739X},
+  doi      = {https://doi.org/10.1016/j.future.2020.10.015},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0167739X20329927},
+  author   = {Bram Steenwinckel and Dieter {De Paepe} and Sander {Vanden Hautte} and Pieter Heyvaert and Mohamed Bentefrit and Pieter Moens and Anastasia Dimou and Bruno {Van Den Bossche} and Filip {De Turck} and Sofie {Van Hoecke} and Femke Ongenae},
+  keywords = {Anomaly detection, Root cause analysis, Machine learning, Semantic web, Internet of Things, Fused AI, User feedback},
+  abstract = {Anomalies and faults can be detected, and their causes verified, using both data-driven and knowledge-driven techniques. Data-driven techniques can adapt their internal functioning based on the raw input data but fail to explain the manifestation of any detection. Knowledge-driven techniques inherently deliver the cause of the faults that were detected but require too much human effort to set up. In this paper, we introduce FLAGS, the Fused-AI interpretabLe Anomaly Generation System, and combine both techniques in one methodology to overcome their limitations and optimize them based on limited user feedback. Semantic knowledge is incorporated in a machine learning technique to enhance expressivity. At the same time, feedback about the faults and anomalies that occurred is provided as input to increase adaptiveness using semantic rule mining methods. This new methodology is evaluated on a predictive maintenance case for trains. We show that our method reduces their downtime and provides more insight into frequently occurring problems.}
 }
 
 @article{Li2019,

@@ -20,7 +20,7 @@ Figure \ref{fig:terra_no_change} depicts the average cell temperature measuremen
 \begin{figure}
  \centering
  \resizebox{\linewidth}{!}{\includegraphics{figures/TERRA_thresh_single_4days_shift_no_change_adapt.pdf}}
- \caption{\replaced{Normalized average cell temperature of TERRA}{Time series of TERRA measurements} observed over 9 days (blue line).\deleted{ The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$.} The \replaced{model \textbf{without} adaptation to change points holds dynamic operating limits (light red area) unchanged, and anomaly (red dots) alerted for approximately three days.}{light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot.} Orange bars represent the times, at which changepoints were detected. Grace period is grayed out.}
+ \caption{\added{Detection of anomalies using model \textbf{without} adaptation to change points in normalized average cell temperature of TERRA observed over nine days (blue line). The model alerts anomalies (red dots) for approximately three days. The dynamic operating limits (light red area), given by the model without adaptation to change points, are stagnant during the period of detected change point (orange bars), which is triggered $\ui{t}{a}$ hours after anomaly is alerted. The adaptation of the model to novel behavior starts as the $\ui{t}{e}$ is approached.}}
  \label{fig:terra_no_change}
 \end{figure}
 
@@ -29,7 +29,7 @@ In Figure \ref{fig:terra_change} we depict the same measurement with a changepoi
 \begin{figure}
  \centering
  \resizebox{\linewidth}{!}{\includegraphics{figures/TERRA_thresh_single_4days_shift_change_adapt.pdf}}
- \caption{\replaced{Normalized average cell temperature of TERRA}{Time series of TERRA measurements} observed over 9 days (blue line).\deleted{ The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$.} The \replaced{model \textbf{with} adaptation to change points starts to update dynamic operating limits (light red area) within 3 hours and alerts anomaly (red dots) for approximately 10 hours.}{light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot.} Orange bars represent the times, at which changepoints were detected. Grace period is grayed out.}
+ \caption{\added{Detection of anomalies using model \textbf{with} adaptation to change points over the same historical measurement as in Figure~\ref{fig:terra_no_change}. The change point is detected $\ui{t}{a}$ hours after the anomaly is alerted, triggering adaptation to changed behavior more than two days sooner, compared to model \textbf{without} adaptation to change points in Figure~\ref{fig:terra_no_change}. The adaptation is reflected in changes in dynamic operating limits. The system alerts anomalies for approximately 10 hours.}}
  \label{fig:terra_change}
 \end{figure}
 
@@ -38,7 +38,7 @@ The default sampling rate of the incoming signal measurements is 1 minute. Howev
 \begin{figure}[htbp]
  \centering
  \resizebox{\linewidth}{!}{\includegraphics{figures/TERRA_thresh_single_4days_sampling.pdf}}
- \caption{\replaced{Normalized average cell temperature of TERRA}{Time series of TERRA measurements} observed over 9 days (blue line).\deleted{ The y-axis renders the average temperature of all cells and modules after the normalization to the range of $[0, 1]$.} The \replaced{model \textbf{with} adaptation to change points and sampling nonuniformity alerts}{light red area represents an area out of dynamic operating limits for individual signals. Observations out of the limits are marked by a red dot.}\added{ Green bars represent the times, at which sampling anomalies are detected, while zoomed areas focus on short events of abnormal sampling.} Orange bars represent the times, at which changepoints were detected. Grace period is grayed out.}
+ \caption{\added{Detection of anomalies using model \textbf{with} adaptation to change points from Figure~\ref{fig:terra_change} with added depiction of accompanying task of sampling anomaly detection (green bars). Zoomed areas focus on short events of abnormal sampling detected by AID. The second zoomed area also highlights faulty measurement, which the system marked as a point anomaly.}}
  \label{fig:terra_sampling}
 \end{figure}
 
@@ -133,7 +133,7 @@ HS-Trees &
 \end{table}
 
 
-The results for models optimized for the F1 score are summarized in Table \ref{tab:perf_comp_f1}, which includes precision, recall, F1 score, and average latency. Macro values are enclosed in brackets, representing the mean of the metric for both anomalies and normal data. A perfect detection achieves 100\% in each metric \added{but false positive rate (FAR), where perfect detector achieves 0\%}. According to the Scoreboard for various algorithms on SKAB's Kaggle page, all iterative approaches perform comparably to the batch-trained isolation forest and autoencoder, validating the optimization process. Notably, the proposed AID method outperforms both reference methods in terms of \replaced{precision, recall, F1 score, area under curve, and false positive rate}{F1 score, recall, and precision}, despite having a 30-fold higher latency per sample. This highlights the scalability as a candidate for further development. Nevertheless, in this case, sampling of the benchmark data still offers enough time to deliver predictions with sufficient frequency.
+The results for models optimized for the F1 score are summarized in Table \ref{tab:perf_comp_f1}, which includes precision, recall, F1 score, and average latency. Macro values are enclosed in brackets, representing the mean of the metric for both anomalies and normal data. A perfect detection achieves 100\% in each metric\added{ except for the false positive rate (FAR), where a perfect detection attains 0\%}. According to the Scoreboard for various algorithms on SKAB's Kaggle page, all iterative approaches perform comparably to the batch-trained isolation forest and autoencoder, validating the optimization process. Notably, the proposed AID method outperforms both reference methods in terms of \added{precision, recall, F1 score, area under curve, and false positive rate}, despite having a 30-fold higher latency per sample. This highlights the scalability as a candidate for further development. Nevertheless, in this case, sampling of the benchmark data still offers enough time to deliver predictions with sufficient frequency. Scalability analysis to number of features is presented in Subsection \ref{AA:Scalability}.
 
 \begin{table}[htbp]
     \caption{Evaluation of models optimized for F1 score on SKAB dataset \citep{skab2020}. The best-performing model is highlighted in bold. Values in brackets represent macro values of the metric.}
@@ -186,28 +186,34 @@ Optimal hyperparameters found during Bayesian Optimization are detailed in Table
     \end{tabular}
 \end{table}
 
-\subsection{Scalability Analysis}\label{AA:Scalability}
+\subsection{\added{Scalability Analysis}}\label{AA:Scalability}
 
-The scalability of the proposed method is evaluated on the temperature data of 10 battery modules with 6 points of temperature measurements in the TERRA system. The data are sampled at 30 second intervals and streamed to the AID system. The AID system is initialized with the same parameters as in Subsection \ref{AA:Kokam}. The data are processed in a streamed manner, simulating the real production environment. The latency of the system is measured as the time between the arrival of the sample and the delivery of the prediction. The latency is measured on a machine with an 8-core Apple M1 CPU and 8 GB RAM. The latency is measured for 20160 samples from 2023-08-21 to 2023-08-27. The latency analysis is performed for detection task alone and for the combined task of detection and dynamic process limits establishmend. The results are depicted in Table \ref{tab:latency}.
+\added{We evaluate the scalability of the proposed method using temperature data from 10 battery modules with six temperature measurement points in the TERRA system. The data, sampled at 30-second intervals, are streamed to the AID system, which is initialized with parameters identical to those in Subsection \ref{AA:Kokam}. Processing the data in a streamed manner simulates a real production environment. Latency is measured as the time between the sample's arrival and the prediction's delivery, including model updates. This evaluation occurs in a containerized environment with a single core and 8 GB RAM. Latency measurement spans 20160 samples from 2023-08-21 to 2023-08-27, excluding all but one measurement made during the grace period of 1 day. We analyze latency for both the detection task alone and the combined task of detection and establishing dynamic process limits. Table \ref{tab:latency} presents statistical indicators of the results, while the accompanying violin plots in the Figure offer visual insights into latency distribution for varying numbers of features. The significantly smaller minimum latency is attributed to evaluation during the grace period, where fewer computations are performed. The significantly higher maximum latency could be attributed to reverting the effect of multiple points after signal loss in time-series data occurs.}
 
 \begin{table}[htbp]
-    \caption{Latency analysis of the proposed method.}
+    \caption{\added{Latency analysis of the proposed method AID with varying number of features.}}
     \begin{center}
         \label{tab:latency}
         \begin{tabular}{|l|c|c|}
             \hline
-            \textbf{Features} & \begin{tabular}[c]{@{}c@{}}\textbf{Detection}\\$\mu \pm \sigma$ ($\min$, $\max$) [ms]\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{Detection + Limits}\\$\mu \pm \sigma$ ($\min$, $\max$) [ms]\end{tabular} \\
+            \begin{tabular}[c]{@{}l@{}}\textbf{Number of}\\ \textbf{Features}\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{Detection}\\$\mu \pm \sigma$ ($\min$, $\max$) [ms]\end{tabular} & \begin{tabular}[c]{@{}c@{}}\textbf{Detection + Limits}\\$\mu \pm \sigma$ ($\min$, $\max$) [ms]\end{tabular} \\
             \hline
-            1 & $0.337 \pm 0.500~(0.100, 0.600)$ & $0.337 \pm 0.500~(0.100, 0.600)$ \\
-            10 & & \\
-            20 & & \\
-            30 & & \\
-            40 & & \\
-            50 & & \\
-            60 & & \\
+            1 & $0.37 \pm 0.26~(0.05, 31.7)$ & $0.63 \pm 0.38~(0.23, 35.9)$ \\
+            10 & $2.25 \pm 0.92~(0.10, 13.6)$ & $5.24 \pm 0.98~(0.80, 15.1)$ \\
+            20 & $5.46 \pm 2.16~(0.26, 30.6)$ & $14.7 \pm 2.27~(1.10, 47.5)$ \\
+            30 & $10.9 \pm 4.31~(0.52, 42.4)$ & $34.3 \pm 4.50~(2.59, 72.4)$ \\
+            40 & $20.7 \pm 8.15~(0.89, 52.7)$ & $69.5 \pm 8.57~(2.84, 140)$ \\
+            50 & $97.3 \pm 47.4~(1.36, 1010)$ & $297 \pm 59.4~(3.94, 1330)$ \\
+            60 & $142 \pm 71.2~(1.95, 1640)$ & $468 \pm 111~(7.08, 3710)$ \\
             \hline
         \end{tabular}
     \end{center}
 \end{table}
 
-The time complexity of the detection task to number of features is cubic
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/scalability.pdf}
+    \caption{\added{Analysis of latency distribution of the proposed method AID. Violin plots depict the distribution of the latency for varying number of features, while horizontal bars show mean latency.}}
+    \label{fig:latency}
+\end{figure}
+
