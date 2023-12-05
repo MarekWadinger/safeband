@@ -99,7 +99,7 @@ This paper proposes a new online anomlay detection method and verifies its effec
         {\bf Response:}
         Thank you for your suggestion. We have added Figure 2 in the revision to illustrate the distinctions between these anomaly types. Figure 2, previously in question, is now labeled as Figure 3 in the revision.
 
-        Figure 2 depicts a sample of each of the three scenarios: point anomaly (measurement with significant dissimilarity), collective anomaly (cluster of abnormal points), and change point (initial sequence of changed operation) detection. 
+        Figure 2 depicts a sample of each of the three scenarios: point anomaly (measurement with significant dissimilarity), collective anomaly (cluster of abnormal points), and change point (initial sequence of changed operation) detection.
 
   \item
         \begin{comment}
@@ -146,7 +146,7 @@ This paper proposes a new online anomlay detection method and verifies its effec
         A critical feature of our proposed method within SCADA-based systems is the ability to dynamically render process limits for individual signals, enhancing diagnostic capabilities. While a similar task could be achieved with ARIMA, it requires extensive fine-tuning of an ensemble of ARIMA models for each signal in the system. Vectorization of this task is a potential improvement.
 
         Our literature review indicates that Vector Autoregression, the multivariate extension of ARIMA, could efficiently model multivariate time series, as explored in papers such as \cite{Melnyk2016, Zhang2023}. However, our research focuses on online anomaly detection for evolving data streams, and the need for a vectorized implementation for online-trained ARIMA limits its usage in our comparisons. Future research could explore extending ARIMA to its multivariate counterpart for online training.
-      
+
         Integrating our proposed method with forecasting models during feature engineering, as demonstrated in Section 4.1 for physics-based model utilization, presents a promising direction for enhancing performance with the aid of the ARIMA method.
 
   \item
@@ -155,7 +155,7 @@ This paper proposes a new online anomlay detection method and verifies its effec
         \end{comment}
         {\bf Response:}
         We agree with the reviewer that AUC, in general, is a better metric for imbalanced datasets. In response to the reviewer's recommendation, we have included AUC in the results presented in Table 2 of the revised paper. Adding AUC provides an alternative perspective on performance that may interest the reader.
-        
+
         We tried to implement hyperparameter optimization with AUC. Nevertheless, due to the poor convergence of the reference methods on benchmark data, we decided to use the F1 score, which showed better convergence for all three compared methods.
 
         Additionally, we were unaware of the range-based AUC metric during paper writing and result collection. After this suggestion, we computed the mean value of range-based AUC using the implementation from~\cite{Brzezinski2017} and enriched the results in Table 2.
@@ -204,10 +204,10 @@ This paper presents an interesting and potentially useful framework called AID f
         {\bf Response:}
         Thank you for bringing attention to the importance of computational complexity and scalability in the context of high-dimensional industrial systems. To address this suggestion, we have incorporated Section 4.4 into our revised manuscript, providing a dedicated analysis of scalability and time complexity.
 
-        In Section 4.4, we delve into the computational complexities and scalability limitations of our proposed method in the context of high-dimensional industrial systems. The section aims to offer insight into the scalability of the proposed method for anomaly detection tasks and in the context of SCADA-based systems where dynamic limits are of interest. Evaluation is performed on the data from the first case study, enriched with additional signals from other modules in the system, resulting in a total of 60 signals. 
-        
+        In Section 4.4, we delve into the computational complexities and scalability limitations of our proposed method in the context of high-dimensional industrial systems. The section aims to offer insight into the scalability of the proposed method for anomaly detection tasks and in the context of SCADA-based systems where dynamic limits are of interest. Evaluation is performed on the data from the first case study, enriched with additional signals from other modules in the system, resulting in a total of 60 signals.
+
         Table~\ref{tab:latency} (Table 4 in the revised manuscript) presents the latency analysis of the proposed method AID with a varying number of features. The results indicate that the latency of the proposed method grows increasingly with the number of features. The minimum latency reflects the time required to process a single sample during the grace period, while maximum latency reflects the time required when multiple samples are processed at once.
-        
+
         \begin{table}[htbp]
             \caption{Latency analysis of the proposed method AID with varying number of features.}
             \begin{center}
@@ -280,10 +280,10 @@ This paper presents an interesting and potentially useful framework called AID f
         \end{comment}
         {\bf Response:}
         % Prejav v clanku
-        We appreciate the reviewer's suggestion regarding the comparison of diagnosis accuracy for root causes against other interpretable methods. We recognize the importance of addressing this aspect, resulting in a comparison with the diagnostic method DBStream. We have tried hard to convey the results of this comparison in a clear and concise manner in the paper. However, we could not manage without significantly extending the page range, which we found inappropriate at this stage of writing the paper. 
+        We appreciate the reviewer's suggestion regarding the comparison of diagnosis accuracy for root causes against other interpretable methods. We recognize the importance of addressing this aspect, resulting in a comparison with the diagnostic method DBStream. We have tried hard to convey the results of this comparison in a clear and concise manner in the paper. However, we could not manage without significantly extending the page range, which we found inappropriate at this stage of writing the paper.
 
-        As we have recognized the challenges of adapting analogous interpretable methods from cited publications in our paper~\cite{Yang2022, Steenwinckel2021} due to undisclosed or non-adaptable code, we decided to compare our proposed method with DBStream~\cite{Hahsler2016}, an online version of DBScan designed for evolving data streams. 
-        
+        As we have recognized the challenges of adapting analogous interpretable methods from cited publications in our paper~\cite{Yang2022, Steenwinckel2021} due to undisclosed or non-adaptable code, we decided to compare our proposed method with DBStream~\cite{Hahsler2016}, an online version of DBScan designed for evolving data streams.
+
         It is an unsupervised method with the ability to disregard anomalies and capture clusters of various sizes and densities. It has been successfully used throughout the literature for diagnostic purposes. In~\cite{Li2019}, DBScan was used for thermal runaway diagnosis of battery systems in electric vehicles, relying on engineered features reflecting battery performance. Other applications include power transformer fault diagnosis~\cite{Liu2020} and fault diagnosis of rolling bearing~\cite{Li2020}.
         Its usage in these applications, with expert knowledge of the system, involves mapping clusters to root causes, making it a promising method for our comparison.
 
