@@ -43,6 +43,9 @@ def progressive_val_predict(  # noqa: C901
         meta["Latency"] = []
     t_prev = pd.Timestamp.utcnow()
 
+    if hasattr(model_, "forecast"):
+        period = kwargs.get("period", 5)
+
     start = time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
         if compute_latency:
@@ -64,12 +67,16 @@ def progressive_val_predict(  # noqa: C901
             and hasattr(model, "get_root_cause")
         ):
             is_anomaly = model.get_root_cause()
-        elif hasattr(model, "forecast"):
-            is_anomaly = model.forecast(1)[0]
+            y_pred.append(is_anomaly)
+        elif hasattr(model_, "forecast"):
+            ys = model_.forecast(period)
+            if i < period:
+                y_pred.insert(i, y)
+            y_pred.append(ys[-1])
+            is_anomaly = ys[0]
         else:
             is_anomaly = model.predict_one(x_)
-
-        y_pred.append(is_anomaly)
+            y_pred.append(is_anomaly)
 
         # EVALUATE
         if metrics is not None:
@@ -140,6 +147,9 @@ def progressive_val_predict(  # noqa: C901
         for i in range(len(meta["Sampling Anomaly"])):
             if meta["Sampling Anomaly"][i] == 1:
                 meta["Sampling Anomaly"][i - 1] = 1
+
+    if hasattr(model_, "forecast"):
+        y_pred = y_pred[:-period]
 
     end = time.time()
 
