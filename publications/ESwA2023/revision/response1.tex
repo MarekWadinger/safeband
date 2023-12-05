@@ -47,16 +47,16 @@
 List of main changes:
 \begin{enumerate}
 
-%   \item The manuscript was shortened to $7$ pages.
-%   \item The leading paragraph of Section 4 was reworded to address
-%         reviewers' comments on SVMs.
-%   \item Section 4.1 was removed, linear separation is now tackled as a
-%         special case in the {\em Polynomial Separation} section (labeled as
-%         Section 4.1 in the revision).
-%   \item Big-O notation in Section 5 was replaced by hard figures
-%         indicating required computation and consumed memory.
-%   \item Section 6.2 was enriched to address reviewers' comments.
-%   \item Conclusions was modified according to reviewers' requests.
+  %   \item The manuscript was shortened to $7$ pages.
+  %   \item The leading paragraph of Section 4 was reworded to address
+  %         reviewers' comments on SVMs.
+  %   \item Section 4.1 was removed, linear separation is now tackled as a
+  %         special case in the {\em Polynomial Separation} section (labeled as
+  %         Section 4.1 in the revision).
+  %   \item Big-O notation in Section 5 was replaced by hard figures
+  %         indicating required computation and consumed memory.
+  %   \item Section 6.2 was enriched to address reviewers' comments.
+  %   \item Conclusions was modified according to reviewers' requests.
   \item Introduction was enriched to address reviewers' comments.
   \item Figure 2 was added to illustrate the definition of anomalies to address reviewers' comments.
   \item Captions in Figures 5,6,7 (labeled as Figures 4,5,6 in the previous manuscript) were reworded to make them more illuminating.
@@ -132,15 +132,15 @@ This paper proposes a new online anomlay detection method and verifies its effec
         In an effort to achieve the best performance, we performed Bayesian optimization of the Seasonal Non-linear AutoRegressive Integrated Moving-Average with eXogenous inputs model (SNARIMAX)~\cite{Anava2013} and its special parametrization cases for the data from the first case study. Various metrics, with and without running mean, were tested in the cost function, selecting Median Absolute Error (MedAE) as one with the best convergence and highest robustness toward anomalies. Five step ahead forecast of normalized temperature was used for evaluation, showing a good balance between anomaly discrimination and accurate tracking. We made several observations on the performance of the methods.
 
         \begin{figure}[htbp]
-            \centerline{\includegraphics[width=\textwidth]{ARIMA_opt_results.pdf}}
-            \caption{Comparison of five-step ahead forecast (orange) of normalized temperature (blue) using various parametrization of SNARIMAX model and special parametrization cases (AR, MA, ARI, IMA, ARIMA) with optimized parameter values. The forecast is aligned with the original data.}
-            \label{fig:snarimax}
-      \end{figure}
+          \centerline{\includegraphics[width=\textwidth]{ARIMA_opt_results.pdf}}
+          \caption{Comparison of five-step ahead forecast (orange) of normalized temperature (blue) using various parametrization of SNARIMAX model and special parametrization cases (AR, MA, ARI, IMA, ARIMA) with optimized parameter values. The forecast is aligned with the original data.}
+          \label{fig:snarimax}
+        \end{figure}
 
-       Firstly, the moving average (MA) method's forecast alone discriminates outliers well. Nevertheless, it shows little sensitivity to abrupt regular changes of temperatures from 5th to 7th March, which would be falsely marked as anomalous, along with true anomalies by a simple threshold filter. Secondly, the autoregressive (AR) method exhibits high sensitivity to point anomaly before 13th March, resulting in ongoing instability (though barely visible, sensor reports 0.0 on 12th March from 21:15 to 21:22 in Figure~\ref{fig:snarimax}).
-       
-       Using differencing to remove trends and seasonality with the AR method (ARI) further decreased stability during the formerly mentioned event starting on 12th March at 21:15 and, combined with the moving average method (IMA), added significant noise to predictions during whole evaluated history. Despite hyperparameter optimization and evaluation with engineered time-based features, we did not observe satisfactory results with ARIMA and SNARIMAX models. 
-        
+        Firstly, the moving average (MA) method's forecast alone discriminates outliers well. Nevertheless, it shows little sensitivity to abrupt regular changes of temperatures from 5th to 7th March, which would be falsely marked as anomalous, along with true anomalies by a simple threshold filter. Secondly, the autoregressive (AR) method exhibits high sensitivity to point anomaly before 13th March, resulting in ongoing instability (though barely visible, sensor reports 0.0 on 12th March from 21:15 to 21:22 in Figure~\ref{fig:snarimax}).
+
+        Using differencing to remove trends and seasonality with the AR method (ARI) further decreased stability during the formerly mentioned event starting on 12th March at 21:15 and, combined with the moving average method (IMA), added significant noise to predictions during whole evaluated history. Despite hyperparameter optimization and evaluation with engineered time-based features, we did not observe satisfactory results with ARIMA and SNARIMAX models.
+
         Protection of the model from learning anomalous data through threshold filters, to mitigate their effect on the model's performance, and intelligent adaptation to change points and non-stationary may improve the performance. Nevertheless, due to the extent of the work required, we decided to leave the inclusion of these features as a potential avenue for future work.
 
         A critical feature of our proposed method within SCADA-based systems is the ability to dynamically render process limits for individual signals, enhancing diagnostic capabilities. While a similar task could be achieved with ARIMA, it requires extensive fine-tuning of an ensemble of ARIMA models for each signal in the system. Vectorization of this task may significantly speed up this process.
@@ -173,19 +173,19 @@ This paper proposes a new online anomlay detection method and verifies its effec
     \label{tab:perf_comp_rollauc}
     \begin{tabular}{|l|c|c|c|c|}
       \hline
-      \textbf{Algorithm}      & AID                    & HS-Trees            & OC-SVM              \\
+      \textbf{Algorithm}      & AID                    & HS-Trees          & OC-SVM            \\
       \hline
-      Precision [$\%$]        & $\boldsymbol{47}$ (60) & 30 (47)             & 32 (48)             \\
+      Precision [$\%$]        & $\boldsymbol{47}$ (60) & 30 (47)           & 32 (48)           \\
       \hline
-      Recall [$\%$]           & $\boldsymbol{55}$ (61) & 4 (50)              & 3 (50)              \\
+      Recall [$\%$]           & $\boldsymbol{55}$ (61) & 4 (50)            & 3 (50)            \\
       \hline
-      F1 [$\%$]               & $\boldsymbol{51}$ (60) & 7 (42)              & 6 (42)              \\
+      F1 [$\%$]               & $\boldsymbol{51}$ (60) & 7 (42)            & 6 (42)            \\
       \hline
-      AUC [$\%$]              & $\boldsymbol{61}$      & 50                  & 50                  \\
+      AUC [$\%$]              & $\boldsymbol{61}$      & 50                & 50                \\
       \hline
-      Mean Rolling AUC [$\%$] & $\boldsymbol{60}$      & 50                  & 49                  \\
+      Mean Rolling AUC [$\%$] & $\boldsymbol{60}$      & 50                & 49                \\
       \hline
-      FPR [$\%$]              & 38      & $\boldsymbol{37}$                  & $\boldsymbol{37}$               \\
+      FPR [$\%$]              & 38                     & $\boldsymbol{37}$ & $\boldsymbol{37}$ \\
       \hline
     \end{tabular}
   \end{center}
@@ -231,10 +231,10 @@ This paper presents an interesting and potentially useful framework called AID f
         Figure~\ref{fig:latency} showing the distributions of the latency for a varying number of features indicate that the mean latency is cubic in the number of features in the detection task while inclines to quartic in the combined task of detection and dynamic operating limits setting.
 
         \begin{figure}
-            \centering
-            \includegraphics[width=\textwidth]{scalability.pdf}
-            \caption{Analysis of latency distribution of the proposed method AID. Violin plots depict the distribution of the latency for varying number of features, while horizontal bars show mean latency.}
-            \label{fig:latency}
+          \centering
+          \includegraphics[width=\textwidth]{scalability.pdf}
+          \caption{Analysis of latency distribution of the proposed method AID. Violin plots depict the distribution of the latency for varying number of features, while horizontal bars show mean latency.}
+          \label{fig:latency}
         \end{figure}
 
         We hope that this addition will enhance the completeness of our work.
@@ -248,31 +248,31 @@ This paper presents an interesting and potentially useful framework called AID f
 
         Additionally, to provide a more comprehensive view of the model's performance on imbalanced datasets while addressing other reviewers' comments, we have included AUC and mean of range-based AUC in Table 2 of the revised manuscript. These metrics offer further insights into the detection capabilities of our proposed method. In Table~\ref{tab:perf_comp_f1} we observe that our proposed AID method outperforms the reference methods in terms of added metrics on the benchmark dataset.
 
-      \begin{table}[htbp]
-            \caption{Evaluation of models optimized for F1 score on SKAB dataset. The best-performing model is highlighted in bold. Values in brackets represent macro values of the metric.}
-            \begin{center}
-                  \label{tab:perf_comp_f1}
-                  \begin{tabular}{|l|c|c|c|c|}
-                        \hline
-                        \textbf{Algorithm}              & AID                       & HS-Trees            & OC-SVM              \\
-                        \hline
-                        Precision [$\%$]                & $\boldsymbol{41}$ (59)    & 36 (51)             & 39 (54)             \\
-                        \hline
-                        Recall [$\%$]                   & $\boldsymbol{80}$ (59)    & 74 (51)             & 63 (54)             \\
-                        \hline
-                        F1 [$\%$]                       & $\boldsymbol{54}$ (53)    & 48 (44)             & 48 (52)             \\
-                        \hline
-                        AUC [$\%$]              & $\boldsymbol{59}$ & 51          & 54          \\
-                        \hline
-                        Mean Rolling AUC [$\%$] & $\boldsymbol{57}$ & 50          & 53          \\
-                        \hline
-                        FPR [$\%$]              & $\boldsymbol{47}$ & 56          & 48          \\
-                        \hline
-                        Avg. Latency [ms]               & 1.45                      & $\boldsymbol{0.05}$ & $\boldsymbol{0.05}$ \\
-                        \hline
-                  \end{tabular}
-            \end{center}
-      \end{table}
+        \begin{table}[htbp]
+          \caption{Evaluation of models optimized for F1 score on SKAB dataset. The best-performing model is highlighted in bold. Values in brackets represent macro values of the metric.}
+          \begin{center}
+            \label{tab:perf_comp_f1}
+            \begin{tabular}{|l|c|c|c|c|}
+              \hline
+              \textbf{Algorithm}      & AID                    & HS-Trees            & OC-SVM              \\
+              \hline
+              Precision [$\%$]        & $\boldsymbol{41}$ (59) & 36 (51)             & 39 (54)             \\
+              \hline
+              Recall [$\%$]           & $\boldsymbol{80}$ (59) & 74 (51)             & 63 (54)             \\
+              \hline
+              F1 [$\%$]               & $\boldsymbol{54}$ (53) & 48 (44)             & 48 (52)             \\
+              \hline
+              AUC [$\%$]              & $\boldsymbol{59}$      & 51                  & 54                  \\
+              \hline
+              Mean Rolling AUC [$\%$] & $\boldsymbol{57}$      & 50                  & 53                  \\
+              \hline
+              FPR [$\%$]              & $\boldsymbol{47}$      & 56                  & 48                  \\
+              \hline
+              Avg. Latency [ms]       & 1.45                   & $\boldsymbol{0.05}$ & $\boldsymbol{0.05}$ \\
+              \hline
+            \end{tabular}
+          \end{center}
+        \end{table}
 
   \item
         \begin{comment}
@@ -298,33 +298,33 @@ This paper presents an interesting and potentially useful framework called AID f
         The detailed analysis revealed that our proposed method exhibits a higher precision in detecting root causes compared to DBStream. We have disclosed the results of this comparison in Table 3.
 
         \begin{table}[htbp]
-            \caption{Evaluation of AID and DBStream models optimized for adjusted mutual information score on CATS dataset. The best-performing model is highlighted in bold. Perfect clustering achieves 100\% in each metric.}
-            \begin{center}
-                \label{tab:perf_comp_cluster}
-                \begin{tabular}{|l|c|c|}
-                    \hline
-                    \textbf{Algorithm}          & AID               & DBStream \\
-                    \hline
-                    Adjusted Mutual Info [$\%$] & $\boldsymbol{13}$ & 2        \\
-                    \hline
-                    Adjusted Rand [$\%$]        & $\boldsymbol{20}$ & 1        \\
-                    \hline
-                    Completeness [$\%$]         & $\boldsymbol{9}$ & 1       \\
-                    \hline
-                    Fowlkes-Mallows [$\%$]      & $\boldsymbol{87}$ & 67       \\
-                    \hline
-                    VBeta [$\%$]                & $\boldsymbol{14}$ & 2       \\
-                    \hline
-                \end{tabular}
-            \end{center}
+          \caption{Evaluation of AID and DBStream models optimized for adjusted mutual information score on CATS dataset. The best-performing model is highlighted in bold. Perfect clustering achieves 100\% in each metric.}
+          \begin{center}
+            \label{tab:perf_comp_cluster}
+            \begin{tabular}{|l|c|c|}
+              \hline
+              \textbf{Algorithm}          & AID               & DBStream \\
+              \hline
+              Adjusted Mutual Info [$\%$] & $\boldsymbol{13}$ & 2        \\
+              \hline
+              Adjusted Rand [$\%$]        & $\boldsymbol{20}$ & 1        \\
+              \hline
+              Completeness [$\%$]         & $\boldsymbol{9}$  & 1        \\
+              \hline
+              Fowlkes-Mallows [$\%$]      & $\boldsymbol{87}$ & 67       \\
+              \hline
+              VBeta [$\%$]                & $\boldsymbol{14}$ & 2        \\
+              \hline
+            \end{tabular}
+          \end{center}
         \end{table}
 
 
-      \begin{table}[htbp]
-            \centering
-            \caption{Found optimal hyperparameters and searched ranges of AID and DBStream models optimized for adjusted mutual information score on CATS dataset.}
-            \label{tab:hyperparam_comp_cluster}
-            \begin{tabular}{|l|l|c|c|}
+        \begin{table}[htbp]
+          \centering
+          \caption{Found optimal hyperparameters and searched ranges of AID and DBStream models optimized for adjusted mutual information score on CATS dataset.}
+          \label{tab:hyperparam_comp_cluster}
+          \begin{tabular}{|l|l|c|c|}
             \hline
             \textbf{Algorithm} & \textbf{Hyperparameters} & \textbf{Found} & \textbf{Ranges} \\
             \hline
@@ -338,34 +338,34 @@ This paper presents an interesting and potentially useful framework called AID f
             \begin{tabular}[c]{@{}c@{}}691\\15.68\\0.3547\\1.37\\4.4\end{tabular} &
             \begin{tabular}[c]{@{}c@{}}(1, 1000)\\(0.01, 100)\\(0.0001, 1.0)\\(0.03, 3.0)\\(0.1, 10)\end{tabular} \\
             \hline
-            \end{tabular}
-      \end{table}
-
-        \begin{table}[htbp]
-            \caption{Evaluation of AID and DBStream models optimized for macro of F1 score on CATS dataset. The best-performing model is highlighted in bold. Perfect clustering achieves 100\% in each metric. Values in brackets represent macro values of the metric.}
-            \begin{center}
-                \label{tab:perf_comp_multiclass}
-                \begin{tabular}{|l|c|c|}
-                    \hline
-                    \textbf{Algorithm}        & AID               & DBStream \\
-                    \hline
-                    Weighted Precision [$\%$] & $\boldsymbol{96}~(\boldsymbol{46})$ & 93~(27)       \\
-                    \hline
-                    Weighted Recall [$\%$]    & $86~(\boldsymbol{21})$ & $\boldsymbol{96}~(16)$        \\
-                    \hline
-                    Weighted F1 [$\%$]        & $90~(\boldsymbol{26})$ & $\boldsymbol{95}~(18)$        \\
-                    \hline
-                    FPR [$\%$]        & $\boldsymbol{1}$ & $\boldsymbol{1}$        \\
-                    \hline
-                \end{tabular}
-            \end{center}
+          \end{tabular}
         \end{table}
 
         \begin{table}[htbp]
-            \centering
-            \caption{Found optimal hyperparameters and searched ranges of AID and DBStream models optimized for macro of F1 score on CATS dataset.}
-            \label{tab:hyperparam_comp_multiclass}
-            \begin{tabular}{|l|l|c|c|}
+          \caption{Evaluation of AID and DBStream models optimized for macro of F1 score on CATS dataset. The best-performing model is highlighted in bold. Perfect clustering achieves 100\% in each metric. Values in brackets represent macro values of the metric.}
+          \begin{center}
+            \label{tab:perf_comp_multiclass}
+            \begin{tabular}{|l|c|c|}
+              \hline
+              \textbf{Algorithm}        & AID                                 & DBStream               \\
+              \hline
+              Weighted Precision [$\%$] & $\boldsymbol{96}~(\boldsymbol{46})$ & 93~(27)                \\
+              \hline
+              Weighted Recall [$\%$]    & $86~(\boldsymbol{21})$              & $\boldsymbol{96}~(16)$ \\
+              \hline
+              Weighted F1 [$\%$]        & $90~(\boldsymbol{26})$              & $\boldsymbol{95}~(18)$ \\
+              \hline
+              FPR [$\%$]                & $\boldsymbol{1}$                    & $\boldsymbol{1}$       \\
+              \hline
+            \end{tabular}
+          \end{center}
+        \end{table}
+
+        \begin{table}[htbp]
+          \centering
+          \caption{Found optimal hyperparameters and searched ranges of AID and DBStream models optimized for macro of F1 score on CATS dataset.}
+          \label{tab:hyperparam_comp_multiclass}
+          \begin{tabular}{|l|l|c|c|}
             \hline
             \textbf{Algorithm} & \textbf{Hyperparameters} & \textbf{Found} & \textbf{Ranges}\\
             \hline
@@ -379,8 +379,8 @@ This paper presents an interesting and potentially useful framework called AID f
             \begin{tabular}[c]{@{}c@{}}605\\9.25\\0.8090\\0.45\\3.7\end{tabular} &
             \begin{tabular}[c]{@{}c@{}}(1, 1000)\\(0.01, 100)\\(0.0001, 1.0)\\(0.03, 3.0)\\(0.1, 10)\end{tabular} \\
             \hline
-            \end{tabular}
-      \end{table}
+          \end{tabular}
+        \end{table}
 
 \end{enumerate}
 
