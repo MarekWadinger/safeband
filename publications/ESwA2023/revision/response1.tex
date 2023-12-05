@@ -57,9 +57,9 @@ List of main changes:
 %         indicating required computation and consumed memory.
 %   \item Section 6.2 was enriched to address reviewers' comments.
 %   \item Conclusions was modified according to reviewers' requests.
+  \item Introduction was enriched to address reviewers' comments.
   \item Figure 2 was added to illustrate the definition of anomalies to address reviewers' comments.
   \item Captions in Figures 5,6,7 (labeled as Figures 4,5,6 in the previous manuscript) were reworded to make them more illuminating.
-  \item Added other self-supervised change-point detection method from~\cite{Deldari2021} in the Introduction.
   \item Table 2 was transposed to allow for new metrics to be added.
   \item False Alarm Rate, AUC, and Mean of Rolling AUC were added to the results in Table 2 to address reviewers' comments.
   \item Section 4.4 was added to address reviewers' suggestion on scalability analysis.
@@ -119,17 +119,17 @@ This paper proposes a new online anomlay detection method and verifies its effec
         {\bf Response:}
         We appreciate the reviewer's suggestion and acknowledgment of the reference ~\cite{Deldari2021}. We have incorporated the reference into the Introduction section of the paper to enrich the discussion.
 
-        We found the suggested reference highly relevant in the paragraph discussing the need for an early change point detection mechanism. After mentioned remark of Tartakovsky from 2013~\cite{Tartakovsky2013}, that the immediate change point detection is not a feasible option unless there is a high tolerance for false alarms, we refer to the contrastive learning approach of suggested reference~\cite{Deldari2021} as a promising balance between early transition detection and low false alarm rate. We believe this helps to reflect the current state of the research better.
+        We found the suggested reference highly relevant in the paragraph discussing the need for an early change point detection mechanism. After mentioned remark of Tartakovsky from 2013~\cite{Tartakovsky2013}, that the immediate change point detection is not a feasible option unless there is a high tolerance for false alarms, we refer to the contrastive learning approach of reviewer's suggested reference~\cite{Deldari2021} as a promising balance between early transition detection and low false alarm rate. We believe this helps to reflect the current state of the research better.
   \item
         \begin{comment}
         It seems that using ARIMA or moving average can easily detect the anomalies or change points on the real-world datasets.
         \end{comment}
         {\bf Response:}
-        We acknowledge this observation of ARIMA and moving averages usage for anomaly and change point detection tasks on real-world datasets. We have applied univariate methods from this family on data from the first case study and added two recent publications dealing with online vectorized adaptation of ARIMA to the Introduction.
+        We acknowledge this observation of ARIMA and moving averages usage for anomaly and change point detection tasks on real-world datasets. To address this observation, we included in the Introduction two recent publications dealing with offline vectorized adaptation of ARIMA for complex systems. Moreover, the reviewer's suggestion motivated our effort to apply methods from this family to data from the first case study. We were unable to find a suitable implementation of online-trained ARIMA for vectorized usage, resulting in the selection of an online univariate implementation. Due to the univariate nature and limitations discussed below, we did not include the results in the revised manuscript.
 
         Referring to Figure~\ref{fig:snarimax}, it seems that unique challenges posed by online anomaly detection in evolving data streams within real-world datasets present some obstacles for ARIMA and moving average methods.
 
-        We performed Bayesian optimization of the Seasonal Non-linear AutoRegressive Integrated Moving-Average with eXogenous inputs model (SNARIMAX)~\cite{Anava2013} and its special parametrization cases for the data from the first case study. Various metrics, with and without running mean, were tested for optimization, selecting Median Absolute Error (MedAE) as the one with the best convergence and highest robustness toward anomalies. Five step ahead forecast of normalized temperature was used for evaluation, showing good balance between discrimination and precision. We made several observations on the performance of the methods.
+        In an effort to achieve the best performance, we performed Bayesian optimization of the Seasonal Non-linear AutoRegressive Integrated Moving-Average with eXogenous inputs model (SNARIMAX)~\cite{Anava2013} and its special parametrization cases for the data from the first case study. Various metrics, with and without running mean, were tested in the cost function, selecting Median Absolute Error (MedAE) as one with the best convergence and highest robustness toward anomalies. Five step ahead forecast of normalized temperature was used for evaluation, showing a good balance between anomaly discrimination and accurate tracking. We made several observations on the performance of the methods.
 
         \begin{figure}[htbp]
             \centerline{\includegraphics[width=\textwidth]{ARIMA_opt_results.pdf}}
@@ -137,13 +137,13 @@ This paper proposes a new online anomlay detection method and verifies its effec
             \label{fig:snarimax}
       \end{figure}
 
-       Firstly, the moving average (MA) method's forecast alone discriminates outliers well. Nevertheless, it shows little sensitivity to abrupt regular changes of temperatures from 5th to 7th March, which would be marked as anomalous, along with true anomalies by a simple threshold filter. Secondly, the autoregressive (AR) method exhibits high sensitivity to point anomaly before 13th March, resulting in ongoing instability (sensor reports 0 on 12th March from 21:15 to 21:22 though barely visible on Figure~\ref{fig:snarimax}). Moreover, using differencing to remove trends and seasonality with the AR method (ARI) further decreased stability during the formerly mentioned event on 12th March and, combined with the moving average method (IMA), added significant noise to predictions.
+       Firstly, the moving average (MA) method's forecast alone discriminates outliers well. Nevertheless, it shows little sensitivity to abrupt regular changes of temperatures from 5th to 7th March, which would be falsely marked as anomalous, along with true anomalies by a simple threshold filter. Secondly, the autoregressive (AR) method exhibits high sensitivity to point anomaly before 13th March, resulting in ongoing instability (though barely visible, sensor reports 0.0 on 12th March from 21:15 to 21:22 in Figure~\ref{fig:snarimax}).
+       
+       Using differencing to remove trends and seasonality with the AR method (ARI) further decreased stability during the formerly mentioned event starting on 12th March at 21:15 and, combined with the moving average method (IMA), added significant noise to predictions during whole evaluated history. Despite hyperparameter optimization and evaluation with engineered time-based features, we did not observe satisfactory results with ARIMA and SNARIMAX models. 
+        
+        Protection of the model from learning anomalous data through threshold filters, to mitigate their effect on the model's performance, and intelligent adaptation to change points and non-stationary may improve the performance. Nevertheless, due to the extent of the work required, we decided to leave the inclusion of these features as a potential avenue for future work.
 
-        Despite hyperparameter optimization and evaluation with engineered time-based features, we did not observe satisfactory results with ARIMA and SNARIMAX models. Protecting the model from learning anomalous data through threshold filters and intelligent adaptation to change points may improve the performance. Due to the extent of the work required, we decided to leave the inclusion of these features as a potential avenue for future work.
-
-        We want to emphasize that other features of our approach should not be overlooked in adaptive and interpretable anomaly detection and diagnosis tasks. Notably, it is the ability to adapt to non-stationary data streams and detect anomalies and change points in real-world datasets while robustly mitigating their effect on the model's performance.
-
-        A critical feature of our proposed method within SCADA-based systems is the ability to dynamically render process limits for individual signals, enhancing diagnostic capabilities. While a similar task could be achieved with ARIMA, it requires extensive fine-tuning of an ensemble of ARIMA models for each signal in the system. Vectorization of this task is a potential improvement.
+        A critical feature of our proposed method within SCADA-based systems is the ability to dynamically render process limits for individual signals, enhancing diagnostic capabilities. While a similar task could be achieved with ARIMA, it requires extensive fine-tuning of an ensemble of ARIMA models for each signal in the system. Vectorization of this task may significantly speed up this process.
 
         Our literature review indicates that Vector Autoregression, the multivariate extension of ARIMA, could efficiently model multivariate time series, as explored in papers such as \cite{Melnyk2016, Zhang2023}. However, our research focuses on online anomaly detection for evolving data streams, and the need for a vectorized implementation for online-trained ARIMA limits its usage in our comparisons. Future research could explore extending ARIMA to its multivariate counterpart for online training.
 
