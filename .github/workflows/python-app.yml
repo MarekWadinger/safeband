@@ -34,8 +34,9 @@ jobs:
         cache: 'pip' # caching pip dependencies
     - name: Install dependencies
       run: |
+        curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y && rustup show
         python -m pip install --upgrade pip
-        pip install flake8 pytest pytest-html pytest-cov "genbadge[all]"
+        pip install flake8 pytest pytest-html pytest-cov setuptools-rust "genbadge[all]"
         pip install -r requirements.txt
     - name: Check with ruff
       uses: chartboost/ruff-action@v1
