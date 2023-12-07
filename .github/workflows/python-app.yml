@@ -32,9 +32,12 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip' # caching pip dependencies
-    - name: Install dependencies
+    - name: Install Rust on ubuntu
+      if: matrix.os == 'Ubuntu'
       run: |
         curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y && rustup show
+    - name: Install dependencies
+      run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest pytest-html pytest-cov setuptools-rust "genbadge[all]"
         pip install -r requirements.txt
