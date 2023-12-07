@@ -26,7 +26,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     >>> p.n_samples
     0.0
     >>> for x in X.to_dict(orient="records"):
-    ...     p = p.update(x)
+    ...     p.update(x)
     >>> p.mu
     {'blue': 0.517..., 'green': 0.386..., 'red': 0.415...}
     >>> p.mv_conditional(p.mu, "red", p.mu, p.var)

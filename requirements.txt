@@ -3,7 +3,7 @@ bayesian-optimization==1.4.3
 cryptography==41.0.4
 git+https://github.com/MarekWadinger/river.git ; sys_platform == "darwin" or (sys_platform == "linux" and platform_machine == "aarch64" and (implementation_version == "3.12.*" or implementation_version == "3.11.*"))
 # Try to install from wheel for others
-river~=0.20.1 ; sys_platform == "linux" and (implementation_version != "3.11.*" or implementation_version != "3.12.*") and platform_machine != "aarch64"
+river~=0.21.0 ; sys_platform == "linux" and (implementation_version != "3.11.*" or implementation_version != "3.12.*") and platform_machine != "aarch64"
 human_security==1.0
 matplotlib==3.7.0
 paho-mqtt==1.6.1
