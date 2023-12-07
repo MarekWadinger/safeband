@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.11.3-slim
+FROM python:3.11-slim
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -26,8 +26,7 @@ RUN pip install -q --no-cache-dir -U -r requirements.txt
 # # Copy the current directory contents into the container at /app (except .dockerignore)
 COPY . /app
 
+WORKDIR /app/examples
+
 # Run rpc_client.py when the container launches
-CMD ["python", "rpc_client.py", "--topic", \
-     "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power", \
-     "shellies/Shelly3EM-Main-Switchboard-C/emeter/1/power", \
-     "shellies/Shelly3EM-Main-Switchboard-C/emeter/2/power"]
+CMD ["python", "comparison_diagnostics.py"]

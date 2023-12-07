@@ -9,3 +9,6 @@
 !rpc_server.py
 !rpc_client.py
 !config.ini
+!examples/data/multivariate/cats/
+!examples/.results/
+!examples/comparison_diagnostics.py

@@ -1,0 +1,185 @@
+@inproceedings{Deldari2021,
+  author    = {Deldari, Shohreh and Smith, Daniel V. and Xue, Hao and Salim, Flora D.},
+  title     = {Time Series Change Point Detection with Self-Supervised Contrastive Predictive Coding},
+  year      = {2021},
+  isbn      = {9781450383127},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/3442381.3449903},
+  doi       = {10.1145/3442381.3449903},
+  abstract  = {Change Point Detection (CPD) methods identify the times associated with changes in the trends and properties of time series data in order to describe the underlying behaviour of the system. For instance, detecting the changes and anomalies associated with web service usage, application usage or human behaviour can provide valuable insights for downstream modelling tasks. We propose a novel approach for self-supervised Time Series Change Point detection method based on Contrastive Predictive coding (TS - CP2). TS - CP2 is the first approach to employ a contrastive learning strategy for CPD by learning an embedded representation that separates pairs of embeddings of time adjacent intervals from pairs of interval embeddings separated across time. Through extensive experiments on three diverse, widely used time series datasets, we demonstrate that our method outperforms five state-of-the-art CPD methods, which include unsupervised and semi-supervised approaches. TS - CP2 is shown to improve the performance of methods that use either handcrafted statistical or temporal features by 79.4\% and deep learning-based methods by 17.0\% with respect to the F1-score averaged across the three datasets.},
+  booktitle = {Proceedings of the Web Conference 2021},
+  pages     = {3124-3135},
+  numpages  = {12},
+  keywords  = {Time series change point detection, Anomaly detection, Unsupervised learning, Contrastive learning},
+  location  = {Ljubljana, Slovenia},
+  series    = {WWW '21}
+}
+
+@article{Tartakovsky2013,
+  author   = {Tartakovsky, Alexander G. and Polunchenko, Aleksey S. and Sokolov, Grigory},
+  journal  = {IEEE Journal of Selected Topics in Signal Processing},
+  title    = {Efficient Computer Network Anomaly Detection by Changepoint Detection Methods},
+  year     = {2013},
+  volume   = {7},
+  number   = {1},
+  pages    = {4-11},
+  abstract = {We consider the problem of efficient on-line anomaly detection in computer network traffic. The problem is approached statistically, as that of sequential (quickest) changepoint detection. A multi-cyclic setting of quickest change detection is a natural fit for this problem. We propose a novel score-based multi-cyclic detection algorithm. The algorithm is based on the so-called Shiryaev-Roberts procedure. This procedure is as easy to employ in practice and as computationally inexpensive as the popular Cumulative Sum chart and the Exponentially Weighted Moving Average scheme. The likelihood ratio based Shiryaev-Roberts procedure has appealing optimality properties, particularly it is exactly optimal in a multi-cyclic setting geared to detect a change occurring at a far time horizon. It is therefore expected that an intrusion detection algorithm based on the Shiryaev-Roberts procedure will perform better than other detection schemes. This is confirmed experimentally for real traces. We also discuss the possibility of complementing our anomaly detection algorithm with a spectral-signature intrusion detection system with false alarm filtering and true attack confirmation capability, so as to obtain a synergistic system.},
+  keywords = {},
+  doi      = {10.1109/JSTSP.2012.2233713},
+  issn     = {1941-0484},
+  month    = {Feb}
+}
+
+@article{Brzezinski2017,
+  author   = {Brzezinski, Dariusz
+              and Stefanowski, Jerzy},
+  title    = {Prequential AUC: properties of the area under the ROC curve for data streams with concept drift},
+  journal  = {Knowledge and Information Systems},
+  year     = {2017},
+  month    = {Aug},
+  day      = {01},
+  volume   = {52},
+  number   = {2},
+  pages    = {531-562},
+  abstract = {Modern data-driven systems often require classifiers capable of dealing with streaming imbalanced data and concept changes. The assessment of learning algorithms in such scenarios is still a challenge, as existing online evaluation measures focus on efficiency, but are susceptible to class ratio changes over time. In case of static data, the area under the receiver operating characteristics curve, or simply AUC, is a popular measure for evaluating classifiers both on balanced and imbalanced class distributions. However, the characteristics of AUC calculated on time-changing data streams have not been studied. This paper analyzes the properties of our recent proposal, an incremental algorithm that uses a sorted tree structure with a sliding window to compute AUC with forgetting. The resulting evaluation measure, called prequential AUC, is studied in terms of: visualization over time, processing speed, differences compared to AUC calculated on blocks of examples, and consistency with AUC calculated traditionally. Simulation results show that the proposed measure is statistically consistent with AUC computed traditionally on streams without drift and comparably fast to existing evaluation procedures. Finally, experiments on real-world and synthetic data showcase characteristic properties of prequential AUC compared to classification accuracy, G-mean, Kappa, Kappa M, and recall when used to evaluate classifiers on imbalanced streams with various difficulty factors.},
+  issn     = {0219-3116},
+  doi      = {10.1007/s10115-017-1022-8},
+  url      = {https://doi.org/10.1007/s10115-017-1022-8}
+}
+
+@inproceedings{Melnyk2016,
+  author    = {Melnyk, Igor and Banerjee, Arindam and Matthews, Bryan and Oza, Nikunj},
+  title     = {Semi-Markov Switching Vector Autoregressive Model-Based Anomaly Detection in Aviation Systems},
+  year      = {2016},
+  isbn      = {9781450342322},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/2939672.2939789},
+  doi       = {10.1145/2939672.2939789},
+  abstract  = {In this work we consider the problem of anomaly detection in heterogeneous, multivariate, variable-length time series datasets. Our focus is on the aviation safety domain, where data objects are flights and time series are sensor readings and pilot switches. In this context the goal is to detect anomalous flight segments, due to mechanical, environmental, or human factors in order to identifying operationally significant events and highlight potential safety risks. For this purpose, we propose a framework which represents each flight using a semi-Markov switching vector autoregressive (SMS-VAR) model. Detection of anomalies is then based on measuring dissimilarities between the model's prediction and data observation. The framework is scalable, due to the inherent parallel nature of most computations, and can be used to perform online anomaly detection. Extensive experimental results on simulated and real datasets illustrate that the framework can detect various types of anomalies along with the key parameters involved.},
+  booktitle = {Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+  pages     = {1065–1074},
+  numpages  = {10},
+  keywords  = {time series analysis, anomaly detection, graphical model},
+  location  = {San Francisco, California, USA},
+  series    = {KDD '16}
+}
+
+@article{Zhang2023,
+  author   = {Zhang, Ruiyao and Zhou, Ping and Qiao, Junfei},
+  journal  = {IEEE Transactions on Reliability},
+  title    = {Anomaly Detection of Nonstationary Long-Memory Processes Based on Fractional Cointegration Vector Autoregression},
+  year     = {2023},
+  volume   = {},
+  number   = {},
+  pages    = {1-12},
+  abstract = {Aiming at the nonstationary characteristics of many practical industrial systems as well as the long memory and seasonality of some process data, this article proposes a novel nonstationary process anomaly detection method based on fractional cointegration vector autoregression (FCVAR). First, the augmented Dickey-Fuller (ADF) test is used to divide the variables into stationary and nonstationary categories. For the nonstationary variables, the trend extraction algorithm is used to extract the nonstationary trend of the variables to avoid the trend information from being overwhelmed due to the strong seasonality of the process data. Meanwhile, considering that the extracted trend time series have a long-memory characteristic and the fractional cointegration describes the intrinsic long-term equilibrium relationship of the trend series better than the integer cointegration, a novel anomaly detection algorithm based on the FCVAR model is proposed. For the stationary variables, including the original stationary variables and the detrended series of nonstationary variables after trend extraction, the proposed method merges the two components into a new matrix and establishes an anomaly detection model based on the kernel principal component analysis (kpca) algorithm. Finally, simulations using wastewater treatment process (WWTP) data have indicated that the proposed method achieves the desired results and exhibits high detection performance, particularly in the detection of tiny gradual-type anomalies.},
+  keywords = {},
+  doi      = {10.1109/TR.2023.3314429},
+  issn     = {1558-1721},
+  month    = {}
+}
+
+@article{Anava2013,
+  author     = {Oren Anava and
+                Elad Hazan and
+                Shie Mannor and
+                Ohad Shamir},
+  title      = {Online Learning for Time Series Prediction},
+  journal    = {CoRR},
+  volume     = {abs/1302.6927},
+  year       = {2013},
+  url        = {http://arxiv.org/abs/1302.6927},
+  eprinttype = {arXiv},
+  eprint     = {1302.6927},
+  timestamp  = {Mon, 13 Aug 2018 16:48:39 +0200},
+  biburl     = {https://dblp.org/rec/journals/corr/abs-1302-6927.bib},
+  bibsource  = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{Yang2022,
+  title    = {An interpretable unsupervised Bayesian network model for fault detection and diagnosis},
+  journal  = {Control Engineering Practice},
+  volume   = {127},
+  pages    = {105304},
+  year     = {2022},
+  issn     = {0967-0661},
+  doi      = {https://doi.org/10.1016/j.conengprac.2022.105304},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0967066122001502},
+  author   = {Wei-Ting Yang and Marco S. Reis and Valeria Borodin and Michel Juge and Agnès Roussy},
+  keywords = {Bayesian Network (BN), eXplanatory Artificial Intelligence (XAI), Fault detection, Fault diagnosis, Interpretable machine learning},
+  abstract = {Process monitoring is a critical activity in manufacturing industries. A wide variety of data-driven approaches have been developed and employed for fault detection and fault diagnosis. Analyzing the existing process monitoring schemes, prediction accuracy of the process status is usually the primary focus while the explanation (diagnosis) of a detected fault is relegated to a secondary role. In this paper, an interpretable unsupervised machine learning model based on Bayesian Networks (BN) is proposed to be the fundamental model supporting the process monitoring scheme. The proposed methodology is aligned with the recent efforts of eXplanatory Artificial Intelligence (XAI) for knowledge induction and decision making, now brought to the scope of advanced process monitoring. A BN is capable of combining data-driven induction with existing domain knowledge about the process and to display the underlying causal interactions of a process system in an easily interpretable graphical form. The proposed fault detection scheme consists of two levels of monitoring. In the first level, a global index is computed and monitored to detect any deviation from normal operation conditions. In the second level, two local indices are proposed to examine the fine structure of the fault, once it is signaled at the first level. These local indices support the diagnosis of the fault, and are based on the individual unconditional and conditional distributions of the monitored variables. A new labeling procedure is also proposed to narrow down the search and identify the fault type. Unlike many existing diagnosis methods that require access to faulty data (supervised diagnosis methods), the proposed diagnosis methodology belongs to the class that only requires data under normal conditions (unsupervised diagnosis methods). The effectiveness of the proposed monitoring scheme is demonstrated and validated through simulated datasets and an industrial dataset from semiconductor manufacturing.}
+}
+
+@article{Steenwinckel2021,
+  title    = {FLAGS: A methodology for adaptive anomaly detection and root cause analysis on sensor data streams by fusing expert knowledge with machine learning},
+  journal  = {Future Generation Computer Systems},
+  volume   = {116},
+  pages    = {30-48},
+  year     = {2021},
+  issn     = {0167-739X},
+  doi      = {https://doi.org/10.1016/j.future.2020.10.015},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0167739X20329927},
+  author   = {Bram Steenwinckel and Dieter {De Paepe} and Sander {Vanden Hautte} and Pieter Heyvaert and Mohamed Bentefrit and Pieter Moens and Anastasia Dimou and Bruno {Van Den Bossche} and Filip {De Turck} and Sofie {Van Hoecke} and Femke Ongenae},
+  keywords = {Anomaly detection, Root cause analysis, Machine learning, Semantic web, Internet of Things, Fused AI, User feedback},
+  abstract = {Anomalies and faults can be detected, and their causes verified, using both data-driven and knowledge-driven techniques. Data-driven techniques can adapt their internal functioning based on the raw input data but fail to explain the manifestation of any detection. Knowledge-driven techniques inherently deliver the cause of the faults that were detected but require too much human effort to set up. In this paper, we introduce FLAGS, the Fused-AI interpretabLe Anomaly Generation System, and combine both techniques in one methodology to overcome their limitations and optimize them based on limited user feedback. Semantic knowledge is incorporated in a machine learning technique to enhance expressivity. At the same time, feedback about the faults and anomalies that occurred is provided as input to increase adaptiveness using semantic rule mining methods. This new methodology is evaluated on a predictive maintenance case for trains. We show that our method reduces their downtime and provides more insight into frequently occurring problems.}
+}
+
+@article{Li2019,
+  author  = {Li, Da and Zhang, Zhaosheng and Liu, Peng and Wang, Zhenpo},
+  year    = {2019},
+  month   = {08},
+  pages   = {2977},
+  title   = {DBSCAN-Based Thermal Runaway Diagnosis of Battery Systems for Electric Vehicles},
+  volume  = {12},
+  journal = {Energies},
+  doi     = {10.3390/en12152977}
+}
+
+@article{Liu2020,
+  author         = {Liu, Yongxin and Song, Bin and Wang, Linong and Gao, Jiachen and Xu, Rihong},
+  title          = {Power Transformer Fault Diagnosis Based on Dissolved Gas Analysis by Correlation Coefficient-DBSCAN},
+  journal        = {Applied Sciences},
+  volume         = {10},
+  year           = {2020},
+  number         = {13},
+  article-number = {4440},
+  url            = {https://www.mdpi.com/2076-3417/10/13/4440},
+  issn           = {2076-3417},
+  abstract       = {The transformers work in a complex environment, which makes them prone to failure. Dissolved gas analysis (DGA) is one of the most important methods for oil-immersed transformers&rsquo; internal insulation fault diagnosis. In view of the high correlation of the same fault data of transformers, this paper proposes a new method for transformers&rsquo; fault diagnosis based on correlation coefficient density clustering, which uses density clustering to extrapolate the correlation coefficient of DGA data. Firstly, we calculated the correlation coefficient of dissolved gas content in the fault transformers oil and enlarged the correlation of the same fault category by introducing the amplification coefficient, and finally we used the density clustering method to cluster diagnosis. The experimental results show that the accuracy of clustering is improved by 32.7% compared with the direct clustering judgment without using correlation coefficient, which can effectively cluster different types of transformers fault modes. This method provides a new idea for transformers fault identification, and has practical application value.},
+  doi            = {10.3390/app10134440}
+}
+
+@article{Li2020,
+  title    = {Fault diagnosis of rolling bearing using symmetrized dot pattern and density-based clustering},
+  journal  = {Measurement},
+  volume   = {152},
+  pages    = {107293},
+  year     = {2020},
+  issn     = {0263-2241},
+  doi      = {https://doi.org/10.1016/j.measurement.2019.107293},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0263224119311571},
+  author   = {Hai Li and Wei Wang and Pu Huang and Qingzhao Li},
+  keywords = {Rolling bearing, Fault diagnosis, Symmetrized dot pattern analysis, Density-based clustering},
+  abstract = {The rolling bearing usually works under complex working conditions, which makes it more susceptible to mechanical failure. The vibration signals are usually complex, nonlinear and non-stationary. This paper proposed a novel diagnosis method for rolling bearing combined with the adaptive symmetrized dot pattern and density-based spatial clustering of applications with noise (ASDP-DBSCAN). Firstly, the SDP technique is briefly introduced and then the vibration signals are reconstructed by the SDP pattern. Secondly, in order to maximize the difference between SDP patterns, a novel parameter optimization method of SDP pattern is presented combined with Hill function and genetic algorithm (HFGA), which is conducive to improve diagnostic accuracy. Then, an improved DBSCAN is used to generate clustering template so as to reduce the effect of noise on diagnostic accuracy. Furthermore, the similarity analysis between clustering template and unknown SDP pattern is used to fault classification. Finally, the proposed method is applied to fault diagnosis for the rolling bearing. The experimental results validate that the proposed method is more effective than other methods for rolling bearing fault diagnosis.}
+}
+
+@article{Hahsler2016,
+author = {Hahsler, Michael and Bolaos, Matthew},
+title = {Clustering Data Streams Based on Shared Density between Micro-Clusters},
+year = {2016},
+issue_date = {June 2016},
+publisher = {IEEE Educational Activities Department},
+address = {USA},
+volume = {28},
+number = {6},
+issn = {1041-4347},
+url = {https://doi.org/10.1109/TKDE.2016.2522412},
+doi = {10.1109/TKDE.2016.2522412},
+abstract = {As more and more applications produce streaming data, clustering data streams has become an important technique for data and knowledge engineering. A typical approach is to summarize the data stream in real-time with an online process into a large number of so called micro-clusters. Micro-clusters represent local density estimates by aggregating the information of many data points in a defined area. On demand, a (modified) conventional clustering algorithm is used in a second offline step to recluster the micro-clusters into larger final clusters. For reclustering, the centers of the micro-clusters are used as pseudo points with the density estimates used as their weights. However, information about density in the area between micro-clusters is not preserved in the online process and reclustering is based on possibly inaccurate assumptions about the distribution of data within and between micro-clusters (e.g., uniform or Gaussian). This paper describes DBSTREAM, the first micro-cluster-based online clustering component that explicitly captures the density between micro-clusters via a shared density graph. The density information in this graph is then exploited for reclustering based on actual density between adjacent micro-clusters. We discuss the space and time complexity of maintaining the shared density graph. Experiments on a wide range of synthetic and real data sets highlight that using shared density improves clustering quality over other popular data stream clustering methods which require the creation of a larger number of smaller micro-clusters to achieve comparable results.},
+journal = {IEEE Trans. on Knowl. and Data Eng.},
+month = {jun},
+pages = {1449–1461},
+numpages = {13}
+}

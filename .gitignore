@@ -41,7 +41,7 @@ plots/
 !**/data/output/
 
 # Misc
-legacy/
+config.ini
 tests/*
 !tests/test.csv
 !tests/sample.json

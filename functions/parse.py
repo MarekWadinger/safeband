@@ -39,7 +39,7 @@ def get_args() -> Namespace:
     Example:
     >>> import sys
     >>> # Simulate command line arguments
-    >>> sys.argv = ['program.py', '-f', 'config.ini', '-r', 'recovery_path',
+    >>> sys.argv = ['program.py', '-f', 'example.ini', '-r', 'recovery_path',
     ...             '-k', 'key_path', '--threshold', '0.5', '--t-e', '2h',
     ...             '--t-a', '1d', '--t-g', '3w', '-t', 'topic1', 'topic2',
     ...             '--out-topics', 'output1', 'output2', '--path', '/data',
@@ -48,7 +48,7 @@ def get_args() -> Namespace:
     ...             '--service-url', 'pulsar-service', '--debug', 'True']
     >>> args = get_args()
     >>> args.config_file.name
-    'config.ini'
+    'example.ini'
     >>> args.recovery_path
     'recovery_path'
     >>> args.key_path
