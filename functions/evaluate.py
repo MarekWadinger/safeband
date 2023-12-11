@@ -135,9 +135,11 @@ def progressive_val_predict(  # noqa: C901
         ).parameters.get("t"):
             model = model.learn_one(x_, **{"t": t})
         elif hasattr(model, "_supervised") and model._supervised:
-            model = model.learn_one(x_, y)
+            model_up = model.learn_one(x_, y)
+            model = model_up if model_up is not None else model
         else:
-            model = model.learn_one(x_)
+            model_up = model.learn_one(x_)
+            model = model_up if model_up is not None else model
 
         if compute_latency:
             meta["Latency"].append((time.time() - start_i) * 1000)
