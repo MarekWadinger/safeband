@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, FileType, Namespace
 from configparser import ConfigParser
-from os import getenv
+from os import getenv, path
 from typing import Union
 
 from pandas import Timedelta
@@ -85,8 +85,14 @@ def get_args() -> Namespace:
     setup_arg_grp = parser.add_argument_group(
         "setup", "setup related parameters"
     )
+
+    def file_or_none(value):
+        if value is not None and path.isfile(value):
+            return FileType("r")(value)
+        return None
+
     setup_arg_grp.add_argument(
-        "-f", "--config-file", type=FileType("r"), default="config.ini"
+        "-f", "--config-file", type=file_or_none, default="config.ini"
     )
     setup_arg_grp.add_argument(
         "-r", "--recovery-path", help="Path to store recovery models"
@@ -402,7 +408,8 @@ def get_params() -> Config:  # pragma: no cover
     args = get_args()
 
     config_parser = ConfigParser()
-    config_parser.read_file(args.config_file)
+    if args.config_file:
+        config_parser.read_file(args.config_file)
 
     config = build_config(args, config_parser)
 
