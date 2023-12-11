@@ -548,9 +548,12 @@ class ConditionalGaussianScorer(GaussianScorer):
             cond_mean, _, cond_std = self.gaussian.mv_conditional(
                 x, var_key, mean, covariance
             )
-            scores.append(
-                norm.cdf(x[var_key], loc=cond_mean[0], scale=cond_std[0])
-            )
+            if cond_std[0] > 0:
+                scores.append(
+                    norm.cdf(x[var_key], loc=cond_mean[0], scale=cond_std[0])
+                )
+            else:
+                scores.append(0.0)
         return scores
 
     def _score_one(self, x):
@@ -582,6 +585,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         if (self.alpha > score) or (score > 1 - self.alpha):
             if hasattr(self, "_feature_names_in") and idx is not None:
                 self.root_cause = self._feature_names_in[idx]
+            elif idx is not None:
+                self.root_cause = idx
             else:
                 self.root_cause = None
             return 1

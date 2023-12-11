@@ -89,7 +89,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
             if len(observed_values) == len(mean):
                 observed_values = np.take(observed_values, obs_idxs)
 
-            cov_XY = covariance[np.ix_(obs_idxs, obs_idxs)]
+            cov_XY = np.nan_to_num(covariance[np.ix_(obs_idxs, obs_idxs)])
             cov_XZ = covariance[np.ix_(obs_idxs, var_idx_)]
             cov_ZZ = covariance[np.ix_(var_idx_, var_idx_)]
 
@@ -100,7 +100,8 @@ class MultivariateGaussian(proba.MultivariateGaussian):
             conditional_covariance = cov_ZZ - np.dot(
                 regression_coefficients, cov_XZ
             )
-            # TODO: handle very small negative covariance using tolerance
+
+            conditional_covariance[conditional_covariance < 0] = 1e-8
             conditional_std = np.sqrt(np.diag(conditional_covariance))
         return conditional_mean, conditional_covariance, conditional_std
 
