@@ -205,17 +205,24 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
     def __init__(
         self,
-        gaussian: Union[Distribution, Rolling, TimeRolling],
+        gaussian: Union[
+            Distribution, ConditionableDistribution, Rolling, TimeRolling
+        ],
         threshold: float = 0.99735,
         log_threshold: Union[float, None] = None,
         grace_period: Union[timedelta, int, None] = None,
         t_a: Union[timedelta, int, None] = None,
         protect_anomaly_detector: bool = True,
     ):
-        if not isinstance(gaussian, Distribution):
-            raise ValueError(
-                f"{gaussian} does not satisfy the necessary protocol"
-            )
+        if not isinstance(gaussian, (Distribution, ConditionableDistribution)):
+            if isinstance(gaussian, (Rolling, TimeRolling)) and isinstance(
+                gaussian.obj, (Distribution, ConditionableDistribution)
+            ):
+                pass
+            else:
+                raise ValueError(
+                    f"{gaussian} does not satisfy the necessary protocol"
+                )
         self.gaussian = gaussian
 
         if isinstance(gaussian, Rolling):
@@ -506,9 +513,14 @@ class ConditionalGaussianScorer(GaussianScorer):
         protect_anomaly_detector: bool = True,
     ):
         if not isinstance(gaussian, ConditionableDistribution):
-            raise ValueError(
-                f"{gaussian} does not satisfy the necessary protocol"
-            )
+            if isinstance(gaussian, (Rolling, TimeRolling)) and isinstance(
+                gaussian.obj, ConditionableDistribution
+            ):
+                pass
+            else:
+                raise ValueError(
+                    f"{gaussian} does not satisfy the necessary protocol"
+                )
         super().__init__(
             gaussian=gaussian,
             threshold=threshold,
