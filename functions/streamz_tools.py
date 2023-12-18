@@ -81,6 +81,7 @@ class to_mqtt(Sink):
     ...     'anomaly': 1,
     ...     'level_high': {'a': 0.5, 'b': 0.6},
     ...     'level_low': {'a': -0.5, 'b': -0.4},
+    ...     'root_cause': 'b',
     ...     }
     >>> mqtt_sink.update(out_msg)
 
@@ -115,6 +116,16 @@ class to_mqtt(Sink):
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
     def update(self, x, who=None, metadata=None):
+        def publish_many(
+            client: mqtt.Client,
+            topics: list[str],
+            payloads: list,
+            *args,
+            **kwargs,
+        ):
+            for topic, payload in zip(topics, payloads):
+                client.publish(topic, payload, *args, **kwargs)
+
         if self.client is None:
             self.client = mqtt.Client(clean_session=True)
             self.client.connect(
@@ -129,18 +140,26 @@ class to_mqtt(Sink):
             )
             if isinstance(x["level_high"], dict):
                 for key in x["level_high"]:
-                    self.client.publish(
-                        f"{key}_DOL_high", x["level_high"][key], **self.p_kw
-                    )
-                    self.client.publish(
-                        f"{key}_DOL_low", x["level_low"][key], **self.p_kw
+                    publish_many(
+                        self.client,
+                        [
+                            f"{key}_DOL_high",
+                            f"{key}_DOL_low",
+                            f"{key}_root_cause",
+                        ],
+                        [
+                            x["level_high"][key],
+                            x["level_low"][key],
+                            1 if key == x["root_cause"] else 0,
+                        ],
+                        **self.p_kw,
                     )
             else:
-                self.client.publish(
-                    f"{self.topic}_DOL_high", x["level_high"], **self.p_kw
-                )
-                self.client.publish(
-                    f"{self.topic}_DOL_low", x["level_low"], **self.p_kw
+                publish_many(
+                    self.client,
+                    [f"{self.topic}_DOL_high", f"{self.topic}_DOL_low"],
+                    [x["level_high"], x["level_low"]],
+                    **self.p_kw,
                 )
 
     def destroy(self):

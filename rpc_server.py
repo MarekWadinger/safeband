@@ -201,7 +201,7 @@ class RpcOutlierDetector:
         >>> obj = RpcOutlierDetector()
         >>> result = obj.fit_transform(x, model)
         >>> sorted(result.keys())
-        ['anomaly', 'level_high', 'level_low', 'time']
+        ['anomaly', 'level_high', 'level_low', 'root_cause', 'time']
         >>> isinstance(result["time"], str)
         True
         >>> isinstance(result["anomaly"], int)
@@ -216,10 +216,15 @@ class RpcOutlierDetector:
         else:
             x_ = next(iter(x["data"].values()))
         is_anomaly, thresh_high, thresh_low = model.process_one(x_, x["time"])
+        if isinstance(model, ConditionalGaussianScorer):
+            root_cause = model.get_root_cause()
+        else:
+            root_cause = None
         return {
             "time": str(x["time"]),
             # **x["data"], # Comment out to lessen the size of payload
             "anomaly": is_anomaly,
+            "root_cause": root_cause,
             "level_high": thresh_high,
             "level_low": thresh_low,
         }
