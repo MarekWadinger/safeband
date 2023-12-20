@@ -64,9 +64,9 @@ def progressive_val_predict(  # noqa: C901
             and all(
                 [isinstance(metric, MultiClassMetric) for metric in metrics]
             )
-            and hasattr(model, "get_root_cause")
+            and hasattr(model_, "get_root_cause")
         ):
-            is_anomaly = model.get_root_cause()
+            is_anomaly = model_.get_root_cause()
             y_pred.append(is_anomaly)
         elif hasattr(model_, "forecast"):
             ys = model_.forecast(period)
@@ -100,7 +100,7 @@ def progressive_val_predict(  # noqa: C901
 
             # ISOLATE ROT CAUSES
             if detect_signal:
-                x_ = {
+                x_in = {
                     k: v
                     for k, v in x_.items()
                     if k in model_._feature_names_in
@@ -108,7 +108,7 @@ def progressive_val_predict(  # noqa: C901
                 meta["Signal Anomaly"].append(
                     {
                         k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
-                        for i, (k, v) in enumerate(x_.items())
+                        for k, v in x_in.items()
                     }
                 )
 
