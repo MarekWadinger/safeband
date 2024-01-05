@@ -120,10 +120,10 @@ def get_args() -> Namespace:
         default=getenv("SENDER_PASSWORD"),
     )
     mail_arg_grp.add_argument(
-        "--receiver-email",
+        "--recipient-email",
         type=str,
-        help="Receiver email address",
-        default=getenv("RECEIVER_EMAIL"),
+        help="Recipient email address",
+        default=getenv("RECIPIENT_EMAIL"),
     )
 
     model_arg_grp = parser.add_argument_group(
