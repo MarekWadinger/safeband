@@ -5,7 +5,7 @@
 [![codecov](https://codecov.io/gh/MarekWadinger/online_outlier_detection/branch/main/graph/badge.svg?token=BIS0A7CF1F)](https://codecov.io/gh/MarekWadinger/online_outlier_detection)
 [![Test Status](/reports/test-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/junit/report/index.html)
 [![Flake8 Status](/reports/flake8-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/flake8/report/index.html)
-[![DOI](https://zenodo.org/badge/DOI/10.1109/PC58330.2023.10217717.svg)](https://doi.org/10.1109/PC58330.2023.10217717)
+[![DOI](https://zenodo.org/badge/DOI/10.1109/j.eswa.2024.123200.svg)](https://doi.org/10.1016/j.eswa.2024.123200)
 <!-- markdownlint-enable MD013 -->
 
 Online outlier detection service for industrial SCADA-based infrastructures for
@@ -158,18 +158,20 @@ if you think you've spotted a bug or a performance issue.
 
 If the service or the algorithm has been useful to you and you would like to
 cite it in an scientific publication, please refer to the
-[paper](https://doi.org/10.5281/zenodo.8128206)
-in Proceedings of the 2023 24th International Conference on Process Control,
-IEEE:
+[paper](https://doi.org/10.1016/j.eswa.2024.123200)
+published in Expert Systems with Applications:
 
 ```bibtex
-@inproceedings{Wadinger2023,
-  author    = {Wadinger, Marek and Kvasnica, Michal},
-  booktitle = {2023 24th International Conference on Process Control (PC)},
-  title     = {Real-Time Outlier Detection with Dynamic Process Limits},
-  year      = {2023},
-  doi       = {10.1109/PC58330.2023.10217717},
-  month     = {June}
+@article{WADINGER2024123200,
+  title    = {Adaptable and Interpretable Framework for Anomaly Detection in SCADA-based industrial systems},
+  journal  = {Expert Systems with Applications},
+  pages    = {123200},
+  year     = {2024},
+  issn     = {0957-4174},
+  doi      = {https://doi.org/10.1016/j.eswa.2024.123200},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0957417424000654},
+  author   = {Marek Wadinger and Michal Kvasnica},
+  keywords = {Anomaly detection, Root cause isolation, Iterative learning, Statistical learning, Self-supervised learning},
 }
 ```
 
