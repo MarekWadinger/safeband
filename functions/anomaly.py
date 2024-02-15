@@ -277,11 +277,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 self._feature_dim_in = 1
 
     def _get_feature_names_in(self, x: dict[str, float]):
-        if not hasattr(self, "_feature_names_in") and isinstance(x, dict):
-            self._feature_names_in = sorted(list(x.keys()))
+        if not hasattr(self, "feature_names_in_") and isinstance(x, dict):
+            self.feature_names_in_ = sorted(list(x.keys()))
 
     def _learn_one(self, x, **kwargs):
-        if not hasattr(self, "_feature_names_in") and isinstance(x, dict):
+        if not hasattr(self, "feature_names_in_") and isinstance(x, dict):
             self._get_feature_names_in(x)
         if not hasattr(self, "_feature_dim_in"):
             self._get_feature_dim_in(x)
@@ -390,18 +390,18 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 (1 - self.threshold) ** _feature_dim_in, **kwargs
             )
         if (
-            hasattr(self, "_feature_names_in")
+            hasattr(self, "feature_names_in_")
             and isinstance(self.gaussian.mu, dict)
-            and len(thresh_high) == len(self._feature_names_in)
+            and len(thresh_high) == len(self.feature_names_in_)
         ):
             thresh_high = dict(zip(self.gaussian.mu.keys(), thresh_high))
             thresh_low = dict(zip(self.gaussian.mu.keys(), thresh_low))
-        elif hasattr(self, "_feature_names_in"):
+        elif hasattr(self, "feature_names_in_"):
             thresh_high = dict(
-                zip(self._feature_names_in, [np.nan] * self._feature_dim_in)
+                zip(self.feature_names_in_, [np.nan] * self._feature_dim_in)
             )
             thresh_low = dict(
-                zip(self._feature_names_in, [np.nan] * self._feature_dim_in)
+                zip(self.feature_names_in_, [np.nan] * self._feature_dim_in)
             )
         return thresh_high, thresh_low
 
@@ -595,8 +595,8 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         score, idx = self._score_one(x)
         if (self.alpha > score) or (score > 1 - self.alpha):
-            if hasattr(self, "_feature_names_in") and idx is not None:
-                self.root_cause = self._feature_names_in[idx]
+            if hasattr(self, "feature_names_in_") and idx is not None:
+                self.root_cause = self.feature_names_in_[idx]
             elif idx is not None:
                 self.root_cause = idx
             else:
@@ -619,10 +619,10 @@ class ConditionalGaussianScorer(GaussianScorer):
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
 
-        ths = {key: np.nan for key in self._feature_names_in}
+        ths = {key: np.nan for key in self.feature_names_in_}
         tls = ths.copy()
         if self.gaussian.var.shape[0] != 0:
-            for var_key in self._feature_names_in:
+            for var_key in self.feature_names_in_:
                 cond_mean, _, cond_std = self.gaussian.mv_conditional(
                     x, var_key, self.gaussian.mu, self.gaussian.var
                 )
