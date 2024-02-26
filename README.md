@@ -2,7 +2,7 @@
 
 <!-- markdownlint-disable MD013 -->
 [![Python application](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml/badge.svg)](https://github.com/MarekWadinger/online_outlier_detection/actions/workflows/python-app.yml)
-[![codecov](https://codecov.io/gh/MarekWadinger/online_outlier_detection/branch/main/graph/badge.svg?token=BIS0A7CF1F)](https://codecov.io/gh/MarekWadinger/online_outlier_detection)
+[![codecov](https://codecov.io/gh/MarekWadinger/adaptive-interpretable-ad/graph/badge.svg?token=BIS0A7CF1F)](https://codecov.io/gh/MarekWadinger/adaptive-interpretable-ad)
 [![Test Status](/reports/test-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/junit/report/index.html)
 [![Flake8 Status](/reports/flake8-badge.svg)](https://htmlpreview.github.io/?https://github.com/MarekWadinger/online_outlier_detection/blob/main/reports/flake8/report/index.html)
 [![DOI](https://zenodo.org/badge/DOI/10.1109/j.eswa.2024.123200.svg)](https://doi.org/10.1016/j.eswa.2024.123200)

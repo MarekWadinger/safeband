@@ -103,7 +103,7 @@ def progressive_val_predict(  # noqa: C901
                 x_in = {
                     k: v
                     for k, v in x_.items()
-                    if k in model_._feature_names_in
+                    if k in model_.feature_names_in_
                 }
                 meta["Signal Anomaly"].append(
                     {

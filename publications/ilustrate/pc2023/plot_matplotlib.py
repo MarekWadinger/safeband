@@ -271,9 +271,9 @@ def plot_anomaly_bars(args, colors, axs):
             a = a.astype(int).diff().fillna(0)
             if (a != 0).any():
                 if a[a != 0].iloc[0] == -1:
-                    a[1] = 1
+                    a.iloc[1] = 1
                 elif a[a != 0].iloc[-1] == 1:
-                    a[-1] = -1
+                    a.iloc[-1] = -1
             for s_idx, (x0, x1) in enumerate(
                 zip(a[a == 1].index, a[a == -1].index)
             ):
@@ -391,11 +391,19 @@ def plot_limits_grid_(
                 label="Signal Anomalies",
             )
         if kwargs.get("grace_period"):
+            if isinstance(kwargs["grace_period"], int):
+                xmax = ser.index[int(kwargs["grace_period"])]
+            elif isinstance(kwargs["grace_period"], timedelta):
+                xmax = ser.index[0] + kwargs["grace_period"]  # type: ignore
+            elif isinstance(kwargs["grace_period"], pd.Timestamp):
+                xmax = kwargs["grace_period"]
+            else:
+                xmax = ser.index[0]
             ax.axvspan(
                 ser.index[0],  # type: ignore
-                ser.index[int(kwargs["grace_period"])],  # type: ignore
+                xmax,  # type: ignore
                 color="0.8",
-                alpha=0.9,
+                alpha=0.75,
                 label="Grace Period",
             )
 
