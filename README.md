@@ -26,9 +26,9 @@ others. Make sure to check out their great work!
 * Utilizes existing SCADA-based industrial infrastruture
 * Offers faster response time to incidents due to root cause isolation
 
-![ESwA23 - Graphical Abstract](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/ESwA23%20-%20Graphical%20Abstract.pdf)
+[Image: Graphical Abstract](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/ESwA23%20-%20Graphical%20Abstract%20-%20Latex%20font.pdf)
 
-![BESS_thresh](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/TERRA_thresh_4days.pdf)
+[Image: Dynamic operating limits and detection on utility-scale battery temperature profile](https://github.com/MarekWadinger/online_outlier_detection/blob/main/publications/ESwA2023/figures/TERRA_thresh_4days.pdf)
 
 ## ⚡️ Quickstart
 
