@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1
 # Install system requirements
 #  gcc for C compilation
 RUN apt-get -qq update && apt-get install -y gcc g++
-RUN apt-get -qq update && apt-get install -y git curl
+RUN apt-get -qq update && apt-get install -y git curl pipx
 
 # Get Rust
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
