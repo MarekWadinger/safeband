@@ -1,19 +1,17 @@
-bayesian-optimization==1.4.3
+bayesian-optimization<3.0.0
 # confluent-kafka==2.0.2
 cryptography
 git+https://github.com/MarekWadinger/river.git ; sys_platform == "darwin" or (sys_platform == "linux" and platform_machine == "aarch64" and (implementation_version == "3.12.*" or implementation_version == "3.11.*"))
 # Try to install from wheel for others
 river~=0.21.0 ; sys_platform == "linux" and (implementation_version != "3.11.*" or implementation_version != "3.12.*") and platform_machine != "aarch64"
-human_security==1.0
-matplotlib==3.7.0
-paho-mqtt==1.6.1
-types-paho-mqtt==1.6.0.7
-pandas==2.1.2
-pandas-stubs==2.1.1.230928
-plotly==5.13.0
-pre-commit
-pytest==7.4.2
-scipy~=1.11.3
-streamz==0.6.4
+human_security
+matplotlib<4.0.0
+paho-mqtt<3.0.0
+types-paho-mqtt
+pandas<3.0.0
+pandas-stubs
+plotly<7.0.0
+scipy<2.0.0
+streamz<1.0.0
 streamz_pulsar ; implementation_version < "3.12.*"
-typing_extensions==4.7.1
+typing_extensions<5.0.0
