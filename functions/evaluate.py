@@ -61,9 +61,9 @@ def progressive_val_predict(  # noqa: C901
         # PREDICT
         if (
             metrics is not None
-            and all([
-                isinstance(metric, MultiClassMetric) for metric in metrics
-            ])
+            and all(
+                [isinstance(metric, MultiClassMetric) for metric in metrics]
+            )
             and hasattr(model_, "get_root_cause")
         ):
             is_anomaly = model_.get_root_cause()
@@ -105,10 +105,12 @@ def progressive_val_predict(  # noqa: C901
                     for k, v in x_.items()
                     if k in model_.feature_names_in_
                 }
-                meta["Signal Anomaly"].append({
-                    k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
-                    for k, v in x_in.items()
-                })
+                meta["Signal Anomaly"].append(
+                    {
+                        k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
+                        for k, v in x_in.items()
+                    }
+                )
 
         # DETECT NON-UNIFORM SAMPLING
         if sampling_model is not None and isinstance(t, pd.Timestamp):
