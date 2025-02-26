@@ -95,7 +95,7 @@ class TestSecurity:
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
         assert control_action.encode("utf-8") == decrypted_c_a
         with pytest.raises(ValueError):
-            decrypted_c_a = decrypt_data(control_action, self.receiver)
+            decrypted_c_a = decrypt_data(control_action, self.receiver)  # type: ignore
 
     def test_str_signing_and_verification(self):
         control_action = "4.20"
@@ -106,7 +106,7 @@ class TestSecurity:
         assert verified is True
 
     def test_message_signing_encryption_decryption_and_verification(self):
-        msg = {"a": 1}
+        msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
         plaintext = decrypt_data(ciphertext, self.receiver)
@@ -115,19 +115,19 @@ class TestSecurity:
         assert verify is True
 
     def test_message_signing_encryption_dump_verify_and_decrypt(self):
-        msg = {"a": 1}
+        msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
-        ciphertext = decode_data(ciphertext)
-        item = verify_and_decrypt_data(ciphertext, self.receiver)
-        assert msg == item
+        ciphertext_dec = decode_data(ciphertext)
+        item = verify_and_decrypt_data(ciphertext_dec, self.receiver)
+        assert msg["a"] == item["a"]
 
     def test_message_signing_encryption_dump_fail_verify(self):
-        msg = {"a": 1}
+        msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
-        other_msg = sign_data({"a": 2}, self.sender)
+        other_msg = sign_data({"a": "2"}, self.sender)
         signed_msg["signature"] = other_msg["signature"]
         ciphertext = encrypt_data(signed_msg, self.sender)
         ciphertext = decode_data(ciphertext)
         with pytest.raises(InvalidSignature):
-            verify_and_decrypt_data(ciphertext, self.receiver)
+            verify_and_decrypt_data(ciphertext, self.receiver)  # type: ignore

@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Mapping, Sequence, overload
 
 from cryptography.exceptions import InvalidSignature
 from human_security import HumanRSA
@@ -7,12 +8,12 @@ from human_security import HumanRSA
 LEN_LIMIT = 214
 
 
-def save_public_key(key_path, key: HumanRSA):
+def save_public_key(file: str | os.PathLike, key: HumanRSA):
     """
     Save the public key to a file.
 
     Args:
-        key_path (str or Path): Path to the key file.
+        file (str or Path): Path to the key file.
         key (HumanRSA): Key object containing the public key.
 
     Examples:
@@ -21,16 +22,16 @@ def save_public_key(key_path, key: HumanRSA):
         >>> key.generate()
         >>> save_public_key('public_key.pem', key)  # doctest: +SKIP
     """
-    with open(key_path, "w") as pub:
+    with open(file, "w") as pub:
         pub.write(key.public_pem())
 
 
-def save_private_key(key_path, key: HumanRSA):
+def save_private_key(file: str | os.PathLike, key: HumanRSA):
     """
     Save the private key to a file.
 
     Args:
-        key_path (str or Path): Path to the key file.
+        file (str or Path): Path to the key file.
         key (HumanRSA): Key object containing the private key.
 
     Examples:
@@ -39,16 +40,16 @@ def save_private_key(key_path, key: HumanRSA):
         >>> key.generate()
         >>> save_private_key('private_key.pem', key)  # doctest: +SKIP
     """
-    with open(key_path, "w") as private:
+    with open(file, "w") as private:
         private.write(key.private_pem())
 
 
-def load_public_key(key_path, key: HumanRSA):
+def load_public_key(file: str | os.PathLike, key: HumanRSA):
     """
     Load the public key from a file.
 
     Args:
-        key_path (str or Path): Path to the public key file.
+        file (str or Path): Path to the public key file.
         key (HumanRSA): Key object to load the public key into.
 
     Examples:
@@ -56,16 +57,16 @@ def load_public_key(key_path, key: HumanRSA):
         >>> key = HumanRSA()
         >>> load_public_key('public_key.pem', key)  # doctest: +SKIP
     """
-    with open(key_path) as pub:
+    with open(file) as pub:
         key.load_public_pem("".join(pub))
 
 
-def load_private_key(key_path, key: HumanRSA):
+def load_private_key(file: str | os.PathLike, key: HumanRSA):
     """
     Load the private key from a file.
 
     Args:
-        key_path (str or Path): Path to the private key file.
+        file (str or Path): Path to the private key file.
         key (HumanRSA): Key object to load the private key into.
 
     Examples:
@@ -73,31 +74,35 @@ def load_private_key(key_path, key: HumanRSA):
         >>> key = HumanRSA()
         >>> load_private_key('private_key.pem', key)  # doctest: +SKIP
     """
-    with open(key_path) as pub:
+    with open(file) as pub:
         key.load_private_pem("".join(pub))
 
 
-def split_string(string, max_length):
+@overload
+def split_msg(msg: str, max_length: int) -> Sequence[str]: ...
+@overload
+def split_msg(msg: bytes, max_length: int) -> Sequence[bytes]: ...
+
+
+def split_msg(msg: str | bytes, max_length: int) -> Sequence[str | bytes]:
     """
-    Split a string into a list of strings of specified maximum length.
+    Split a msg into a list of msgs of specified maximum length.
 
     Args:
-        string (str): The input string.
-        max_length (int): Maximum length of each split string.
+        msg (str): The input msg.
+        max_length (int): Maximum length of each split msg.
 
     Returns:
-        list: List of strings.
+        list: List of msgs.
 
     Examples:
-        >>> split_string("Hello, World!", 5)
+        >>> split_msg("Hello, World!", 5)
         ['Hello', ', Wor', 'ld!']
     """
-    return [
-        string[i : i + max_length] for i in range(0, len(string), max_length)
-    ]
+    return [msg[i : i + max_length] for i in range(0, len(msg), max_length)]
 
 
-def generate_keys():
+def generate_keys() -> tuple[HumanRSA, HumanRSA]:
     """
     Generate a pair of RSA keys.
 
@@ -114,7 +119,23 @@ def generate_keys():
     return sender, receiver
 
 
-def encrypt_data(data, key: HumanRSA):
+@overload
+def encrypt_data(data: str | bytes, key: HumanRSA) -> bytes: ...
+@overload
+def encrypt_data(data: list[bytes], key: HumanRSA) -> list[bytes]: ...
+@overload
+def encrypt_data(
+    data: Mapping[str, bytes | str | list[bytes | str]], key: HumanRSA
+) -> dict[str, bytes]: ...
+
+
+def encrypt_data(
+    data: str
+    | bytes
+    | list[bytes]
+    | Mapping[str, bytes | str | list[bytes | str]],
+    key: HumanRSA,
+) -> bytes | list[bytes] | dict[str, bytes]:
     """
     Encrypt data using the provided key.
 
@@ -129,15 +150,27 @@ def encrypt_data(data, key: HumanRSA):
         >>> from human_security import HumanRSA
         >>> key = HumanRSA()
         >>> key.generate()
-        >>> ciphertext = encrypt_data(b'Test', key)
+        >>> print(encrypt_data('Test', key))
+        b...
+        >>> print(encrypt_data(b'Test', key))
+        b...
+        >>> print(encrypt_data([b'Test', b'Test'], key))
+        b...
+        >>> print(encrypt_data({'a': b'Test', 'b': ['Test', b'Test']}, key))
+        {'a': b..., 'b': b...}
     """
     if isinstance(data, dict):
-        for x in data:
-            data[x] = encrypt_data(data[x], key)
-        return data
+        data_ = {}
+        for x, v in data.items():
+            if isinstance(v, bytes):
+                v = v.decode("utf-8")
+            elif not isinstance(v, str):
+                v = str(v)
+            data_[x] = encrypt_data(v, key)
+        return data_
     elif isinstance(data, bytes):
         if len(data) > LEN_LIMIT:
-            data_ = split_string(data, LEN_LIMIT)
+            data_ = split_msg(data, LEN_LIMIT)
             return [encrypt_data(d, key) for d in data_]
         else:
             return key.encrypt(data)
@@ -145,7 +178,20 @@ def encrypt_data(data, key: HumanRSA):
         return encrypt_data(str(data).encode("utf-8"), key)
 
 
-def decrypt_data(data, key: HumanRSA):
+@overload
+def decrypt_data(data: bytes | Sequence[bytes], key: HumanRSA) -> bytes: ...
+@overload
+def decrypt_data(data: Sequence[bytes], key: HumanRSA) -> Sequence[bytes]: ...
+@overload
+def decrypt_data(
+    data: Mapping[str, bytes | Sequence[bytes]], key: HumanRSA
+) -> dict[str, bytes]: ...
+
+
+def decrypt_data(
+    data: Mapping[str, bytes | Sequence[bytes]] | Sequence[bytes] | bytes,
+    key: HumanRSA,
+) -> bytes | Sequence[bytes] | dict[str, bytes]:
     """
     Decrypt data using the provided key.
 
@@ -161,25 +207,41 @@ def decrypt_data(data, key: HumanRSA):
         >>> key = HumanRSA()
         >>> key.generate()
         >>> encrypted_data = key.encrypt(b'Test')
-        >>> plaintext = decrypt_data(encrypted_data, key)
+        >>> decrypt_data(encrypted_data, key)
+        b'Test'
+        >>> decrypt_data([encrypted_data, encrypted_data], key)
+        b'TestTest'
+        >>> decrypt_data({'a': encrypted_data, 'b': [encrypted_data, encrypted_data]}, key)
+        {'a': b'Test', 'b': b'TestTest'}
     """
     if isinstance(data, dict):
+        # TODO: for some reason dict comprehension doesn't provide correct result
         for x in data:
             data[x] = decrypt_data(data[x], key)
-        return data
+        return data  # type: ignore  # {k: decrypt_data(v, key) for k, v in data.items()}
     elif isinstance(data, bytes):
         return key.decrypt(data)
     elif isinstance(data, list):
         dec = [decrypt_data(d, key) for d in data]
-        return b"".join(dec).decode("utf-8")
+        return b"".join(dec)
     else:
         raise ValueError(
-            f"Wrong type of data. Got {type(data)}. "
-            "Expected (bytes, list, dict)."
+            f"Wrong type of data. Got {type(data)}. Expected (bytes, list, dict)."
         )
 
 
-def sign_data(data, key: HumanRSA):
+@overload
+def sign_data(data: bytes | str, key: HumanRSA) -> str: ...
+@overload
+def sign_data(
+    data: Mapping[str, bytes | str], key: HumanRSA
+) -> dict[str, bytes | str]: ...
+
+
+def sign_data(
+    data: bytes | str | Mapping[str, bytes | str],
+    key: HumanRSA,
+) -> str | dict[str, bytes | str]:
     """
     Sign the provided data using the given key.
 
@@ -196,14 +258,21 @@ def sign_data(data, key: HumanRSA):
         >>> key.generate()
         >>> data = b'Test data'
         >>> signature = sign_data(data, key)
-        >>> len(signature) > 0
-        True
+        >>> signature
+        '...'
+        >>> sign_data({'a': data, 'b': 'Test data', 'c': 1}, key)
+        {'a': b'...', 'b': '...', 'c': 1, 'signature': '...'}
     """
     if isinstance(data, dict):
-        for x in data:
-            if not isinstance(data[x], str):
-                data[x] = str(data[x])
-        data["signature"] = key.sign(json.dumps(data).encode("utf-8"))
+        data_ = {}
+        for x, v in data.items():
+            if isinstance(v, bytes):
+                data_[x] = v.decode("utf-8")
+            elif not isinstance(v, str):
+                data_[x] = str(v)
+            else:
+                data_[x] = v
+        data["signature"] = key.sign(json.dumps(data_).encode("utf-8"))
         return data
     elif isinstance(data, bytes):
         return key.sign(data)
@@ -211,7 +280,11 @@ def sign_data(data, key: HumanRSA):
         return key.sign(str(data).encode("utf-8"))
 
 
-def verify_signature(data, signature, key: HumanRSA):
+def verify_signature(
+    data: str | bytes | Mapping[str, bytes | str],
+    signature: str | bytes,
+    key: HumanRSA,
+) -> bool:
     """
     Verify the provided signature against the given data and key.
 
@@ -229,21 +302,37 @@ def verify_signature(data, signature, key: HumanRSA):
         >>> key.generate()
         >>> data = b'Test data'
         >>> signature = key.sign(data)
+        >>> signature
+        '...'
         >>> verify_signature(data, signature, key)
         True
+        >>> data = {'a': 'Test'}
+        >>> signature = key.sign(json.dumps(data).encode("utf-8"))
+        >>> verify_signature(data, signature, key)
+        True
+        >>> verify_signature({'a': data, 'b': b'attack'}, signature, key)
+        False
     """
+    if isinstance(signature, bytes):
+        signature = signature.decode("utf-8")
     if isinstance(data, dict):
+        # TODO: for some reason creating new dict doesn't provide correct result
         for x in data:
             if isinstance(data[x], bytes):
                 data[x] = data[x].decode("utf-8")
         return verify_signature(
             json.dumps(data).encode("utf-8"), signature, key
         )
+    #     return all(verify_signature(v, signature, key) for v in data.values())
+    elif isinstance(data, str):
+        return key.verify(data.encode("utf-8"), signature)
     else:
         return key.verify(data, signature)
 
 
-def verify_and_decrypt_data(item, key: HumanRSA):
+def verify_and_decrypt_data(
+    item: Mapping[str, str | list[str]], key: HumanRSA
+) -> bytes | dict[str, bytes]:
     """
     Verify the signature of the item, and return the decrypted data.
 
@@ -257,17 +346,20 @@ def verify_and_decrypt_data(item, key: HumanRSA):
     Returns:
         dict: The decrypted data.
     """
-    item = encode_data(item)
-    item = decrypt_data(item, key)
-    sign = item.pop("signature")
-    verify = verify_signature(item, sign, key)
+    item_enc = encode_data(item)
+    item_dec = decrypt_data(item_enc, key)
+    sign = item_dec.pop("signature")
+    verify = verify_signature(item_dec, sign, key)
     if verify is not True:
         raise InvalidSignature("Signature verification failed.")
 
-    return item
+    return item_dec
 
 
-def encode_data(data):
+def encode_data(
+    data: Mapping[str, str | list[str]],
+    encoding: str = "latin1",
+) -> dict[str, bytes | list[bytes]]:
     """
     Encode a data by encoding string values to bytes.
 
@@ -282,7 +374,7 @@ def encode_data(data):
         ...     'key1': 'Hello',
         ...     'key2': ['abcó\\x9cÆ', 'xyz']
         ... }
-        >>> encode_data(msg)
+        >>> encode_data(msg, encoding='latin1')
         {'key1': b'Hello', 'key2': [b'abc\xf3\x9c\xc6', b'xyz']}
 
         >>> invalid_msg = {
@@ -295,16 +387,32 @@ def encode_data(data):
         ValueError: Invalid data in key2
     """
     for k, v in data.items():
+        # TODO: for some reason creating new dict doesn't provide correct result
         if isinstance(v, str):
-            data[k] = v.encode("latin1")
+            data[k] = v.encode(encoding)
         elif isinstance(v, list):
-            data[k] = [s.encode("latin1") for s in v]
+            data[k] = [s.encode(encoding) for s in v]
         else:
             raise ValueError(f"Invalid data in {k}")
     return data
 
+    @overload
+    def decode_data(
+        data: Mapping[str, bytes | list[bytes]],
+    ) -> dict[str, str | list[str]]: ...
+    @overload
+    def decode_data(data: Sequence[bytes]) -> Sequence[str]: ...
+    @overload
+    def decode_data(data: bytes | int | float | complex | str) -> str: ...
 
-def decode_data(data):
+
+JsonStr = Mapping[str, str | Sequence[str] | "JsonStr"]
+JsonBytes = Mapping[str, bytes | Sequence[bytes] | "JsonBytes"]
+
+
+def decode_data(
+    data: JsonBytes | Sequence | bytes | int | float | complex | str,
+) -> JsonStr | Sequence[str] | str:
     """
     Decode a data by decoding bytes values to strings.
 
@@ -337,9 +445,7 @@ def decode_data(data):
         ValueError: Wrong type of data. Got <class 'encryption.UnsupportedClass'>. Expected (bytes, list, dict).
     """  # noqa: E501
     if isinstance(data, dict):
-        for k, v in data.items():
-            data[k] = decode_data(v)
-        return data
+        return {k: decode_data(v) for k, v in data.items()}
     elif isinstance(data, (list, tuple, range)):
         data = [decode_data(s) for s in data]
         return data
@@ -356,7 +462,7 @@ def decode_data(data):
         )
 
 
-def init_rsa_security(key_path: str):
+def init_rsa_security(key_path: str) -> tuple[HumanRSA, HumanRSA]:
     sender, receiver = generate_keys()
     if not os.path.exists(key_path):  # pragma: no cover
         os.makedirs(key_path, exist_ok=True)

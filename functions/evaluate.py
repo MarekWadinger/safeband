@@ -61,9 +61,9 @@ def progressive_val_predict(  # noqa: C901
         # PREDICT
         if (
             metrics is not None
-            and all(
-                [isinstance(metric, MultiClassMetric) for metric in metrics]
-            )
+            and all([
+                isinstance(metric, MultiClassMetric) for metric in metrics
+            ])
             and hasattr(model_, "get_root_cause")
         ):
             is_anomaly = model_.get_root_cause()
@@ -89,7 +89,7 @@ def progressive_val_predict(  # noqa: C901
                         print(metric)
             else:
                 raise ValueError(
-                    "Dataset must contain column 'anomaly' to " "use metrics."
+                    "Dataset must contain column 'anomaly' to use metrics."
                 )
 
         # DYNAMIC OPERATING LIMITS
@@ -105,12 +105,10 @@ def progressive_val_predict(  # noqa: C901
                     for k, v in x_.items()
                     if k in model_.feature_names_in_
                 }
-                meta["Signal Anomaly"].append(
-                    {
-                        k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
-                        for k, v in x_in.items()
-                    }
-                )
+                meta["Signal Anomaly"].append({
+                    k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
+                    for k, v in x_in.items()
+                })
 
         # DETECT NON-UNIFORM SAMPLING
         if sampling_model is not None and isinstance(t, pd.Timestamp):
@@ -133,7 +131,7 @@ def progressive_val_predict(  # noqa: C901
         if hasattr(model, "gaussian") and inspect.signature(
             model.gaussian.update
         ).parameters.get("t"):
-            model = model.learn_one(x_, **{"t": t})
+            model.learn_one(x_, **{"t": t})
         elif hasattr(model, "_supervised") and model._supervised:
             model_up = model.learn_one(x_, y)
             model = model_up if model_up is not None else model
@@ -156,7 +154,9 @@ def progressive_val_predict(  # noqa: C901
     end = time.time()
 
     if print_final:
-        print(f"Avg. latency per sample: {(end - start)*1000/len(dataset)}ms")
+        print(
+            f"Avg. latency per sample: {(end - start) * 1000 / len(dataset)}ms"
+        )
         if metrics is not None:
             for metric in metrics:
                 print(metric)
@@ -173,9 +173,9 @@ def print_stats(df, y_pred):
     print(
         f"{'Pred anomalous samples | events | proportion:':<55} "
         f"{sum(df_y_pred):<8} | {sum(df_y_pred.diff().dropna() == 1):<5} | "
-        f"{sum(df_y_pred)/len(df_y_pred):.02%}\n"
+        f"{sum(df_y_pred) / len(df_y_pred):.02%}\n"
         f"{'Found samples | events | proportion:':<55} "
-        f"{sum_:<8} | {' ':<5} | {sum_/len_real:.02%}"
+        f"{sum_:<8} | {' ':<5} | {sum_ / len_real:.02%}"
     )
 
 

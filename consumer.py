@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 from argparse import Namespace
+from typing import cast
 
 import paho.mqtt.client as mqtt
 
@@ -133,8 +134,9 @@ if __name__ == "__main__":
     if "key_path" in config["setup"]:
         _, receiver = init_rsa_security(config["setup"]["key_path"])
 
-    if istypedinstance(config["client"], FileClient):
-        query_file(config["client"])
-    elif istypedinstance(config["client"], MQTTClient):
-        client = query_mqtt(config["client"])
+    client = config["client"]
+    if istypedinstance(client, FileClient):
+        query_file(cast(FileClient, client))
+    elif istypedinstance(client, MQTTClient):
+        client = query_mqtt(cast(MQTTClient, client))
         client.loop_forever()

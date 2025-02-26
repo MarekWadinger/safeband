@@ -43,7 +43,7 @@ def expand_model_params(model_params):
     threshold = model_params.get("threshold", 0.99735)
 
     def period_to_timedelta(
-        period: Union[str, dt.timedelta, pd.Timedelta]
+        period: Union[str, dt.timedelta, pd.Timedelta],
     ) -> dt.timedelta:
         """Convert a period to a timedelta.
 
@@ -97,7 +97,7 @@ def print_summary(df):
     """
     text = (
         f"Proportion of anomalous samples: "
-        f"{sum(df['anomaly'])/len(df['anomaly'])*100:.02f}%\n"
+        f"{sum(df['anomaly']) / len(df['anomaly']) * 100:.02f}%\n"
         f"Total number of anomalous events: "
         f"{sum(pd.Series(df['anomaly']).diff().dropna() == 1)}"
     )
@@ -445,7 +445,7 @@ class RpcOutlierDetector:
         Examples:
         >>> client = {"path": "tests/test.csv", "output": "tests/output.json"}
         >>> io = {"in_topics": ["A"]}
-        >>> model_params = {"t_e": "1H"}
+        >>> model_params = {"t_e": "1h"}
         >>> setup = {"key_path": ".temp", "debug": True}
         >>> obj = RpcOutlierDetector()
         >>> obj.start(client, io, model_params, setup)

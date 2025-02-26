@@ -38,7 +38,7 @@ class TestConsumer:
         signed_msg = sign_data(msg, self.args.receiver)
         ciphertext = encrypt_data(signed_msg, self.args.receiver)
         ciphertext = decode_data(ciphertext)
-        self.encrypted_msg = json.dumps(ciphertext.copy())
+        self.encrypted_msg = json.dumps(ciphertext)
         with open(self.config["output"], "w") as f:
             json.dump(ciphertext, f)
 

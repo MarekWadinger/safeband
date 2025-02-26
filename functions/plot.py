@@ -13,7 +13,7 @@ FIG_LAYOUT = dict(
     width=120 * 3,
     yaxis_title_standoff=0,
     xaxis_tickfont_size=9,
-    font_family="Times New Roman",
+    font_family="cmr10",
     font_size=9,
     autosize=True,
     margin=dict(l=40, r=15, t=5, b=0),
@@ -103,7 +103,7 @@ def get_file_name(ser, window=None):
     if window is not None:
         file_name = (
             f"{ser.name.replace(' ', '_')}_"
-            f"{int(window.total_seconds()/60/60)}_hours_sliding"
+            f"{int(window.total_seconds() / 60 / 60)}_hours_sliding"
         )
     else:
         file_name = f"{ser.name.replace(' ', '_')}_sliding"
@@ -594,7 +594,7 @@ def plot_limits_grid(
             width=90 * 3,
             yaxis_title_standoff=0,
             xaxis_tickfont_size=9,
-            font_family="Times New Roman",
+            font_family="cmr10",
             font_size=9,
             autosize=False,
             margin=dict(l=0, r=0, t=0, b=0),

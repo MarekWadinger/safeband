@@ -16,11 +16,9 @@ class Distribution(Protocol):  # pragma: no cover
     sigma: Union[float, pd.DataFrame]
     n_samples: Union[float, int]
 
-    def update(self, *args, **kwargs):
-        ...
+    def update(self, *args, **kwargs): ...
 
-    def cdf(self, *args, **kwargs) -> float:
-        ...
+    def cdf(self, *args, **kwargs) -> float: ...
 
 
 @runtime_checkable
@@ -32,16 +30,13 @@ class ConditionableDistribution(
     var: pd.DataFrame
     n_samples: Union[float, int]
 
-    def update(self, *args, **kwargs):
-        ...
+    def update(self, *args, **kwargs): ...
 
-    def cdf(self, *args, **kwargs) -> float:
-        ...
+    def cdf(self, *args, **kwargs) -> float: ...
 
     def mv_conditional(
         self, *args, **kwargs
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        ...
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]: ...
 
 
 class Store:
@@ -244,8 +239,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             and (grace_period > self.t_e)
         ):
             warnings.warn(
-                f"Grace period must be between 1 and "
-                f"{self.t_e} minutes or None."
+                f"Grace period must be between 1 and {self.t_e} minutes or None."
             )
             self.grace_period = self.t_e
         elif not isinstance(grace_period, type(self.t_e)):

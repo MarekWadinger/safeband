@@ -1,3 +1,4 @@
+import os
 import textwrap
 from datetime import timedelta
 from typing import Literal, Union
@@ -11,25 +12,24 @@ import pandas as pd
 # import matplotlib as mpl
 # mpl.use('macOsX')
 
-plt.rcParams.update(
-    {
-        "text.usetex": False,
-        "font.family": "Times New Roman",
-        "font.serif": "Times New Roman",
-        "axes.labelsize": 8,
-        "axes.grid": True,
-        "font.size": 8,
-        "legend.fontsize": 8,
-        "xtick.labelsize": 8,
-        "ytick.labelsize": 8,
-        "figure.figsize": mpl.rcParamsDefault["figure.figsize"],
-        "figure.subplot.left": 0.1,
-        "figure.subplot.bottom": 0.2,
-        "figure.subplot.right": 0.95,
-        "figure.subplot.top": 0.85,
-        # "backend": "macOsX"
-    }
-)
+plt.rcParams.update({
+    "text.usetex": False,
+    "font.family": "cmr10",
+    "font.serif": "cmr10",
+    "axes.labelsize": 8,
+    "axes.grid": True,
+    "font.size": 8,
+    "legend.fontsize": 8,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "figure.figsize": mpl.rcParamsDefault["figure.figsize"],
+    "figure.subplot.left": 0.1,
+    "figure.subplot.bottom": 0.2,
+    "figure.subplot.right": 0.95,
+    "figure.subplot.top": 0.85,
+    "axes.formatter.use_mathtext": True,
+    # "backend": "macOsX"
+})
 
 PLOT_WIDTH = 0.75 * 398.3386
 
@@ -113,7 +113,7 @@ def make_name(name, window, file_name):
         if window:
             file_name = (
                 f"{name.replace(' ', '_')}_"
-                f"{int(window.total_seconds()/60/60)}_hours_sliding"
+                f"{int(window.total_seconds() / 60 / 60)}_hours_sliding"
             )
         else:
             file_name = f"{name.replace(' ', '_')}_sliding"
@@ -259,7 +259,7 @@ def plot_compare_anomalies_(
         )
 
         if save:
-            plt.savefig(f"{file_name}_compare_anomalies_{chr(97+row)}.pdf")
+            plt.savefig(f"{file_name}_compare_anomalies_{chr(97 + row)}.pdf")
 
     plt.show()
 
@@ -358,7 +358,11 @@ def plot_limits_grid_(
     for i, col_name in enumerate(df.columns):
         ser: pd.Series[float] = df[col_name]
         if kwargs.get("resample"):
-            ser_ = ser.resample(rule=kwargs["resample"]).asfreq()
+            ser_ = (
+                ser.resample(rule=kwargs["resample"])
+                .asfreq()
+                .interpolate(method="time")
+            )
         else:
             ser_ = ser
 
@@ -484,6 +488,8 @@ def plot_limits_grid_(
     fig.tight_layout()
 
     if save:
+        if not os.path.exists("plots"):
+            os.makedirs("plots")
         plt.savefig(f"plots/{file_name}_thresh.pdf")
 
     plt.show()
