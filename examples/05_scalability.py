@@ -3,26 +3,24 @@
 
 import datetime as dt
 import sys
-
 from pathlib import Path
 
 import pandas as pd
-
 from river import utils
 
-sys.path.insert(1, str(Path().resolve().parent))
+sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 from functions.anomaly import ConditionalGaussianScorer  # noqa: E402
-from functions.proba import MultivariateGaussian  # noqa: E402
 from functions.evaluate import progressive_val_predict  # noqa: E402
+from functions.proba import MultivariateGaussian  # noqa: E402
 
-output_path = ".results/scalability/"
+output_path = Path(__file__).resolve().parent / ".results/scalability/"
 if not Path(output_path).exists():
     Path(output_path).mkdir(parents=True)
 
 # Load
 
 df = pd.read_csv(
-    "/data/kokam/2023-11-24_kokam_norm.csv",
+    Path(__file__).resolve().parent / "data/kokam/kokam_norm.csv",
     index_col=0,
 )
 df.index = pd.to_datetime(df.index, utc=True)

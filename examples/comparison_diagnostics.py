@@ -150,9 +150,7 @@ if __name__ == "__main__":
                     allow_duplicate_points=True,
                     bounds_transformer=SequentialDomainReductionTransformer(),
                 )
-                logger = JSONLogger(
-                    path=f"./.results/{dataset['name']}-{alg[0]}.log"
-                )
+                logger = JSONLogger(path=f"./.results/{dataset['name']}-{alg[0]}.log")
                 optimizer.subscribe(Events.OPTIMIZATION_END, logger)
                 optimizer.maximize()  # init_points=1, n_iter=5)
                 params = convert_to_nested_dict(optimizer.max["params"])
@@ -196,9 +194,7 @@ if __name__ == "__main__":
 
             path = ".results/MF1_opt_rc"
 
-            batch_save_evaluate_metrics(
-                metrics_clustering, path, task="clustering"
-            )
+            batch_save_evaluate_metrics(metrics_clustering, path, task="clustering")
 
             batch_save_evaluate_metrics(
                 metrics_classification,
