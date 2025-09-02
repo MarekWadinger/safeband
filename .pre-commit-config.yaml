@@ -1,8 +1,8 @@
 # https://pre-commit.com
-exclude: 'examples|reports'
+exclude: "examples|reports"
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v5.0.0
     hooks:
       - id: debug-statements #Check for debugger imports and breakpoint() in python files
       - id: check-ast #Simply check whether files parse as valid python
@@ -16,30 +16,34 @@ repos:
       - id: end-of-file-fixer #Makes sure files end in a newline and only a newline
       - id: trailing-whitespace
       - id: mixed-line-ending
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.4
+  - repo: local
     hooks:
       - id: ruff
+        name: ruff
+        entry: ruff check
+        language: python
         args: [--fix, --exit-non-zero-on-fix, --line-length=79]
         types_or: [python, pyi, jupyter]
       - id: ruff-format
+        name: ruff-format
+        entry: ruff format
+        language: python
         args: [--line-length=79]
         types_or: [python, pyi, jupyter]
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort #isort is a pre-commit hook that runs to check for issues in imports and docstrings
-        args: ["--profile", "black", "--filter-files", "-l", "79"]
   - repo: https://github.com/asottile/blacken-docs
-    rev: 1.16.0
+    rev: 1.19.1
     hooks:
       - id: blacken-docs #blacken-docs is a pre-commit hook that runs to check for issues in the docs
         additional_dependencies: [black]
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v2.37.0
+  - repo: local
     hooks:
-      - id: pyupgrade #pyupgrade is a pre-commit hook that runs to check for issues in the code
-        args: [--py36-plus]
+      - id: ty
+        name: ty check
+        entry: uvx ty check . --ignore unresolved-import
+        language: python
+        stages:
+          - "pre-push"
+          - "pre-merge-commit"
   - repo: local
     hooks:
       - id: pytest-check
@@ -48,26 +52,9 @@ repos:
         types: [python]
         entry: pytest
         pass_filenames: false
-        always_run: true
-        args: [
-          --doctest-modules,
-          -o, addopts=""
-          ]
-  - repo: local
-    hooks:
-      - id: mypy # mypy is a pre-commit hook that runs as a linter to check for type errors
-        name: mypy
-        entry: mypy --implicit-optional
-        language: system
-        types: [python]
-        args: [
-          "--ignore-missing-imports",
-          "--explicit-package-bases",
-          "--check-untyped-defs"
-          ]
-        stages:
-          - "pre-push"
-          - "pre-merge-commit"
+        always_run: false
+        args: [--doctest-modules]
+        stages: [pre-push]
   - repo: local
     hooks:
       - id: make
@@ -78,3 +65,18 @@ repos:
         stages:
           - "pre-push"
           - "pre-merge-commit"
+
+  - repo: https://github.com/roy-ht/pre-commit-jupyter
+    rev: v1.2.1
+    hooks:
+      - id: jupyter-notebook-cleanup
+        args:
+          - --remove-kernel-metadata
+          - --pin-patterns
+          - "[pin];[donotremove]"
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.8.3
+    hooks:
+      - id: commitizen
+      - id: commitizen-branch
+        stages: [pre-push]

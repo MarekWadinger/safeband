@@ -1,8 +1,0 @@
-flake8
-flake8-html
-jupyter<2.0.0
-pre-commit
-pytest
-pytest-cov
-pytest-html
-ruff

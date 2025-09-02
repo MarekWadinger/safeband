@@ -138,6 +138,7 @@ Note: You can modify the attributes to retrieve thrasholds at any date:
 * `[-d | --date]` date as 'Y-m-d H:M:S'
 
 ## 🛠 Installation
+
 To install the necessary dependencies, you can create a virtual environment and install the required packages using the following commands:
 
 ```bash
@@ -150,21 +151,21 @@ Alternatively, you can use Docker to set up the environment. Follow these steps:
 
 1. Build the Docker image:
 
-```bash
-docker build -t aid .
-```
+    ```bash
+    docker build -t aid .
+    ```
 
 2. Run the Docker container:
 
-```bash
-docker run -it --rm aid
-```
+    ```bash
+    docker run -it --rm aid
+    ```
 
 You can also use Docker Compose to manage the local services. Simply start the services with:
 
-```bash
-docker-compose up
-```
+  ```bash
+  docker-compose up
+  ```
 
 ## 👐 Contributing
 
