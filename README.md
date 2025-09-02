@@ -139,12 +139,10 @@ Note: You can modify the attributes to retrieve thrasholds at any date:
 
 ## 🛠 Installation
 
-To install the necessary dependencies, you can create a virtual environment and install the required packages using the following commands:
+To install the necessary dependencies, we recommend using [uv](https://docs.astral.sh/uv/).
 
 ```bash
-python -m venv .env
-source .env/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 Alternatively, you can use Docker to set up the environment. Follow these steps:
