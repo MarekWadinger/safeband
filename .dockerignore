@@ -3,6 +3,8 @@
 .*
 
 # Allow certain files and folders
+!uv.lock
+!pyproject.toml
 !requirements.txt
 !functions
 !tests

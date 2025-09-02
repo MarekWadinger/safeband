@@ -1,30 +1,61 @@
-# Use an official Python runtime as a parent image
-FROM python:3.11-slim
+# --- Builder Stage ---
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
 
+# Enable bytecode compilation
+ENV UV_COMPILE_BYTECODE=1
+
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
+
+# Disable Python downloads, because we want to use the system interpreter
+# across both images. If using a managed Python version, it needs to be
+# copied from the build image into the final image; see `standalone.Dockerfile`
+# for an example.
+ENV UV_PYTHON_DOWNLOADS=0
+
 # Install system requirements
 #  gcc for C compilation
 RUN apt-get -qq update && apt-get install -y gcc g++
-RUN apt-get -qq update && apt-get install -y git curl pipx
+#  git for version control
+RUN apt-get -qq update && apt-get install -y git curl
+
 
 # Get Rust
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="${PATH}:/root/.cargo/bin"
 
-# # Set the working directory to /app
-WORKDIR /app
+# Install the project's dependencies using the lockfile and settings
+# TODO: Add comments on mount types and why we use them
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-editable
 
-# Install any needed packages specified in requirements.txt
-RUN pip install -q -U pip setuptools setuptools_rust wheel
-COPY requirements.txt /app
-RUN pip install -q --no-cache-dir -U -r requirements.txt
 
-# # Copy the current directory contents into the container at /app (except .dockerignore)
+# Copy the project into the intermediate image
 COPY . /app
+
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-editable
+
+# --- Final Stage ---
+# This stage builds the final, lean image
+FROM python:3.12-slim
+
+# Copy the environment, but not the source code
+COPY --from=builder --chown=app:app /app /app
+
+# Make sure the environment is in the PATH
+ENV PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app/examples
 
