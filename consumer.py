@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     client = config["client"]
     if istypedinstance(client, FileClient):
-        query_file(cast(FileClient, client))
+        query_file(cast(FileClient, client), receiver=receiver)
     elif istypedinstance(client, MQTTClient):
         client = query_mqtt(cast(MQTTClient, client))
         client.loop_forever()
