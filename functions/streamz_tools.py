@@ -33,8 +33,7 @@ class map(Stream):
 
 @Stream.register_api()
 class to_mqtt(Sink):
-    """
-    Initialize the to_mqtt instance.
+    """Initialize the to_mqtt instance.
 
     Args:
         upstream (Stream): Upstream stream.

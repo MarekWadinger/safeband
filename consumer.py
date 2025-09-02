@@ -14,8 +14,7 @@ PORT = 1883
 
 # MQTT callback functions
 def on_connect(self: mqtt.Client, userdata, flags, rc):
-    """
-    MQTT callback function for handling the connect event.
+    """MQTT callback function for handling the connect event.
 
     Args:
         userdata: User-specific data passed to the callback.
@@ -33,8 +32,7 @@ def on_connect(self: mqtt.Client, userdata, flags, rc):
 
 
 def on_message(self, userdata, msg):
-    """
-    MQTT callback function for handling incoming messages.
+    """MQTT callback function for handling incoming messages.
 
     Args:
         userdata: User-specific data passed to the callback.
@@ -59,9 +57,7 @@ def on_message(self, userdata, msg):
 
 
 def query_file(config: FileClient, **kwargs):
-    """
-    Query a JSON file based on the command-line arguments and print the
-    closest past item.
+    """Query a JSON file based on the command-line arguments and print the closest past item.
 
     Args:
         config (dict): The configuration dictionary.
@@ -99,8 +95,7 @@ def query_file(config: FileClient, **kwargs):
 
 
 def query_mqtt(config: MQTTClient):
-    """
-    Create an MQTT client instance and connect to the MQTT broker.
+    """Create an MQTT client instance and connect to the MQTT broker.
 
     Args:
         config (dict): The configuration dictionary.

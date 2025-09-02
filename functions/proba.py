@@ -13,7 +13,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     seed
         Random number generator seed for reproducibility.
 
-    Examples
+    Examples:
     --------
     >>> import numpy as np
     >>> import pandas as pd

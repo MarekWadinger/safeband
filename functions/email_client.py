@@ -6,6 +6,26 @@ from typing import Union
 
 
 class EmailClient:  # pragma: no cover
+    """A client for sending emails.
+
+    Args:
+        sender_email: The email address of the sender.
+        sender_password: The password of the sender.
+        recipient_email: The email address of the recipient.
+
+    Examples:
+        >>> email_client = EmailClient(
+        ...     sender_email="test@example.com",
+        ...     sender_password="password",
+        ...     recipient_email="recipient@example.com"
+        ... )
+        >>> email_client.send_email(
+        ...     subject="Test",
+        ...     msg="Hello, world!"
+        ... )
+        Email sent successfully!
+    """
+
     def __init__(
         self, sender_email: str, sender_password: str, recipient_email: str
     ):

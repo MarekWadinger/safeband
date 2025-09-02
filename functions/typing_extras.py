@@ -47,8 +47,7 @@ class SetupConfig(TypedDict):
 
 
 def istypedinstance(obj, type_):
-    """
-    Checks if the given object matches the provided type annotation.
+    """Check if the given object matches the provided type annotation.
 
     This function checks if the object `obj` is an instance that conforms
     to the specified type annotation `type_`.
@@ -61,7 +60,7 @@ def istypedinstance(obj, type_):
         bool: True if the object matches the provided type annotation; False
         otherwise.
 
-    Example:
+    Examples:
     # >>> model_config = {
     # ...     'threshold': 0.5, 't_e': Timedelta('1 days'),
     # ...     't_a': None, 't_g': None}

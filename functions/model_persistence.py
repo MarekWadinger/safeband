@@ -8,6 +8,12 @@ from functions.utils import common_prefix
 
 
 def load_model(path: str, topics: list[str]):
+    """Load a model from a given path.
+
+    Args:
+        path: The path to the model.
+        topics: The topics of the model.
+    """
     if path:
         model_name = f"model_{common_prefix(topics).replace('/', '_')}_*.pkl"
         model_files = glob.glob(os.path.join(path, model_name))
@@ -26,6 +32,13 @@ def load_model(path: str, topics: list[str]):
 
 
 def save_model(path: str, topics: list[str], model):
+    """Save a model to a given path.
+
+    Args:
+        path: The path to the model.
+        topics: The topics of the model.
+        model: The model to save.
+    """
     if path:
         model_prefix = f"model_{common_prefix(topics).replace('/', '_')}"
         now = dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")

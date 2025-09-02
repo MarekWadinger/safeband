@@ -31,7 +31,7 @@ class Config(TypedDict):
 
 
 def get_args() -> Namespace:
-    """Parses command line arguments.
+    """Parse command line arguments.
 
     Returns:
         Namespace: An object containing the parsed arguments.
@@ -172,8 +172,7 @@ def get_args() -> Namespace:
 
 
 def get_valid_type(type_) -> type:
-    """
-    Return a valid type from a given type hint.
+    """Return a valid type from a given type hint.
 
     This function takes a type hint and returns a valid Python type that
     can be used to annotate variables and function return types.
@@ -236,9 +235,7 @@ def get_valid_type(type_) -> type:
 
 
 def get_valid_client(config: Config) -> Config:
-    """
-    Check the validity of the specified client configuration in the given
-    'config'.
+    """Check the validity of the specified client configuration in the given 'config'.
 
     The 'config' dictionary contains configuration information for different
     client types such as 'file', 'mqtt', 'kafka', and 'pulsar'. This function
@@ -314,8 +311,7 @@ def get_valid_client(config: Config) -> Config:
 
 
 def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
-    """Builds a configuration dictionary based on command line arguments and a
-    configuration file.
+    """Build a configuration dictionary based on command line arguments and a configuration file.
 
     This function constructs a configuration dictionary following the
     structure defined by TypedDicts. It populates the configuration from
@@ -394,9 +390,7 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
 
 
 def get_params() -> Config:  # pragma: no cover
-    """
-    Parses command line arguments and a configuration file to create a Config
-    object.
+    """Parse command line arguments and a configuration file to create a Config object.
 
     This function combines command line arguments and settings from a
     configuration file to create a configuration object.
@@ -404,7 +398,6 @@ def get_params() -> Config:  # pragma: no cover
     Returns:
         Config: A Config object containing the parsed parameters.
     """
-
     args = get_args()
 
     config_parser = ConfigParser()

@@ -9,8 +9,7 @@ LEN_LIMIT = 214
 
 
 def save_public_key(file: str | os.PathLike, key: HumanRSA):
-    """
-    Save the public key to a file.
+    """Save the public key to a file.
 
     Args:
         file (str or Path): Path to the key file.
@@ -27,8 +26,7 @@ def save_public_key(file: str | os.PathLike, key: HumanRSA):
 
 
 def save_private_key(file: str | os.PathLike, key: HumanRSA):
-    """
-    Save the private key to a file.
+    """Save the private key to a file.
 
     Args:
         file (str or Path): Path to the key file.
@@ -45,8 +43,7 @@ def save_private_key(file: str | os.PathLike, key: HumanRSA):
 
 
 def load_public_key(file: str | os.PathLike, key: HumanRSA):
-    """
-    Load the public key from a file.
+    """Load the public key from a file.
 
     Args:
         file (str or Path): Path to the public key file.
@@ -62,8 +59,7 @@ def load_public_key(file: str | os.PathLike, key: HumanRSA):
 
 
 def load_private_key(file: str | os.PathLike, key: HumanRSA):
-    """
-    Load the private key from a file.
+    """Load the private key from a file.
 
     Args:
         file (str or Path): Path to the private key file.
@@ -85,8 +81,7 @@ def split_msg(msg: bytes, max_length: int) -> Sequence[bytes]: ...
 
 
 def split_msg(msg: str | bytes, max_length: int) -> Sequence[str | bytes]:
-    """
-    Split a msg into a list of msgs of specified maximum length.
+    """Split a msg into a list of msgs of specified maximum length.
 
     Args:
         msg (str): The input msg.
@@ -103,8 +98,7 @@ def split_msg(msg: str | bytes, max_length: int) -> Sequence[str | bytes]:
 
 
 def generate_keys() -> tuple[HumanRSA, HumanRSA]:
-    """
-    Generate a pair of RSA keys.
+    """Generate a pair of RSA keys.
 
     Returns:
         tuple: Tuple containing two HumanRSA objects.
@@ -136,8 +130,7 @@ def encrypt_data(
     | Mapping[str, bytes | str | list[bytes | str]],
     key: HumanRSA,
 ) -> bytes | list[bytes] | dict[str, bytes]:
-    """
-    Encrypt data using the provided key.
+    """Encrypt data using the provided key.
 
     Args:
         data (bytes): Data to encrypt.
@@ -192,8 +185,7 @@ def decrypt_data(
     data: Mapping[str, bytes | Sequence[bytes]] | Sequence[bytes] | bytes,
     key: HumanRSA,
 ) -> bytes | Sequence[bytes] | dict[str, bytes]:
-    """
-    Decrypt data using the provided key.
+    """Decrypt data using the provided key.
 
     Args:
         data (bytes): Data to decrypt.
@@ -242,8 +234,7 @@ def sign_data(
     data: bytes | str | Mapping[str, bytes | str],
     key: HumanRSA,
 ) -> str | dict[str, bytes | str]:
-    """
-    Sign the provided data using the given key.
+    """Sign the provided data using the given key.
 
     Args:
         data (bytes): Data to sign.
@@ -285,8 +276,7 @@ def verify_signature(
     signature: str | bytes,
     key: HumanRSA,
 ) -> bool:
-    """
-    Verify the provided signature against the given data and key.
+    """Verify the provided signature against the given data and key.
 
     Args:
         data (bytes): Data to verify.
@@ -332,9 +322,8 @@ def verify_signature(
 
 def verify_and_decrypt_data(
     item: Mapping[str, str | list[str]], key: HumanRSA
-) -> bytes | dict[str, bytes]:
-    """
-    Verify the signature of the item, and return the decrypted data.
+) -> dict[str, bytes]:
+    """Verify the signature of the item, and return the decrypted data.
 
     Args:
         item: The item to verify and decrypt.
@@ -360,8 +349,7 @@ def encode_data(
     data: Mapping[str, str | list[str]],
     encoding: str = "latin1",
 ) -> dict[str, bytes | list[bytes]]:
-    """
-    Encode a data by encoding string values to bytes.
+    r"""Encode a data by encoding string values to bytes.
 
     Args:
         data (dict): The data to encode.
@@ -413,8 +401,7 @@ JsonBytes = Mapping[str, bytes | Sequence[bytes] | "JsonBytes"]
 def decode_data(
     data: JsonBytes | Sequence | bytes | int | float | complex | str,
 ) -> JsonStr | Sequence[str] | str:
-    """
-    Decode a data by decoding bytes values to strings.
+    r"""Decode a data by decoding bytes values to strings.
 
     Args:
         data (dict): The data to decode.

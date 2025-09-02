@@ -40,8 +40,7 @@ class ConditionableDistribution(
 
 
 class Store:
-    """
-    A custom store that implements basic list-like functionality.
+    """A custom store that implements basic list-like functionality.
 
     This class provides a custom store with list-like behavior. It supports
     iteration, indexing, length calculation, appending, updating, and reverting
@@ -107,7 +106,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
 
-    Examples
+    Examples:
     --------
     Make sure that the passed distribution sattisfies necessary protocol
     >>> bad_scorer = GaussianScorer(
@@ -437,7 +436,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
 
-    Examples
+    Examples:
     --------
     Make sure that the passed distribution sattisfies necessary protocol
     >>> bad_scorer = ConditionalGaussianScorer(
