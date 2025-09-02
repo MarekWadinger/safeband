@@ -41,7 +41,7 @@ def save_model(path: str, topics: list[str], model):
     """
     if path:
         model_prefix = f"model_{common_prefix(topics).replace('/', '_')}"
-        now = dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        now = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
         if not os.path.exists(path):
             os.makedirs(path)
         recovery_path = f"{path}/{model_prefix}_{now}.pkl"

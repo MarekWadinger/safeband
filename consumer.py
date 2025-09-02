@@ -84,7 +84,7 @@ def query_file(config: FileClient, **kwargs):
     # Find the closest past item
     for item in data:
         if item["time"] <= dt.datetime.strptime(
-            dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             "%Y-%m-%d %H:%M:%S",
         ):
             closest_item = item
