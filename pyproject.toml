@@ -5,7 +5,6 @@ description = "Online outlier detection service for industrial SCADA-based infra
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "bayesian-optimization<3.0.0",
     "cryptography>=45.0.7",
     "human-security>=1.0",
     "matplotlib<4.0.0",
@@ -41,6 +40,10 @@ dev = [
     "pytest-html>=4.1.1",
     "ruff>=0.12.11",
     "ty>=0.0.1a19",
+]
+example = [
+    "bayesian-optimization>=2.0.4",
+    "numpy>=2.3.2",
 ]
 
 [tool.markdownlint]

@@ -1,6 +1,9 @@
 # --- Builder Stage ---
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
+# Install the project into `/app`
+WORKDIR /app
+
 # Keeps Python from generating .pyc files in the container
 ENV PYTHONDONTWRITEBYTECODE=1
 
@@ -35,17 +38,11 @@ ENV PATH="${PATH}:/root/.cargo/bin"
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --no-editable
+    uv sync --locked --no-install-project --no-editable --group example
 
 
 # Copy the project into the intermediate image
 COPY . /app
-
-# Sync the project
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-editable
 
 # --- Final Stage ---
 # This stage builds the final, lean image
