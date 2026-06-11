@@ -167,15 +167,10 @@ def plot_limits_3d(
     anomalies: pd.Series,
     ser_high: pd.Series,
     ser_low: pd.Series,
-    signal_anomalies: pd.Series | None = None,
     y: str | None = None,
     z: str | None = None,
-    file_name: str | None = None,
     save: bool = False,
-    **kwargs,
 ):
-    from plotly.subplots import make_subplots
-
     col1 = df.columns.get_loc(y)
     col2 = df.columns.get_loc(z)
     fig = make_subplots(
@@ -368,7 +363,6 @@ def plot_compare_anomalies(
     window: timedelta | None = None,
     file_name: str | None = None,
     save: bool = True,
-    **kwargs,
 ) -> None:
     if not file_name:
         file_name = get_file_name(ser, window)
@@ -452,7 +446,6 @@ def plot_limits_grid(
     save: bool = True,
     changepoints: pd.Series | None = None,
     samplings: pd.Series | None = None,
-    **kwargs,
 ) -> None:
     a = anomalies.astype(int).diff()
     # Show dates of anomalous events

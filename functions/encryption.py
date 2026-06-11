@@ -214,7 +214,8 @@ def decrypt_data(
         b'Test'
         >>> decrypt_data([encrypted_data, encrypted_data], key)
         b'TestTest'
-        >>> decrypt_data({'a': encrypted_data, 'b': [encrypted_data, encrypted_data]}, key)
+        >>> data = {'a': encrypted_data, 'b': [encrypted_data, encrypted_data]}
+        >>> decrypt_data(data, key)
         {'a': b'Test', 'b': b'TestTest'}
 
     """
@@ -236,7 +237,7 @@ def decrypt_data(
     msg = (
         f"Wrong type of data. Got {type(data)}. Expected (bytes, list, dict)."
     )
-    raise ValueError(
+    raise TypeError(
         msg,
     )
 
@@ -408,7 +409,7 @@ def encode_data(
         >>> encode_data(invalid_msg)
         Traceback (most recent call last):
         ...
-        ValueError: Invalid data in key2
+        TypeError: Invalid data in key2
 
     """
     result: dict[str, bytes | list[bytes]] = {}
@@ -419,7 +420,7 @@ def encode_data(
             result[k] = [s.encode(encoding) for s in v]
         else:
             msg = f"Invalid data in {k}"
-            raise ValueError(msg)
+            raise TypeError(msg)
     return result
 
 

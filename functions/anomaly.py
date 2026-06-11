@@ -84,17 +84,17 @@ class Store:
     def __len__(self) -> int:
         return len(self.x)
 
-    def append(self, *args, **kwargs) -> None:
+    def append(self, *args, **_kwargs) -> None:
         self.x.append(args[0])
 
-    def update(self, *args, **kwargs) -> None:
+    def update(self, *args, **_kwargs) -> None:
         self.x.append(args[0])
 
-    def revert(self, *args, **kwargs) -> None:
+    def revert(self, *_args, **_kwargs) -> None:
         self.x.pop(0)
 
 
-# TODO: Find a better way to expose __len__ of parent class
+# TODO(MarekWadinger): Find a better way to expose __len__ of parent class
 TimeRolling.__len__ = lambda self: len(self.x)  # type: ignore
 
 
@@ -222,7 +222,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 pass
             else:
                 msg = f"{gaussian} does not satisfy the necessary protocol"
-                raise ValueError(
+                raise TypeError(
                     msg,
                 )
         self.gaussian = gaussian
@@ -305,7 +305,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             self.gaussian,
             TimeRolling,
         ):
-            # TODO: remove this statement after river ~= 0.20.0 is buildable
+            # TODO(MarekWadinger): remove after river ~= 0.20.0 is buildable
             if hasattr(self.gaussian, "_timestamps"):
                 timestamps = self.gaussian._timestamps
             else:
@@ -330,7 +330,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self
 
     def score_one(self, x) -> float:
-        # TODO: find out why return different results on each invocation
+        # TODO(MarekWadinger): find out why return different results on each invocation
         if self.n_seen() >= self.grace_period:
             return self.gaussian.cdf(x)
         if not hasattr(self, "_feature_dim_in"):
@@ -370,9 +370,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             kwargs["scale"] = [
                 kwargs["scale"][i][i] for i in kwargs["scale"].columns
             ]
-        # TODO: consider strict process boundaries
+        # TODO(MarekWadinger): consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
-        # TODO: following code changes the limits given by former
+        # TODO(MarekWadinger): following code changes the limits given by former
         if not hasattr(self, "_feature_dim_in"):
             _feature_dim_in = 1
         else:
@@ -541,7 +541,7 @@ class ConditionalGaussianScorer(GaussianScorer):
                 pass
             else:
                 msg = f"{gaussian} does not satisfy the necessary protocol"
-                raise ValueError(
+                raise TypeError(
                     msg,
                 )
         super().__init__(
@@ -596,12 +596,12 @@ class ConditionalGaussianScorer(GaussianScorer):
         return scores
 
     def _score_one(self, x):
-        # TODO: find out why return different results on each invocation
+        # TODO(MarekWadinger): find out why return different results on each invocation
         #   Due to scipy's cdf function
         if not self.grace_period or self.n_seen() > self.grace_period:
             # Deactivate grace period after first invocation
             self.grace_period = None
-            # TODO: generally score is None when the
+            # TODO(MarekWadinger): generally score is None when the
             #  conditional covariance is maldefined. This
             #  case should be handled differently.
             scores = self._scores_one(x)
@@ -640,8 +640,8 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         return lower_bound[0], upper_bound[0]
 
-    def limit_one(self, x: dict[str, float] | None = None, *args, **kwargs):  # type: ignore[override]
-        # TODO: might break the things up in Pipeline if called before
+    def limit_one(self, x: dict[str, float] | None = None, *_args, **_kwargs):  # type: ignore[override]
+        # TODO(MarekWadinger): might break the things up in Pipeline if called before
         #  predict_one or learn_one
         if x is None:
             x = {}

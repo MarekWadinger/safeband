@@ -2,6 +2,7 @@
 import datetime as dt
 import json
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import IO
@@ -70,7 +71,7 @@ def expand_model_params(model_params):
             pass
         else:
             msg = "period must be a timedelta or convertible."
-            raise ValueError(msg)
+            raise TypeError(msg)
         return period
 
     t_e = model_params.get("t_e")
@@ -347,8 +348,6 @@ class RpcOutlierDetector:
                 {**config, "group.id": "detection_service"},
             )
         elif istypedinstance(config, PulsarClient):
-            import sys
-
             if sys.version_info.major == 3 and sys.version_info.minor < 12:
                 source = Stream.from_pulsar(
                     config.get("service_url"),
@@ -393,7 +392,7 @@ class RpcOutlierDetector:
                 topic=prefix,
                 publish_kwargs={"retain": True},
             )
-        # TODO: add coverage test
+        # TODO(MarekWadinger): add coverage test
         elif istypedinstance(config, KafkaClient):  # pragma: no cover
             detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(
                 topic,
@@ -417,7 +416,7 @@ class RpcOutlierDetector:
         return detector
 
     def run(self, config, source, detector, debug) -> None:
-        # TODO: handle combination of debug and remote broker
+        # TODO(MarekWadinger): handle combination of debug and remote broker
         if debug and istypedinstance(config, FileClient):
             logger.info("=== Debugging started... ===")
             data = pd.read_csv(config["path"], index_col=0)
@@ -477,7 +476,7 @@ class RpcOutlierDetector:
         debug = setup.get("debug", False)
 
         in_topics = io.get("in_topics", [])
-        # TODO: use out_topics
+        # TODO(MarekWadinger): use out_topics
         _ = io.get("out_topics", None)
 
         threshold, t_e, t_a, t_g = expand_model_params(model_params)

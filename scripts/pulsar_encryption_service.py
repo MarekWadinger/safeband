@@ -12,7 +12,7 @@ from functions.encryption import (
     encrypt_data,
     init_rsa_security,
 )
-from functions.streamz_tools import map  # noqa: F401
+from functions.streamz_tools import MapStream  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

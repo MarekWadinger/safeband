@@ -97,7 +97,7 @@ class TestSecurity:
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
         assert control_action.encode("utf-8") == decrypted_c_a
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             decrypted_c_a = decrypt_data(control_action, self.receiver)  # type: ignore
 
     def test_str_signing_and_verification(self) -> None:

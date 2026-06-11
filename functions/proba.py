@@ -80,7 +80,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
                 "Arguments must be either dict, str, dict, pd.DataFrame or "
                 "np.ndarray, int, np.ndarray, np.ndarray."
             )
-            raise ValueError(
+            raise TypeError(
                 msg,
             )
         # After both branches, mean and observed_values are always np.ndarray

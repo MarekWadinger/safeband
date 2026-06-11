@@ -2,6 +2,7 @@ from argparse import ArgumentParser, FileType, Namespace  # ty: ignore[deprecate
 from configparser import ConfigParser
 from os import getenv
 from pathlib import Path
+from types import GenericAlias
 from typing import Any, NotRequired, cast
 
 from pandas import Timedelta
@@ -230,9 +231,7 @@ def get_valid_type(type_) -> type:
         ValueError: Invalid type: None
 
     """
-    # TODO: get first valid type
-    from types import GenericAlias
-
+    # TODO(MarekWadinger): get first valid type
     if isinstance(type_, (type, GenericAlias)):
         return type_
     if hasattr(type_, "__args__"):
@@ -326,7 +325,8 @@ def get_valid_client(config: Config) -> Config:
 
 
 def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
-    """Build a configuration dictionary based on command line arguments and a configuration file.
+    """Build a configuration dictionary based on command line arguments
+    and a configuration file.
 
     This function constructs a configuration dictionary following the
     structure defined by TypedDicts. It populates the configuration from

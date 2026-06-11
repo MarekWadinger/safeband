@@ -7,8 +7,8 @@ from streamz import Sink, Stream
 logger = logging.getLogger(__name__)
 
 
-@Stream.register_api()
-class map(Stream):
+@Stream.register_api(attribute_name="map")
+class MapStream(Stream):
     def __init__(self, upstream, func, *args, **kwargs) -> None:
         self.func = func
         # this is one of a few stream specific kwargs
@@ -18,7 +18,7 @@ class map(Stream):
 
         Stream.__init__(self, upstream, stream_name=stream_name)
 
-    def update(self, x, who=None, metadata=None):
+    def update(self, x, _who=None, metadata=None):
         try:
             result = self.func(x, *self.args, **self.kwargs)
         except Exception as e:
@@ -114,7 +114,7 @@ class to_mqtt(Sink):
         self.keepalive = keepalive
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
-    def update(self, x, who=None, metadata=None) -> None:
+    def update(self, x, _who=None, _metadata=None) -> None:
         def publish_many(
             client: mqtt.Client,
             topics: list[str],
@@ -133,7 +133,7 @@ class to_mqtt(Sink):
                 self.keepalive,
                 **self.c_kw,
             )
-        # TODO: wait on successful delivery
+        # TODO(MarekWadinger): wait on successful delivery
         if isinstance(x, bytes):
             self.client.publish(self.topic, x, **self.p_kw)
         else:
