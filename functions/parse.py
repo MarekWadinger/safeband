@@ -1,3 +1,5 @@
+"""Argument parsing and configuration building for the consumer pipeline."""
+
 from argparse import ArgumentParser, FileType, Namespace  # ty: ignore[deprecated]
 from configparser import ConfigParser
 from os import getenv
@@ -21,6 +23,8 @@ from functions.typing_extras import (
 
 
 class Config(TypedDict):
+    """Top-level configuration dictionary for the consumer application."""
+
     setup: SetupConfig
     email: NotRequired[EmailConfig]
     model: ModelConfig
@@ -326,13 +330,10 @@ def get_valid_client(config: Config) -> Config:
 
 
 def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
-    """Build a configuration dictionary based on command line arguments
-    and a configuration file.
+    """Build a configuration dictionary from CLI arguments and a config file.
 
-    This function constructs a configuration dictionary following the
-    structure defined by TypedDicts. It populates the configuration from
-    command line arguments when provided, and falls back to values from a
-    configuration file.
+    Constructs a Config following the TypedDict structure, preferring CLI
+    values and falling back to values from config_parser.
 
     Args:
         args (Namespace): Parsed command line arguments.

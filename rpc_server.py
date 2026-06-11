@@ -1,3 +1,5 @@
+"""Streaming anomaly detection server with MQTT, Kafka, and file I/O support."""
+
 # IMPORTS
 import datetime as dt
 import json
@@ -45,6 +47,15 @@ open_files: list[IO] = []
 
 # DEFINITIONS
 def expand_model_params(model_params):
+    """Extract and convert model parameters from the configuration dictionary.
+
+    Args:
+        model_params: Mapping containing threshold, t_e, t_a, and t_g values.
+
+    Returns:
+        tuple: ``(threshold, t_e, t_a, t_g)`` as a float and three timedeltas.
+
+    """
     threshold = model_params.get("threshold", 0.99735)
 
     def period_to_timedelta(
@@ -112,50 +123,24 @@ def print_summary(df) -> None:
 
 
 class RpcOutlierDetector:
+    """Streaming outlier detector that processes data from various sources."""
+
     def __init__(self) -> None:
+        """Initialize the detector in a stopped state."""
         self.stopped = True
 
     def preprocess(self, x, topics: list):
-        """Preprocess the input data.
+        """Normalize heterogeneous input into a ``{time, data}`` dictionary.
+
+        Accepts a pd.Series (with optional Timestamp name), a (timestamp,
+        Series) tuple, a plain dict, an MQTTMessage, or raw bytes.
 
         Args:
-            x (Union[pd.Series, tuple, dict, MQTTMessage, bytes]): The input
-            data
-            to be preprocessed.
-            topics (list): The topics to be extracted from the
-            input data.
+            x: Input sample in one of the supported formats.
+            topics: Feature names to extract from the input.
 
         Returns:
-            dict: The preprocessed data.
-
-        Examples:
-        >>> series = pd.Series([1.], name=pd.to_datetime('2023-01-01'),
-        ...                    index=["sensor_1"])
-        >>> obj = RpcOutlierDetector()
-        >>> obj.preprocess(series, ['sensor_1'])
-        {'time': Timestamp('2023-01-01 00:00:00'), 'data': {'sensor_1': 1.0}}
-
-        >>> series_tuple = (pd.to_datetime('2023-01-01'), series)
-        >>> obj.preprocess(series_tuple, ['sensor_1'])
-        {'time': Timestamp('2023-01-01 00:00:00'), 'data': {'sensor_1': 1.0}}
-
-        >>> data_dict = {'time': pd.to_datetime('2023-01-01'), 'sensor_1': 1.}
-        >>> out = obj.preprocess(data_dict, ['sensor_1'])
-        >>> out.keys(), out['data'].keys()
-        (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
-
-        >>> mqtt_message = MQTTMessage()
-        >>> mqtt_message.timestamp = 1672527600.0
-        >>> mqtt_message.payload = b'1.'
-        >>> mqtt_message.topic = b'sensors/sensor_1'
-        >>> out = obj.preprocess(mqtt_message, ['1'])
-        >>> out.keys(), out['data'].keys()
-        (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
-
-        >>> binary_data = b'1.0'
-        >>> out = obj.preprocess(binary_data, ['sensor_1'])
-        >>> out.keys(), out['data'].keys()
-        (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
+            dict: Normalized record with keys ``time`` and ``data``.
 
         """
         if isinstance(x, pd.Series):
@@ -189,36 +174,19 @@ class RpcOutlierDetector:
         return None
 
     def fit_transform(self, x, model: GaussianScorer):
-        """Apply anomaly detection model to the input data.
+        """Apply the anomaly detection model and return a serialisable result.
 
-        The function applies the provided anomaly detection model to the input
-        data and returns the result as a dictionary.
+        Calls ``model.process_one`` with the appropriately shaped feature
+        vector, then packages the anomaly flag, adaptive thresholds, and
+        optional root-cause feature into a dict with a string timestamp.
 
         Args:
-            x (dict): The input data dictionary.
-            model: The anomaly detection model.
+            x: Preprocessed record with ``time`` and ``data`` keys.
+            model: Fitted GaussianScorer or ConditionalGaussianScorer.
 
         Returns:
-            dict: The processed data dictionary.
-
-        Examples:
-        >>> x = {"time": dt.datetime(2022,1,1),
-        ...      "data": {"feature1": 0.5, "feature2": 1.2, "feature3": -0.8}}
-        >>> model = model = GaussianScorer(
-        ...     utils.TimeRolling(proba.Gaussian(), period=dt.timedelta(1)),
-        ...     grace_period=dt.timedelta(1))
-        >>> obj = RpcOutlierDetector()
-        >>> result = obj.fit_transform(x, model)
-        >>> sorted(result.keys())
-        ['anomaly', 'level_high', 'level_low', 'root_cause', 'time']
-        >>> isinstance(result["time"], str)
-        True
-        >>> isinstance(result["anomaly"], int)
-        True
-        >>> isinstance(result["level_high"], float)
-        True
-        >>> isinstance(result["level_low"], float)
-        True
+            dict: Keys ``time``, ``anomaly``, ``root_cause``, ``level_high``,
+            and ``level_low``.
 
         """
         gaussian_inner = getattr(model.gaussian, "obj", model.gaussian)
@@ -241,6 +209,7 @@ class RpcOutlierDetector:
         }
 
     def dump_to_file(self, x, f) -> None:  # pragma: no cover
+        """Serialize a result dictionary as JSON and append it to a file."""
         print(json.dumps(x), file=f)
 
     def send_anomaly_email(
@@ -249,6 +218,14 @@ class RpcOutlierDetector:
         email_client: EmailClient,
         model: ConditionalGaussianScorer,
     ) -> None:  # pragma: no cover
+        """Send an alert email when an anomaly onset is detected.
+
+        Args:
+            xs: Sliding window of two consecutive result dicts.
+            email_client: Configured email client for sending alerts.
+            model: The scorer used to obtain the root-cause feature.
+
+        """
         if len(xs) == 2 and xs[1]["anomaly"] - xs[0]["anomaly"] == 1:
             email_client.send_email(
                 f"AID Alert: Anomaly detected in {model.get_root_cause()}",
@@ -261,68 +238,22 @@ class RpcOutlierDetector:
         topics: list,
         debug: bool = False,
     ):
-        """Get the data source based on the provided configuration.
+        """Return a Streamz source stream based on the transport configuration.
 
-        The function returns a data source stream object based on the
-        configuration settings.
-        If the 'path' key is present in the config, it returns a stream from an
-        iterable of
-        rows in the 'data' dictionary. If the 'host' key is present, it
-        returns a stream from MQTT messages with the specified topics. If the
-        'bootstrap.servers' key is present, it returns a stream from Kafka
-        messages with the specified topics. If none of the expected keys are
-        found, it raises a RuntimeError.
+        Dispatches to ``from_iterable`` (file), ``from_mqtt``, ``from_kafka``,
+        or ``from_pulsar`` depending on the keys present in ``config``.
 
         Args:
-            config (dict): The configuration dictionary.
-            topics (list): The topics to subscribe to for MQTT or Kafka sources.
-            debug (bool, optional): Enable debug mode. Defaults to False.
+            config: Client configuration dict identifying the transport type.
+            topics: Feature or subscription topic names.
+            debug: When True and config is a FileClient, return a bare Stream
+                for manual event injection.
 
         Returns:
-            stream.Stream: The data source stream object.
+            streamz.Stream: Configured source stream.
 
         Raises:
-            RuntimeError: If the data format is incorrect.
-
-        Examples:
-        >>> config = {
-        ...     "path": "tests/test.csv",
-        ...     "output": "tests/output.json"}
-        >>> topics = ["test"]
-        >>> obj = RpcOutlierDetector()
-        >>> source = obj.get_source(config, topics)
-        >>> type(source)
-        <class 'streamz.sources.from_iterable'>
-
-        >>> source = obj.get_source(config, topics, debug=True)
-        >>> type(source)
-        <class 'streamz.core.Stream'>
-
-        >>> config = {"host": "mqtt.server", "port": 1883}
-        >>> topics = ["test"]
-        >>> source = obj.get_source(config, topics)
-        >>> type(source)
-        <class 'streamz.core.filter'>
-
-        >>> config = {"bootstrap_servers": "kafka.server:9092",
-        ...           "group.id": "consumer-group"}
-        >>> topics = ["kafka-topics"]
-        >>> source = obj.get_source(config, topics)
-        >>> type(source)
-        <class 'streamz.sources.from_kafka'>
-
-        # >>> config = {"service_url": "pulsar://localhost:6650"}
-        # >>> topics = ["pulsar-topics"]
-        # >>> source = obj.get_source(config, topics)
-        # >>> type(source)
-        # <class 'streamz_pulsar.sources.from_pulsar.from_pulsar'>
-
-        >>> config = {"invalid": "config"}
-        >>> topics = ["test"]
-        >>> source = obj.get_source(config, topics)
-        Traceback (most recent call last):
-        ...
-        RuntimeError: Wrong client.
+            RuntimeError: If no recognised transport key is found in config.
 
         """
         if istypedinstance(config, FileClient):
@@ -416,6 +347,15 @@ class RpcOutlierDetector:
         return detector
 
     def run(self, config, source, detector, debug) -> None:
+        """Run the detection pipeline until the source stream is exhausted.
+
+        Args:
+            config: Client configuration used to determine debug file paths.
+            source: Streamz source stream.
+            detector: Streamz pipeline terminating at a sink.
+            debug: When True, replay a small CSV batch instead of streaming.
+
+        """
         # TODO(MarekWadinger): handle combination of debug and remote broker
         if debug and istypedinstance(config, FileClient):
             logger.info("=== Debugging started... ===")
@@ -447,28 +387,20 @@ class RpcOutlierDetector:
         setup: SetupConfig,
         email: EmailConfig | None = None,
     ) -> None:
-        """Process the limits in a streaming manner.
+        """Set up and run the streaming anomaly detection pipeline.
 
-        The function sets up the necessary components for streaming processing
-        of limits. It creates instances of the GaussianScorer model for
-        anomaly detection, prepares the data source based on the
-        configuration, and performs the required transformations.
-        The processed data is then stored or published based on the
-        configuration.
+        Creates a GaussianScorer (or ConditionalGaussianScorer for multivariate
+        data), wires together the source, detection, optional encryption, and
+        sink stages, then delegates execution to ``run``.
 
         Args:
-            config (dict): The configuration dictionary.
-            topics (list): The topics to subscribe to for sources.
-            key_path (str): The path to the RSA keys
-            debug (bool, optional): Enable debug mode. Defaults to False.
-
-        Examples:
-        >>> client = {"path": "tests/test.csv", "output": "tests/output.json"}
-        >>> io = {"in_topics": ["A"]}
-        >>> model_params = {"t_e": "1h"}
-        >>> setup = {"key_path": ".temp", "debug": True}
-        >>> obj = RpcOutlierDetector()
-        >>> obj.start(client, io, model_params, setup)
+            client: Transport configuration (file, MQTT, Kafka, or Pulsar).
+            io: I/O configuration with ``in_topics`` and optional ``out_topics``.
+            model_params: Model hyper-parameters including ``t_e`` and optional
+                ``t_a``, ``t_g``, and ``threshold``.
+            setup: Runtime options such as ``debug``, ``key_path``, and
+                ``recovery_path``.
+            email: Optional email alert configuration.
 
         """
         recovery_path = setup.get("recovery_path", "")

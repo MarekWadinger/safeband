@@ -1,3 +1,5 @@
+"""MQTT and file-based consumer for anomaly detection results."""
+
 import datetime as dt
 import json
 import logging
@@ -18,17 +20,13 @@ PORT = 1883
 
 # MQTT callback functions
 def on_connect(self: mqtt.Client, userdata, _flags, rc) -> None:
-    """MQTT callback function for handling the connect event.
+    """Subscribe to configured topics after a successful broker connection.
 
     Args:
+        self: MQTT client instance invoking the callback.
         userdata: User-specific data passed to the callback.
-        flags: Response flags from the broker.
+        _flags: Response flags from the broker (unused).
         rc: The connection result code.
-
-    Examples:
-        >>> obj = mqtt.Client()
-        >>> usr = Namespace(topic=["my_topic"])
-        >>> on_connect(mqtt.Client(), usr, None, 0)
 
     """
     logger.info("Connected with result code %s", rc)
@@ -36,17 +34,12 @@ def on_connect(self: mqtt.Client, userdata, _flags, rc) -> None:
 
 
 def on_message(_self, userdata, msg) -> None:
-    """MQTT callback function for handling incoming messages.
+    """Decrypt and log an incoming MQTT message.
 
     Args:
+        _self: MQTT client instance (unused).
         userdata: User-specific data passed to the callback.
         msg: The message received from the broker.
-
-    Examples:
-        >>> obj = mqtt.Client()
-        >>> usr = Namespace(topic=["my_topic"])
-        >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
-        >>> on_message(obj, usr, msg)
 
     """
     if isinstance(userdata, Namespace) and "receiver" in userdata:
@@ -64,17 +57,13 @@ def on_message(_self, userdata, msg) -> None:
 
 
 def query_file(config: FileClient, **kwargs) -> None:
-    """Query a JSON file based on the command-line arguments and print the
-    closest past item.
-
+    """Read a JSON output file and log the entry with the closest past timestamp.
 
     Args:
-        config (dict): The configuration dictionary.
-        args (Namespace): Parsed command-line arguments.
-
-    Examples:
-        >>> config = {"output": "tests/sample.json"}
-        >>> query_file(config)
+        config: File client configuration with an ``output`` key pointing to the
+            JSON file to read.
+        **kwargs: Optional keyword arguments. Pass ``receiver`` (RSA private key)
+            to decrypt entries before processing.
 
     """
     # Load the JSON file as a list of dictionaries
@@ -107,19 +96,13 @@ def query_file(config: FileClient, **kwargs) -> None:
 
 
 def query_mqtt(config: MQTTClient):
-    """Create an MQTT client instance and connect to the MQTT broker.
+    """Create an MQTT client instance and connect to the configured broker.
 
     Args:
-        config (dict): The configuration dictionary.
-        args (Namespace): Parsed command-line arguments.
+        config: MQTT client configuration with ``host`` and optional port keys.
 
     Returns:
-        mqtt.Client: MQTT client instance.
-
-    Examples:
-        >>> client = mqtt.Client()
-        >>> isinstance(client, mqtt.Client)
-        True
+        mqtt.Client: Connected MQTT client instance.
 
     """
     # Create MQTT client instance

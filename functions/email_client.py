@@ -1,3 +1,5 @@
+"""SMTP email client for sending anomaly notification messages."""
+
 import json
 import logging
 import smtplib
@@ -32,6 +34,7 @@ class EmailClient:  # pragma: no cover
         sender_password: str,
         recipient_email: str,
     ) -> None:
+        """Store sender credentials and recipient address."""
         self.sender_email = sender_email
         self.sender_password = sender_password
         self.recipient_email = recipient_email
@@ -41,6 +44,7 @@ class EmailClient:  # pragma: no cover
         subject: str,
         msg: str | dict,
     ) -> None:
+        """Send an email with the given subject and message body."""
         # Create the email message
         body = MIMEMultipart()
         body["From"] = self.sender_email

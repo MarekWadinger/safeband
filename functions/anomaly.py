@@ -1,3 +1,5 @@
+"""Anomaly detection scorers based on Gaussian distribution models."""
+
 import collections
 import warnings
 from datetime import timedelta
@@ -12,13 +14,19 @@ from scipy.stats import norm
 
 @runtime_checkable
 class Distribution(Protocol):  # pragma: no cover
+    """Protocol for a univariate or multivariate distribution estimator."""
+
     mu: float | dict[str, float]
     sigma: float | pd.DataFrame
     n_samples: float | int
 
-    def update(self, *args, **kwargs) -> None: ...
+    def update(self, *args, **kwargs) -> None:
+        """Update the distribution with a new observation."""
+        ...
 
-    def cdf(self, *args, **kwargs) -> float: ...
+    def cdf(self, *args, **kwargs) -> float:
+        """Return the cumulative distribution function value."""
+        ...
 
 
 @runtime_checkable
@@ -26,20 +34,28 @@ class ConditionableDistribution(
     Distribution,
     Protocol,
 ):  # pragma: no cover
+    """Protocol for a distribution that supports conditional computation."""
+
     mu: dict[str, float]
     sigma: pd.DataFrame
     var: pd.DataFrame
     n_samples: float | int
 
-    def update(self, *args, **kwargs) -> None: ...
+    def update(self, *args, **kwargs) -> None:
+        """Update the distribution with a new observation."""
+        ...
 
-    def cdf(self, *args, **kwargs) -> float: ...
+    def cdf(self, *args, **kwargs) -> float:
+        """Return the cumulative distribution function value."""
+        ...
 
     def mv_conditional(
         self,
         *args,
         **kwargs,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]: ...
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return conditional mean, covariance, and std for a variable."""
+        ...
 
 
 class Store:
@@ -73,24 +89,31 @@ class Store:
     """
 
     def __init__(self) -> None:
+        """Initialize an empty store."""
         self.x: list = []
 
     def __iter__(self):
+        """Yield items in insertion order."""
         yield from self.x
 
     def __getitem__(self, idx):
+        """Return the item at the given index."""
         return self.x[idx]
 
     def __len__(self) -> int:
+        """Return the number of stored items."""
         return len(self.x)
 
     def append(self, *args, **_kwargs) -> None:
+        """Append the first positional argument to the store."""
         self.x.append(args[0])
 
     def update(self, *args, **_kwargs) -> None:
+        """Append the first positional argument to the store."""
         self.x.append(args[0])
 
     def revert(self, *_args, **_kwargs) -> None:
+        """Remove the oldest item from the store."""
         self.x.pop(0)
 
 
@@ -214,6 +237,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         t_a: timedelta | int | None = None,
         protect_anomaly_detector: bool = True,
     ) -> None:
+        """Initialize GaussianScorer, validating the distribution protocol."""
         if not isinstance(gaussian, (Distribution, ConditionableDistribution)):
             if isinstance(gaussian, (Rolling, TimeRolling)) and isinstance(
                 gaussian.obj,
@@ -301,6 +325,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return False
 
     def n_seen(self):
+        """Return the number of observations seen, as count or timedelta."""
         if isinstance(self.grace_period, timedelta) and isinstance(
             self.gaussian,
             TimeRolling,
@@ -319,6 +344,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return n_seen
 
     def learn_one(self, x, **learn_kwargs):
+        """Update the distribution, skipping anomalous samples when protected."""
         if self.protect_anomaly_detector:
             is_anomaly = self.predict_one(x)
             self.buffer.append(is_anomaly)
@@ -330,6 +356,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self
 
     def score_one(self, x) -> float:
+        """Return the CDF anomaly score for x; 0.5 during grace period."""
         # TODO(MarekWadinger): find out why return different results on each invocation
         if self.n_seen() >= self.grace_period:
             return self.gaussian.cdf(x)
@@ -338,6 +365,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return 0.5**self._feature_dim_in
 
     def predict_one(self, x) -> int:
+        """Return 1 if x is anomalous under the threshold, else 0."""
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
 
@@ -356,6 +384,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return 0
 
     def limit_one(self, *args, diagonal_only=True):
+        """Return (upper, lower) Gaussian limits derived from the threshold."""
         if len(args) > 0:
             self._get_feature_dim_in(args[0])
             self._get_feature_names_in(args[0])
@@ -421,6 +450,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return thresh_high, thresh_low
 
     def process_one(self, x, t=None):
+        """Predict, compute limits, and conditionally learn from x in one step."""
         if self.gaussian.n_samples == 0:
             if isinstance(self.gaussian, (Rolling, TimeRolling)):
                 if hasattr(self.gaussian.obj, "_from_state"):
@@ -533,6 +563,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         t_a: timedelta | int | None = None,
         protect_anomaly_detector: bool = True,
     ) -> None:
+        """Initialize ConditionalGaussianScorer with a conditionable distribution."""
         if not isinstance(gaussian, ConditionableDistribution):
             if isinstance(gaussian, (Rolling, TimeRolling)) and isinstance(
                 gaussian.obj,
@@ -610,13 +641,16 @@ class ConditionalGaussianScorer(GaussianScorer):
         return 0.5, None
 
     def get_root_cause(self):
+        """Return the feature name identified as root cause of the last anomaly."""
         return self.root_cause
 
     def score_one(self, x) -> float:
+        """Return the conditional anomaly score farthest from 0.5."""
         score, _ = self._score_one(x)
         return score
 
     def predict_one(self, x) -> int:
+        """Return 1 and set root cause if x is conditionally anomalous, else 0."""
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
 
@@ -641,6 +675,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         return lower_bound[0], upper_bound[0]
 
     def limit_one(self, x: dict[str, float] | None = None, *_args, **_kwargs):  # type: ignore[override]
+        """Return per-feature (upper, lower) conditional limits."""
         # TODO(MarekWadinger): might break the things up in Pipeline if called before
         #  predict_one or learn_one
         if x is None:

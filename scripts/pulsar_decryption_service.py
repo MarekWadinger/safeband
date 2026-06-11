@@ -1,3 +1,5 @@
+"""Pulsar consumer that decrypts RSA-encrypted anomaly detection results."""
+
 import logging
 import sys
 from argparse import ArgumentParser
@@ -19,11 +21,15 @@ logger = logging.getLogger(__name__)
 
 
 class Example(Record):
+    """Pulsar schema record mirroring the anomaly detection output fields."""
+
     # keys and __getitem__ serve as minimum implementation of mapping protocol
     def keys(self):
+        """Return the declared schema field names."""
         return self._fields.keys()  # ty: ignore[unresolved-attribute]
 
     def __getitem__(self, key):
+        """Return the value for the given field name."""
         return {
             k: v
             for k, v in self.__dict__.items()
@@ -42,6 +48,16 @@ def decryption_service(
     subscription_name: str,
     service_url: str,
 ) -> None:
+    """Subscribe to a Pulsar topic, decrypt messages, and forward or print them.
+
+    Args:
+        in_topic: Pulsar topics to consume from.
+        out_topic: Pulsar topic to publish decrypted messages to, or None to
+            print to stdout.
+        subscription_name: Consumer subscription name.
+        service_url: Pulsar broker URL.
+
+    """
     _, receiver = init_rsa_security(".security")
 
     source = Stream.from_pulsar(

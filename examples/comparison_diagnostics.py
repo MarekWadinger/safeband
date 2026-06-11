@@ -1,3 +1,5 @@
+"""Bayesian hyperparameter optimisation comparing anomaly detection algorithms."""
+
 # IMPORTS
 import ast
 import logging
@@ -39,12 +41,14 @@ rng = np.random.default_rng(RANDOM_STATE)
 
 # FUNCTIONS
 def save_model(model, path) -> None:
+    """Serialise model to a pickle file inside the given directory."""
     Path(path).mkdir(parents=True, exist_ok=True)
     with Path(f"{path}/{alg[0]}.pkl").open("wb") as f:
         pickle.dump(model, f)
 
 
 def save_results_y(df_ys, path) -> None:
+    """Save prediction DataFrame to a CSV file inside the given directory."""
     Path(path).mkdir(parents=True, exist_ok=True)
     df_ys.to_csv(f"{path}/ys.csv", index=False)
 

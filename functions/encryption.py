@@ -1,3 +1,5 @@
+"""RSA encryption, signing, and key management utilities."""
+
 import json
 import os
 from collections.abc import Mapping, Sequence
@@ -390,6 +392,7 @@ def encode_data(
 
     Args:
         data (dict): The data to encode.
+        encoding (str): Codec used to encode string values (default ``latin1``).
 
     Returns:
         dict: The encoded data.
@@ -495,6 +498,7 @@ def decode_data(
 
 
 def init_rsa_security(key_path: str) -> tuple[HumanRSA, HumanRSA]:
+    """Generate or load sender/receiver RSA key pairs at key_path."""
     sender, receiver = generate_keys()
     kp = Path(key_path)
     if not kp.exists():  # pragma: no cover

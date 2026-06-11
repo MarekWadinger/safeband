@@ -1,3 +1,5 @@
+"""Entry point for running the RPC outlier detection client."""
+
 from functions.parse import get_params
 from rpc_server import RpcOutlierDetector
 

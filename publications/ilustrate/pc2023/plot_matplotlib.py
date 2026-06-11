@@ -1,3 +1,5 @@
+"""Matplotlib plotting helpers for the PC2023 publication figures."""
+
 import textwrap
 from datetime import timedelta
 from pathlib import Path
@@ -90,6 +92,7 @@ def set_size(
 
 
 def set_axis_style(ax: plt.Axes, ser, xlabel="", ylabel="") -> None:
+    """Apply shared axis labels, limits, and date formatting to an axis."""
     ylabel = "\n".join(textwrap.wrap(ylabel, 11))
     ax.set_xlabel(xlabel)
     ax.set_ylabel(
@@ -106,6 +109,7 @@ def set_axis_style(ax: plt.Axes, ser, xlabel="", ylabel="") -> None:
 
 
 def plot_anomalies(ax, a) -> None:
+    """Shade red vertical spans between anomaly start and end indices."""
     for x0, x1 in zip(a[a == 1].index, a[a == -1].index, strict=False):
         ax.axvspan(
             x0,
@@ -118,6 +122,7 @@ def plot_anomalies(ax, a) -> None:
 
 
 def make_name(name, window, file_name):
+    """Build a default output file name from the series name and window."""
     if file_name is None:
         if window:
             file_name = (
@@ -139,6 +144,19 @@ def plot_limits_(
     save: bool = True,
     **kwargs,
 ) -> None:
+    """Plot a signal with anomalies and dynamic limits, optionally saving.
+
+    Args:
+        ser: Signal series to plot.
+        anomalies: Binary anomaly flags aligned with ``ser``.
+        ser_high: Upper dynamic limit series.
+        ser_low: Lower dynamic limit series.
+        window: Sliding window length used to derive the file name.
+        file_name: Output file name stem; derived from ``ser`` if None.
+        save: Whether to save the figure as a PDF.
+        **kwargs: Optional ``ylim`` tuple and ``xticks_on`` selector.
+
+    """
     file_name = make_name(ser.name, window, file_name)
 
     fig, ax = plt.subplots(
@@ -194,6 +212,18 @@ def plot_limits(
     ser_low: pd.Series,
     ylim: tuple[float, float],
 ):
+    """Fill the regions outside the high/low limits on the given axis.
+
+    Args:
+        ax: Axis to draw on.
+        ser_high: Upper limit series.
+        ser_low: Lower limit series.
+        ylim: Y-axis bounds used as the outer edge of the fills.
+
+    Returns:
+        The axis with the limit regions drawn.
+
+    """
     if (ser_high is not None) and (ser_low is not None):
         ax.fill_between(
             ser_high.index,
@@ -225,6 +255,17 @@ def plot_compare_anomalies_(
     save: bool = True,
     **kwargs,
 ) -> None:
+    """Plot the signal in stacked subplots, one per anomaly detector.
+
+    Args:
+        ser: Signal series to plot in each subplot.
+        anomalies: DataFrame with one binary anomaly column per detector.
+        window: Sliding window length used to derive the file name.
+        file_name: Output file name stem; derived from ``ser`` if None.
+        save: Whether to save each subplot as a PDF.
+        **kwargs: Optional ``ylim`` tuple and ``xticks_on`` selector.
+
+    """
     file_name = make_name(ser.name, window, file_name)
 
     n_rows = len(anomalies.columns)
@@ -279,6 +320,14 @@ def plot_compare_anomalies_(
 
 
 def plot_anomaly_bars(args, colors, axs) -> None:
+    """Draw labelled anomaly-event bars on the trailing subplot axes.
+
+    Args:
+        args: Binary anomaly series; non-Series entries are skipped.
+        colors: Color cycle indexed by the position of each series.
+        axs: Subplot axes; bars fill the axes from the end backwards.
+
+    """
     for i, a in enumerate(args, start=1):
         if isinstance(a, pd.Series):
             ax: plt.Axes = axs[-i]
@@ -331,6 +380,19 @@ def plot_limits_grid_(
     # ground_truth: Union[pd.Series, None] = None,
     **kwargs,
 ) -> None:
+    """Plot a grid of signals with limits, anomalies, and event bars.
+
+    Args:
+        df: DataFrame with one signal column per subplot row.
+        *args: Binary anomaly series rendered as bar rows at the bottom.
+        ser_high: Per-row upper limit series keyed by column name.
+        ser_low: Per-row lower limit series keyed by column name.
+        signal_anomaly: Per-row anomaly flags keyed by column name.
+        file_name: Output file name stem for the saved PDF.
+        save: Whether to save the figure under ``plots/``.
+        **kwargs: Optional ``resample`` rule and ``grace_period`` marker.
+
+    """
     colors = [
         "#1f77b4",
         "#ff7f0e",

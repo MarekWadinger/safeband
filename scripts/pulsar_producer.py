@@ -1,3 +1,5 @@
+"""Minimal Pulsar producer example that emits three integer messages."""
+
 from streamz import Stream
 
 source = Stream()

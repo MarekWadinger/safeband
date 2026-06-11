@@ -1,3 +1,5 @@
+"""Extended probability distributions with conditional computation support."""
+
 from typing import cast
 
 import numpy as np
@@ -46,6 +48,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     """
 
     def __init__(self, seed=None) -> None:
+        """Initialize the distribution, forwarding seed to the parent class."""
         super().__init__(seed=seed)
 
     def mv_conditional(
@@ -55,6 +58,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
         mean: dict[str, float] | np.ndarray,
         covariance: pd.DataFrame | np.ndarray,
     ):
+        """Return conditional mean, covariance, and std of var_idx given observed_values."""
         if (
             isinstance(observed_values, dict)
             and isinstance(mean, dict)

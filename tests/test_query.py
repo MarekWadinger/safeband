@@ -1,3 +1,5 @@
+"""Tests for MQTT message consumption and model persistence utilities."""
+
 import argparse
 import json
 import logging
@@ -25,7 +27,10 @@ if TYPE_CHECKING:
 
 
 class TestConsumer:
+    """Tests for the MQTT on_message handler and file-based query path."""
+
     def setup_class(self) -> None:
+        """Create receiver keys and write an encrypted message to the output file."""
         self.parent_path = Path(__file__).parent
         self.config: FileClient = {
             "path": "",
@@ -45,11 +50,13 @@ class TestConsumer:
             json.dump(ciphertext, f)
 
     def teardown_class(self) -> None:
+        """Remove the temporary output JSON file."""
         output_path = Path(self.config["output"])
         if output_path.exists():
             output_path.unlink()
 
     def test_verify_mqtt_message(self, caplog) -> None:
+        """Processing an encrypted MQTT message logs the decrypted payload."""
         obj = mqtt.Client()
         msg = mqtt.MQTTMessage()
         msg.payload = self.encrypted_msg.encode("latin-1")
@@ -68,6 +75,7 @@ class TestConsumer:
         )
 
     def test_verify_file_message(self, caplog) -> None:
+        """Reading and verifying an encrypted file logs the message timestamp and strips the signature."""
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(self.config, receiver=self.args.receiver)
         assert "2022, 1, 1, 0, 0" in caplog.text
@@ -75,12 +83,16 @@ class TestConsumer:
 
 
 class TestModelPresistence:
+    """Tests for saving and loading models to/from disk."""
+
     def setup_class(self) -> None:
+        """Initialise path and topic list used across persistence tests."""
         self.parent_path = Path(__file__).parent
         self.path = str(Path(__file__).parent / ".recovery_models/")
         self.topics = ["test"]
 
     def teardown_class(self) -> None:
+        """Delete saved model pickle files and remove the recovery directory."""
         models = list(
             Path(self.path).glob(
                 f"model_{common_prefix(self.topics)}_*.pkl",
@@ -91,10 +103,12 @@ class TestModelPresistence:
         Path(self.path).rmdir()
 
     def test_load_model(self) -> None:
+        """Loading from a directory with no matching pickles returns None."""
         model = load_model(self.path, self.topics)
         assert model is None
 
     def test_save_model(self) -> None:
+        """Saving a model writes one pickle; reloading returns an equal object; unknown topics return None."""
         model = {"model": 1}
         save_model(self.path, self.topics, model)
         models = list(

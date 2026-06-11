@@ -1,3 +1,5 @@
+"""TypedDict definitions and instance-checking utilities for configuration types."""
+
 from typing import NotRequired, Union
 
 from pandas import Timedelta
@@ -5,35 +7,49 @@ from typing_extensions import TypedDict
 
 
 class EmailConfig(TypedDict):
+    """SMTP credentials and recipient for outgoing alert emails."""
+
     sender_email: str
     sender_password: str
     recipient_email: str
 
 
 class FileClient(TypedDict):
+    """File-based client configuration with input path and output path."""
+
     path: str
     output: str
 
 
 class MQTTClient(TypedDict):
+    """MQTT broker connection parameters."""
+
     host: str
     port: int
 
 
 class KafkaClient(TypedDict):
+    """Kafka consumer/producer connection parameters."""
+
     bootstrap_servers: str
 
 
 class PulsarClient(TypedDict):
+    """Apache Pulsar client connection parameters."""
+
     service_url: str
 
 
 class IOConfig(TypedDict):
+    """Input and output topic names for the messaging pipeline."""
+
     in_topics: list[str]
     out_topics: list[str] | str | None
 
 
 class ModelConfig(TypedDict):
+    """Anomaly model hyper-parameters controlling thresholds and time windows."""
+
     threshold: float
     t_e: Timedelta
     t_a: Timedelta | None
@@ -41,6 +57,8 @@ class ModelConfig(TypedDict):
 
 
 class SetupConfig(TypedDict):
+    """Optional infrastructure paths and debug flag for the consumer setup."""
+
     recovery_path: NotRequired[str]
     key_path: NotRequired[str]
     debug: NotRequired[bool]

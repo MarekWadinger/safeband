@@ -1,3 +1,5 @@
+"""Pulsar consumer that RSA-encrypts messages before forwarding them."""
+
 import logging
 import sys
 from argparse import ArgumentParser
@@ -23,6 +25,16 @@ def encryption_service(
     subscription_name: str,
     service_url: str,
 ) -> None:
+    """Subscribe to a Pulsar topic, encrypt messages, and forward or print them.
+
+    Args:
+        in_topic: Pulsar topics to consume from.
+        out_topic: Pulsar topic to publish encrypted messages to, or None to
+            print to stdout.
+        subscription_name: Consumer subscription name.
+        service_url: Pulsar broker URL.
+
+    """
     sender, _ = init_rsa_security(".security")
 
     source = Stream.from_pulsar(

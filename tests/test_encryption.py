@@ -1,3 +1,5 @@
+"""Tests for RSA encryption, signing, and key management utilities."""
+
 import sys
 from pathlib import Path
 
@@ -22,7 +24,10 @@ from functions.encryption import (
 
 
 class TestSecurity:
+    """End-to-end security tests covering key generation, persistence, and crypto operations."""
+
     def setup_class(self) -> None:
+        """Generate sender/receiver key pairs and exchange public keys."""
         self.parent_path = Path(__file__).parent
         self.security_dir = self.parent_path / ".security"
         self.security_dir.mkdir(parents=True, exist_ok=True)
@@ -33,6 +38,7 @@ class TestSecurity:
         self.sender.load_public_pem(receiver_pub)
 
     def teardown_class(self) -> None:
+        """Remove PEM key files written during tests."""
         # Delete files if created
         s_pem_pub = self.security_dir / "s_pem.pub"
         if s_pem_pub.exists():
@@ -51,10 +57,12 @@ class TestSecurity:
             r_pem.unlink()
 
     def test_key_generation(self) -> None:
+        """Generating sender and receiver key pairs yields non-None objects."""
         assert self.sender is not None
         assert self.receiver is not None
 
     def test_key_saving_and_loading(self) -> None:
+        """Saving and loading public PEM files preserves the key material."""
         save_public_key(self.security_dir / "s_pem.pub", self.sender)
         save_private_key(self.security_dir / "s_pem", self.sender)
         save_public_key(self.security_dir / "r_pem.pub", self.receiver)
@@ -68,6 +76,7 @@ class TestSecurity:
         assert self.receiver.public_pem() == remote_sender.public_pem()
 
     def test_key_retaining(self) -> None:
+        """Saving and loading private PEM files preserves the private key material."""
         save_public_key(self.security_dir / "s_pem.pub", self.sender)
         save_private_key(self.security_dir / "s_pem", self.sender)
         save_public_key(self.security_dir / "r_pem.pub", self.receiver)
@@ -81,18 +90,21 @@ class TestSecurity:
         assert self.receiver.private_pem() == remote_sender.private_pem()
 
     def test_bytes_encryption_and_decryption(self) -> None:
+        """Encrypting then decrypting bytes round-trips to the original value."""
         control_action = b"4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
         assert control_action == decrypted_c_a
 
     def test_bytes_signing_and_verification(self) -> None:
+        """Signing bytes and verifying against the sender's public key succeeds."""
         control_action = b"4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(control_action, signature, self.receiver)
         assert verified is True
 
     def test_str_encryption_and_decryption(self) -> None:
+        """Encrypting a str round-trips as UTF-8 bytes; passing a str to decrypt raises TypeError."""
         control_action = "4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
@@ -101,6 +113,7 @@ class TestSecurity:
             decrypted_c_a = decrypt_data(control_action, self.receiver)  # type: ignore
 
     def test_str_signing_and_verification(self) -> None:
+        """Signing a str and verifying its UTF-8 bytes against the sender's key succeeds."""
         control_action = "4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(
@@ -113,6 +126,7 @@ class TestSecurity:
     def test_message_signing_encryption_decryption_and_verification(
         self,
     ) -> None:
+        """Signing, encrypting, decrypting, and verifying a dict message succeeds end-to-end."""
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
@@ -122,6 +136,7 @@ class TestSecurity:
         assert verify is True
 
     def test_message_signing_encryption_dump_verify_and_decrypt(self) -> None:
+        """Encoding to base64, verifying, and decrypting recovers the original message payload."""
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
@@ -130,6 +145,7 @@ class TestSecurity:
         assert msg["a"] == item["a"]
 
     def test_message_signing_encryption_dump_fail_verify(self) -> None:
+        """Swapping the signature before decoding raises InvalidSignature."""
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         other_msg = sign_data({"a": "2"}, self.sender)

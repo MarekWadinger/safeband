@@ -1,3 +1,5 @@
+"""Streamz stream operators and MQTT sink for real-time data pipelines."""
+
 import logging
 
 import paho.mqtt.client as mqtt
@@ -9,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 @Stream.register_api(attribute_name="map")
 class MapStream(Stream):
+    """Stream operator that applies a function to each upstream element."""
+
     def __init__(self, upstream, func, *args, **kwargs) -> None:
+        """Store func and extra args, then initialize the parent Stream."""
         self.func = func
         # this is one of a few stream specific kwargs
         stream_name = kwargs.pop("stream_name", None)
@@ -19,6 +24,7 @@ class MapStream(Stream):
         Stream.__init__(self, upstream, stream_name=stream_name)
 
     def update(self, x, who=None, metadata=None):
+        """Apply func to x and emit the result, stopping the stream on error."""
         del who  # unused; required by the streamz Stream.update API
         try:
             result = self.func(x, *self.args, **self.kwargs)
@@ -33,7 +39,7 @@ class MapStream(Stream):
 
 @Stream.register_api()
 class to_mqtt(Sink):
-    """Initialize the to_mqtt instance.
+    """Streamz Sink that publishes upstream messages to an MQTT broker.
 
     Args:
         upstream (Stream): Upstream stream.
@@ -106,6 +112,7 @@ class to_mqtt(Sink):
         publish_kwargs=None,
         **kwargs,
     ) -> None:
+        """Store connection parameters and initialize the Sink."""
         self.host = host
         self.port = port
         self.c_kw = client_kwargs or {}
@@ -116,6 +123,7 @@ class to_mqtt(Sink):
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
     def update(self, x, who=None, metadata=None) -> None:
+        """Publish x to the MQTT broker, connecting lazily on first call."""
         del who, metadata  # unused; required by the streamz Sink.update API
 
         def publish_many(
@@ -170,6 +178,7 @@ class to_mqtt(Sink):
                 )
 
     def destroy(self) -> None:
+        """Disconnect the MQTT client and destroy the sink."""
         if self.client is not None:
             self.client.disconnect()
             self.client = None

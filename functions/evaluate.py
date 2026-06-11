@@ -1,3 +1,5 @@
+"""Progressive evaluation and metric utilities for river anomaly models."""
+
 import inspect
 import logging
 import time
@@ -28,6 +30,7 @@ def progressive_val_predict(  # noqa: C901
     compute_latency: bool = False,
     **kwargs,
 ):
+    """Run prequential (test-then-train) evaluation and return predictions and metadata."""
     # CREATE REFERENCE TO LAST STEP OF PIPELINE (TRACK STATE OF MDOEL)
     model_ = model[-1] if isinstance(model, Pipeline) else model
     y_pred = []
@@ -167,6 +170,7 @@ def progressive_val_predict(  # noqa: C901
 
 
 def print_stats(df, y_pred) -> None:
+    """Log predicted vs actual anomaly sample counts and event proportions."""
     df_y_pred = pd.Series(y_pred, index=df.anomaly.index)
     res = pd.concat([df.anomaly, df_y_pred], axis=1)
     real = res[res["anomaly"] == 1]
@@ -186,6 +190,7 @@ def print_stats(df, y_pred) -> None:
 
 
 def cluster_map(y_true, y_pred):
+    """Remap cluster labels in y_pred to true labels by maximum overlap."""
     # Create a dictionary to store the counts of overlaps
     overlap_counts = defaultdict(lambda: defaultdict(int))
 
@@ -204,6 +209,7 @@ def cluster_map(y_true, y_pred):
 
 
 def drop_no_support_labels(metric):
+    """Remove zero-support labels from the confusion matrix in-place."""
     for c in metric.cm.classes:
         if metric.cm.support(c) == 0.0:
             if c in metric.cm.data:
@@ -223,6 +229,7 @@ def save_evaluate_metrics(
     map_cluster_to_rc: bool,
     drop_no_support: bool,
 ) -> None:
+    """Compute and save per-column metric results to a CSV in path."""
     col_names = [metric.__class__.__name__ for metric in metrics]
     report_in_metrics = "ClassificationReport" in col_names
     if report_in_metrics:
@@ -281,6 +288,7 @@ def batch_save_evaluate_metrics(
     map_cluster_to_rc: bool = False,
     drop_no_support: bool = False,
 ) -> None:
+    """Call save_evaluate_metrics for every subdirectory containing ys.csv."""
     for folder in Path(path).iterdir():
         # check if listed object is a folder and does not start with a period
         if folder.is_dir() and not folder.name.startswith("."):
@@ -304,6 +312,7 @@ def build_fit_evaluate(
     drop_no_support: bool = False,  # 2023-10-30 - ADD: DBStream comparison
     **params,
 ):
+    """Build, fit, and evaluate a model; return the scalar metric value."""
     params = convert_to_nested_dict(params)
     model = build_model(steps, params)
     metric = metric.__class__()  # Make sure metric is fresh

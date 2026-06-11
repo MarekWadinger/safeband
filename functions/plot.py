@@ -1,3 +1,5 @@
+"""Plotly-based visualization helpers for anomaly detection results."""
+
 # IMPORTS
 import textwrap
 from datetime import timedelta
@@ -38,6 +40,7 @@ def plot_limits(
     save: bool = True,
     **kwargs,
 ) -> None:
+    """Plot a signal with anomaly markers and optional dynamic operating limits."""
     if not file_name:
         file_name = get_file_name(ser, window)
 
@@ -108,6 +111,7 @@ def plot_limits(
 
 
 def get_file_name(ser, window=None):
+    """Build a file name stem from the series name and optional window duration."""
     if window is not None:
         file_name = (
             f"{ser.name.replace(' ', '_')}_"
@@ -119,6 +123,7 @@ def get_file_name(ser, window=None):
 
 
 def plot_add_signal(fig, ser) -> None:
+    """Add a signal scatter trace to fig."""
     fig.add_trace(
         go.Scatter(
             x=ser.index,
@@ -133,6 +138,7 @@ def plot_add_signal(fig, ser) -> None:
 
 
 def plot_add_mean_std(fig, ser, kwargs) -> None:
+    """Add a shaded moving-mean ± std band and mean line trace to fig."""
     fig.add_trace(
         go.Scatter(
             x=kwargs["ser_pos"].index.append(kwargs["ser_pos"].index[::-1]),
@@ -158,6 +164,7 @@ def plot_add_mean_std(fig, ser, kwargs) -> None:
 
 
 def set_invisible(fig, inv_lines: list) -> None:
+    """Hide the traces at the given indices in fig."""
     for trace in inv_lines:
         fig.data[trace].visible = False
 
@@ -171,6 +178,7 @@ def plot_limits_3d(
     z: str | None = None,
     save: bool = False,
 ):
+    """Render a 3D scatter of two signals with anomaly markers and DOL panels."""
     col1 = df.columns.get_loc(y)
     col2 = df.columns.get_loc(z)
     fig = make_subplots(
@@ -296,6 +304,7 @@ def add_thresholds(
     col: int | None,
     yaxis_range: list,
 ) -> None:
+    """Add shaded upper- and lower-threshold fill traces to a subplot cell."""
     fig.add_trace(
         go.Scatter(
             x=thresh_high.index,
@@ -364,6 +373,7 @@ def plot_compare_anomalies(
     file_name: str | None = None,
     save: bool = True,
 ) -> None:
+    """Plot one subplot per anomaly column with vrect highlights on the signal."""
     if not file_name:
         file_name = get_file_name(ser, window)
 
@@ -447,6 +457,7 @@ def plot_limits_grid(
     changepoints: pd.Series | None = None,
     samplings: pd.Series | None = None,
 ) -> None:
+    """Plot all DataFrame columns with DOL bands in a vertically stacked grid."""
     a = anomalies.astype(int).diff()
     # Show dates of anomalous events
     b = a[a == 1].resample("1d").sum()
