@@ -386,12 +386,12 @@ def plot_limits_grid_(
         ax.plot(ser_, linewidth=0.7, label="Signal")
         set_axis_style(ax, ser, ylabel=col_name)
         ser_high_ = (
-            ser_high.apply(lambda x: x[col_name])
+            ser_high.apply(lambda x, c=col_name: x[c])
             if ser_high is not None
             else None
         )
         ser_low_ = (
-            ser_low.apply(lambda x: x[col_name])
+            ser_low.apply(lambda x, c=col_name: x[c])
             if ser_low is not None
             else None
         )
@@ -405,7 +405,7 @@ def plot_limits_grid_(
             )
 
         if signal_anomaly is not None:
-            a = signal_anomaly.apply(lambda x: x[col_name])
+            a = signal_anomaly.apply(lambda x, c=col_name: x[c])
             ax.scatter(
                 ser[a].index,
                 ser[a],

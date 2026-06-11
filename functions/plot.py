@@ -475,8 +475,8 @@ def plot_limits_grid(
 
     for row, col_name in enumerate(df.columns, start=1):
         ser = df[col_name]
-        ser_high_ = ser_high.apply(lambda x: x[col_name])
-        ser_low_ = ser_low.apply(lambda x: x[col_name])
+        ser_high_ = ser_high.apply(lambda x, c=col_name: x[c])
+        ser_low_ = ser_low.apply(lambda x, c=col_name: x[c])
 
         text = "<br>".join(textwrap.wrap(f"{ser.name} [-]", 15))
         fig.update_yaxes(
