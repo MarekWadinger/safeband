@@ -1,7 +1,7 @@
-from typing import Union
+from typing import NotRequired, Union
 
 from pandas import Timedelta
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 
 class EmailConfig(TypedDict):
@@ -30,14 +30,14 @@ class PulsarClient(TypedDict):
 
 class IOConfig(TypedDict):
     in_topics: list[str]
-    out_topics: Union[list[str], str, None]
+    out_topics: list[str] | str | None
 
 
 class ModelConfig(TypedDict):
     threshold: float
     t_e: Timedelta
-    t_a: Union[Timedelta, None]
-    t_g: Union[Timedelta, None]
+    t_a: Timedelta | None
+    t_g: Timedelta | None
 
 
 class SetupConfig(TypedDict):
@@ -76,6 +76,7 @@ def istypedinstance(obj, type_):
     ...     'recovery_path': 5}
     >>> istypedinstance(setup_config, SetupConfig)
     False
+
     """
     for property_name, property_type in type_.__annotations__.items():
         value = obj.get(property_name, None)
@@ -92,8 +93,8 @@ def istypedinstance(obj, type_):
         except TypeError:
             if hasattr(property_type, "__args__"):
                 return isinstance(
-                    value, (property_type.__args__[0], type(None))
+                    value,
+                    (property_type.__args__[0], type(None)),
                 )
-            else:
-                return False
+            return False
     return True

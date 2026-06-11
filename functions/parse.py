@@ -1,10 +1,10 @@
-from argparse import ArgumentParser, FileType, Namespace
+from argparse import ArgumentParser, FileType, Namespace  # ty: ignore[deprecated]
 from configparser import ConfigParser
 from os import getenv, path
-from typing import Union
+from typing import Any, NotRequired, cast
 
 from pandas import Timedelta
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from functions.typing_extras import (
     EmailConfig,
@@ -27,7 +27,7 @@ class Config(TypedDict):
     mqtt: NotRequired[MQTTClient]
     kafka: NotRequired[KafkaClient]
     pulsar: NotRequired[PulsarClient]
-    client: Union[FileClient, MQTTClient, KafkaClient, PulsarClient, None]
+    client: FileClient | MQTTClient | KafkaClient | PulsarClient | None
 
 
 def get_args() -> Namespace:
@@ -79,23 +79,30 @@ def get_args() -> Namespace:
     'kafka-server'
     >>> args.service_url
     'pulsar-service'
+
     """
     parser = ArgumentParser()
 
     setup_arg_grp = parser.add_argument_group(
-        "setup", "setup related parameters"
+        "setup",
+        "setup related parameters",
     )
 
     def file_or_none(value):
         if value is not None and path.isfile(value):
-            return FileType("r")(value)
+            return FileType("r")(value)  # ty: ignore[deprecated]
         return None
 
     setup_arg_grp.add_argument(
-        "-f", "--config-file", type=file_or_none, default="config.ini"
+        "-f",
+        "--config-file",
+        type=file_or_none,
+        default="config.ini",
     )
     setup_arg_grp.add_argument(
-        "-r", "--recovery-path", help="Path to store recovery models"
+        "-r",
+        "--recovery-path",
+        help="Path to store recovery models",
     )
     setup_arg_grp.add_argument("-k", "--key-path", help="Path to RSA keys")
     setup_arg_grp.add_argument(
@@ -127,7 +134,8 @@ def get_args() -> Namespace:
     )
 
     model_arg_grp = parser.add_argument_group(
-        "model", "Model related parameters"
+        "model",
+        "Model related parameters",
     )
     model_arg_grp.add_argument("--threshold", type=float)
     model_arg_grp.add_argument("--t-e", type=Timedelta)
@@ -145,30 +153,32 @@ def get_args() -> Namespace:
     io_arg_grp.add_argument("--out-topics", nargs="*", type=str)
 
     file_arg_grp = parser.add_argument_group(
-        "file client", "File source related parameters"
+        "file client",
+        "File source related parameters",
     )
     file_arg_grp.add_argument("--path", type=str)
     file_arg_grp.add_argument("--output", type=str)
 
     mqtt_arg_grp = parser.add_argument_group(
-        "mqtt client", "MQTT source related parameters"
+        "mqtt client",
+        "MQTT source related parameters",
     )
     mqtt_arg_grp.add_argument("--host", type=str)
     mqtt_arg_grp.add_argument("--port", type=int)
 
     kafka_arg_grp = parser.add_argument_group(
-        "kafka client", "Kafka source related parameters"
+        "kafka client",
+        "Kafka source related parameters",
     )
     kafka_arg_grp.add_argument("--bootstrap-servers", type=str)
 
     pulsar_arg_grp = parser.add_argument_group(
-        "pulsar client", "Pulsar source related parameters"
+        "pulsar client",
+        "Pulsar source related parameters",
     )
     pulsar_arg_grp.add_argument("--service-url", type=str)
 
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def get_valid_type(type_) -> type:
@@ -217,21 +227,21 @@ def get_valid_type(type_) -> type:
         Traceback (most recent call last):
         ...
         ValueError: Invalid type: None
+
     """
     # TODO: get first valid type
     from types import GenericAlias
 
     if isinstance(type_, (type, GenericAlias)):
         return type_
-    elif hasattr(type_, "__args__"):
+    if hasattr(type_, "__args__"):
         # if any([t is type(None) for t in type_.__args__]):
         #     return type(None)
         if "NotRequired" in str(type_):
             return str
-        else:
-            return get_valid_type(type_.__args__[0])
-    else:
-        raise ValueError(f"Invalid type: {type_}")
+        return get_valid_type(type_.__args__[0])
+    msg = f"Invalid type: {type_}"
+    raise ValueError(msg)
 
 
 def get_valid_client(config: Config) -> Config:
@@ -287,25 +297,29 @@ def get_valid_client(config: Config) -> Config:
     Traceback (most recent call last):
     ...
     ValueError: Specify one of the clients: ['file', 'mqtt', 'kafka', 'pulsar']
+
     """
     config_ = config.copy()
+    config_dyn: dict[str, Any] = cast("dict[str, Any]", config_)
     active_clients = []
     clients = ["file", "mqtt", "kafka", "pulsar"]
     for client in clients:
-        if client in config_:
+        if client in config_dyn:
             missing_args = any(
-                [arg is None for arg in config_[client].values()]
+                arg is None for arg in config_dyn[client].values()
             )
             if missing_args:
-                del config_[client]
+                del config_dyn[client]
             else:
                 active_clients.append(client)
     if len(active_clients) > 1:
-        raise ValueError(f"Multiple clients specified: {active_clients}")
+        msg = f"Multiple clients specified: {active_clients}"
+        raise ValueError(msg)
     if len(active_clients) == 0:
-        raise ValueError(f"Specify one of the clients: {clients}")
+        msg = f"Specify one of the clients: {clients}"
+        raise ValueError(msg)
     if len(active_clients) == 1:
-        config_["client"] = config_.pop(active_clients[0])
+        config_dyn["client"] = config_dyn.pop(active_clients[0])
 
     return config_
 
@@ -349,6 +363,7 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
     ['topic1', 'topic2']
     >>> config['file']['path']
     '/data/file.txt'
+
     """
     config_struct = {
         "setup": SetupConfig,
@@ -361,9 +376,10 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
         "pulsar": PulsarClient,
     }
     args_ = vars(args)
-    config: Config = {}  # type: ignore
+    config: Config = {}  # ty: ignore[missing-typed-dict-key]
+    config_dyn: dict[str, Any] = cast("dict[str, Any]", config)
     for section, struct in config_struct.items():
-        config[section] = {}
+        config_dyn[section] = {}
         for param, type_ in struct.__annotations__.items():
             type_ = get_valid_type(type_)
             if args_.get(param) is not None:
@@ -373,18 +389,10 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
             else:
                 param_value = None
 
-            if (
-                param_value is not None
-                and param_value != "None"
-                and param_value != ""
-            ):
-                config[section][param] = type_(param_value)
-            elif (
-                param_value is None
-                or param_value == "None"
-                or param_value == ""
-            ):
-                config[section][param] = None
+            if param_value is not None and param_value not in {"None", ""}:
+                config_dyn[section][param] = type_(param_value)
+            elif param_value is None or param_value in {"None", ""}:
+                config_dyn[section][param] = None
 
     return config
 
@@ -397,6 +405,7 @@ def get_params() -> Config:  # pragma: no cover
 
     Returns:
         Config: A Config object containing the parsed parameters.
+
     """
     args = get_args()
 
@@ -406,6 +415,4 @@ def get_params() -> Config:  # pragma: no cover
 
     config = build_config(args, config_parser)
 
-    config = get_valid_client(config)
-
-    return config
+    return get_valid_client(config)

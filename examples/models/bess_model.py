@@ -6,34 +6,30 @@ from river import base
 def C_to_K(T):
     if isinstance(T, list):
         return [C_to_K(x) for x in T]
-    else:
-        return T + 273.15
+    return T + 273.15
 
 
 def K_to_C(T):
     if isinstance(T, list):
         return [K_to_C(x) for x in T]
-    else:
-        return T - 273.15
+    return T - 273.15
 
 
 def calcul_Q(P):
-    Q_bat = 0.0003667 * abs(P) ** 2 + 0.005 * abs(P)
-    return Q_bat
+    return 0.0003667 * abs(P) ** 2 + 0.005 * abs(P)
 
 
 def bess_model(T_bat_0, P, Tout, q_fan, q_circ_fan, q_cool, q_heat, Ts):
-    """_summary_
-
-    Args:
+    """Args:
         T_bat_0 (float): initial condition/temperature measurement
         P (float): demanded power
         Tout (float): Temperature outside
         *q (list[int]): [q_fan, q_circ_fan, q_cool, q_heat]
-        Ts (int): Sampling time in seconds
+        Ts (int): Sampling time in seconds.
 
     Returns:
         float: new temperature
+
     """
     # Model constants
     cp = 1.012  # kJ/s
@@ -47,13 +43,10 @@ def bess_model(T_bat_0, P, Tout, q_fan, q_circ_fan, q_cool, q_heat, Ts):
     q_inner_fans = 1.1
 
     # Heat emissions are higher during charging phase
-    if P >= 0:
-        c_scale = 4
-    else:
-        c_scale = 1
+    c_scale = 4 if P >= 0 else 1
 
     Q_bat = c_scale * calcul_Q(P)
-    T_bat = T_bat_0 + Ts * (
+    return T_bat_0 + Ts * (
         q_fan * Vb_max * rho * cp * (Tout - T_bat_0)
         + Vc_max * q_circ_fan * rho * cp * C_to_K(T_bat_0)
         + q_circ_fan * (P_cool * q_cool + P_heat * q_heat)
@@ -61,11 +54,10 @@ def bess_model(T_bat_0, P, Tout, q_fan, q_circ_fan, q_cool, q_heat, Ts):
         + q_inner_fans
         - (Vb_max * q_fan + Vc_max * q_circ_fan) * rho * cp * C_to_K(T_bat_0)
     ) / (m_bat * cp_b)
-    return T_bat
 
 
 class BESS(base.Transformer):
-    def __init__(self, model=bess_model):
+    def __init__(self, model=bess_model) -> None:
         self.buffer = collections.deque(maxlen=1)
         self.model = model
 

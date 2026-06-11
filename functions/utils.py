@@ -31,6 +31,7 @@ def common_prefix(topics: list) -> str:
     >>> topics = None
     >>> common_prefix(topics)
     ''
+
     """
     if not topics:
         return ""

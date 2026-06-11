@@ -1,13 +1,14 @@
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 from cryptography.exceptions import InvalidSignature
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from functions.encryption import (  # noqa: E402
+from functions.encryption import (
     decode_data,
     decrypt_data,
     encrypt_data,
@@ -23,7 +24,7 @@ from functions.encryption import (  # noqa: E402
 
 
 class TestSecurity:
-    def setup_class(self):
+    def setup_class(self) -> None:
         self.parent_path = Path(__file__).parent
         self.security_dir = self.parent_path / ".security"
         os.makedirs(self.security_dir, exist_ok=True)
@@ -33,7 +34,7 @@ class TestSecurity:
         self.receiver.load_public_pem(sender_pub)
         self.sender.load_public_pem(receiver_pub)
 
-    def teardown_class(self):
+    def teardown_class(self) -> None:
         # Delete files if created
         if os.path.exists(self.security_dir / "s_pem.pub"):
             os.remove(self.security_dir / "s_pem.pub")
@@ -47,11 +48,11 @@ class TestSecurity:
         if os.path.exists(self.security_dir / "r_pem"):
             os.remove(self.security_dir / "r_pem")
 
-    def test_key_generation(self):
+    def test_key_generation(self) -> None:
         assert self.sender is not None
         assert self.receiver is not None
 
-    def test_key_saving_and_loading(self):
+    def test_key_saving_and_loading(self) -> None:
         save_public_key(self.security_dir / "s_pem.pub", self.sender)
         save_private_key(self.security_dir / "s_pem", self.sender)
         save_public_key(self.security_dir / "r_pem.pub", self.receiver)
@@ -64,7 +65,7 @@ class TestSecurity:
         assert self.sender.public_pem() == remote_receiver.public_pem()
         assert self.receiver.public_pem() == remote_sender.public_pem()
 
-    def test_key_retaining(self):
+    def test_key_retaining(self) -> None:
         save_public_key(self.security_dir / "s_pem.pub", self.sender)
         save_private_key(self.security_dir / "s_pem", self.sender)
         save_public_key(self.security_dir / "r_pem.pub", self.receiver)
@@ -77,19 +78,19 @@ class TestSecurity:
         assert self.sender.private_pem() == remote_receiver.private_pem()
         assert self.receiver.private_pem() == remote_sender.private_pem()
 
-    def test_bytes_encryption_and_decryption(self):
+    def test_bytes_encryption_and_decryption(self) -> None:
         control_action = b"4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
         assert control_action == decrypted_c_a
 
-    def test_bytes_signing_and_verification(self):
+    def test_bytes_signing_and_verification(self) -> None:
         control_action = b"4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(control_action, signature, self.receiver)
         assert verified is True
 
-    def test_str_encryption_and_decryption(self):
+    def test_str_encryption_and_decryption(self) -> None:
         control_action = "4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
@@ -97,15 +98,19 @@ class TestSecurity:
         with pytest.raises(ValueError):
             decrypted_c_a = decrypt_data(control_action, self.receiver)  # type: ignore
 
-    def test_str_signing_and_verification(self):
+    def test_str_signing_and_verification(self) -> None:
         control_action = "4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(
-            control_action.encode("utf-8"), signature, self.receiver
+            control_action.encode("utf-8"),
+            signature,
+            self.receiver,
         )
         assert verified is True
 
-    def test_message_signing_encryption_decryption_and_verification(self):
+    def test_message_signing_encryption_decryption_and_verification(
+        self,
+    ) -> None:
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
@@ -114,20 +119,26 @@ class TestSecurity:
         verify = verify_signature(plaintext, sign, self.receiver)
         assert verify is True
 
-    def test_message_signing_encryption_dump_verify_and_decrypt(self):
+    def test_message_signing_encryption_dump_verify_and_decrypt(self) -> None:
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
-        ciphertext_dec = decode_data(ciphertext)
+        ciphertext_dec = cast(
+            "dict[str, str | list[str]]",
+            decode_data(ciphertext),
+        )
         item = verify_and_decrypt_data(ciphertext_dec, self.receiver)
         assert msg["a"] == item["a"]
 
-    def test_message_signing_encryption_dump_fail_verify(self):
+    def test_message_signing_encryption_dump_fail_verify(self) -> None:
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         other_msg = sign_data({"a": "2"}, self.sender)
         signed_msg["signature"] = other_msg["signature"]
         ciphertext = encrypt_data(signed_msg, self.sender)
-        ciphertext = decode_data(ciphertext)
+        ciphertext_str = cast(
+            "dict[str, str | list[str]]",
+            decode_data(ciphertext),
+        )
         with pytest.raises(InvalidSignature):
-            verify_and_decrypt_data(ciphertext, self.receiver)  # type: ignore
+            verify_and_decrypt_data(ciphertext_str, self.receiver)

@@ -7,18 +7,18 @@ from pulsar.schema import JsonSchema, Record, String
 from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from functions.encryption import (  # noqa: E402
+from functions.encryption import (
     decrypt_data,
     encode_data,
     init_rsa_security,
 )
-from functions.streamz_tools import map  # noqa: E402, F401
+from functions.streamz_tools import map  # noqa: F401
 
 
 class Example(Record):
     # keys and __getitem__ serve as minimum implementation of mapping protocol
     def keys(self):
-        return self._fields.keys()
+        return self._fields.keys()  # ty: ignore[unresolved-attribute]
 
     def __getitem__(self, key):
         return {
@@ -34,8 +34,11 @@ class Example(Record):
 
 
 def decryption_service(
-    in_topic: list, out_topic: str, subscription_name: str, service_url: str
-):
+    in_topic: list,
+    out_topic: str,
+    subscription_name: str,
+    service_url: str,
+) -> None:
     _, receiver = init_rsa_security(".security")
 
     source = Stream.from_pulsar(
@@ -60,18 +63,16 @@ def decryption_service(
     while True:
         try:
             if source.stopped:
-                print("Stopping decryption...")
                 break
             if L:
-                print(L.pop(0))
+                pass
         except pulsar.Interrupted:
-            print("Stop receiving messages")
             if args.out_topic is not None:
                 producer.stop()
                 producer.flush()
             break
-        except Exception as e:
-            raise e
+        except Exception:
+            raise
 
 
 if __name__ == "__main__":
@@ -85,7 +86,10 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument(
-        "-o", "--out-topic", help="The topic to produce messages to.", type=str
+        "-o",
+        "--out-topic",
+        help="The topic to produce messages to.",
+        type=str,
     )
     parser.add_argument(
         "--subscription-name",
@@ -102,5 +106,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     decryption_service(
-        args.in_topic, args.out_topic, args.subscription_name, args.service_url
+        args.in_topic,
+        args.out_topic,
+        args.subscription_name,
+        args.service_url,
     )

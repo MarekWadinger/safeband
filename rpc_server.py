@@ -2,7 +2,7 @@
 import datetime as dt
 import json
 import time
-from typing import IO, Union
+from typing import IO
 
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
@@ -43,7 +43,7 @@ def expand_model_params(model_params):
     threshold = model_params.get("threshold", 0.99735)
 
     def period_to_timedelta(
-        period: Union[str, dt.timedelta, pd.Timedelta],
+        period: str | dt.timedelta | pd.Timedelta,
     ) -> dt.timedelta:
         """Convert a period to a timedelta.
 
@@ -55,6 +55,7 @@ def expand_model_params(model_params):
 
         Returns:
             dt.timedelta: Converted period.
+
         """
         if not isinstance(period, dt.timedelta):
             if isinstance(period, str):
@@ -64,12 +65,14 @@ def expand_model_params(model_params):
         elif isinstance(period, dt.timedelta):
             pass
         else:
-            raise ValueError("period must be a timedelta or convertible.")
+            msg = "period must be a timedelta or convertible."
+            raise ValueError(msg)
         return period
 
     t_e = model_params.get("t_e")
     if t_e is None:
-        raise ValueError("t_e cannot be None")
+        msg = "t_e cannot be None"
+        raise ValueError(msg)
     t_e = period_to_timedelta(t_e)
     t_a = model_params.get("t_a", t_e)
     t_a = period_to_timedelta(t_a)
@@ -78,7 +81,7 @@ def expand_model_params(model_params):
     return threshold, t_e, t_a, t_g
 
 
-def print_summary(df):
+def print_summary(df) -> None:
     """Print a summary of the given DataFrame.
 
     The function calculates and prints the proportion of anomalous samples
@@ -94,18 +97,18 @@ def print_summary(df):
         >>> print_summary(df)
         Proportion of anomalous samples: 50.00%
         Total number of anomalous events: 2
+
     """
-    text = (
+    (
         f"Proportion of anomalous samples: "
         f"{sum(df['anomaly']) / len(df['anomaly']) * 100:.02f}%\n"
         f"Total number of anomalous events: "
         f"{sum(pd.Series(df['anomaly']).diff().dropna() == 1)}"
     )
-    print(text)
 
 
 class RpcOutlierDetector:
-    def __init__(self):
+    def __init__(self) -> None:
         self.stopped = True
 
     def preprocess(self, x, topics: list):
@@ -149,6 +152,7 @@ class RpcOutlierDetector:
         >>> out = obj.preprocess(binary_data, ['sensor_1'])
         >>> out.keys(), out['data'].keys()
         (dict_keys(['time', 'data']), dict_keys(['sensor_1']))
+
         """
         if isinstance(x, pd.Series):
             if isinstance(x.name, pd.Timestamp):
@@ -163,21 +167,28 @@ class RpcOutlierDetector:
             }
         if isinstance(x, dict):
             return {
-                "time": dt.datetime.utcnow().replace(microsecond=0),
+                "time": dt.datetime.now(dt.UTC).replace(
+                    tzinfo=None,
+                    microsecond=0,
+                ),
                 "data": {k: float(v) for k, v in x.items() if k in topics},
             }
         if isinstance(x, MQTTMessage):
             return {
                 "time": dt.datetime.fromtimestamp(x.timestamp).replace(
-                    microsecond=0
+                    microsecond=0,
                 ),
                 "data": {x.topic.split("/")[-1]: float(x.payload)},
             }
         if isinstance(x, bytes):
             return {
-                "time": dt.datetime.utcnow().replace(microsecond=0),
+                "time": dt.datetime.now(dt.UTC).replace(
+                    tzinfo=None,
+                    microsecond=0,
+                ),
                 "data": {topics[0]: float(x.decode("utf-8"))},
             }
+        return None
 
     def fit_transform(self, x, model: GaussianScorer):
         """Apply anomaly detection model to the input data.
@@ -210,8 +221,10 @@ class RpcOutlierDetector:
         True
         >>> isinstance(result["level_low"], float)
         True
+
         """
-        if isinstance(model.gaussian.obj, MultivariateGaussian):
+        gaussian_inner = getattr(model.gaussian, "obj", model.gaussian)
+        if isinstance(gaussian_inner, MultivariateGaussian):
             x_ = x["data"]
         else:
             x_ = next(iter(x["data"].values()))
@@ -229,7 +242,7 @@ class RpcOutlierDetector:
             "level_low": thresh_low,
         }
 
-    def dump_to_file(self, x, f):  # pragma: no cover
+    def dump_to_file(self, x, f) -> None:  # pragma: no cover
         print(json.dumps(x), file=f)
 
     def send_anomaly_email(
@@ -237,7 +250,7 @@ class RpcOutlierDetector:
         xs: tuple[dict, dict],
         email_client: EmailClient,
         model: ConditionalGaussianScorer,
-    ):  # pragma: no cover
+    ) -> None:  # pragma: no cover
         if len(xs) == 2 and xs[1]["anomaly"] - xs[0]["anomaly"] == 1:
             email_client.send_email(
                 f"AID Alert: Anomaly detected in {model.get_root_cause()}",
@@ -246,7 +259,7 @@ class RpcOutlierDetector:
 
     def get_source(
         self,
-        config: Union[FileClient, MQTTClient, KafkaClient, PulsarClient],
+        config: FileClient | MQTTClient | KafkaClient | PulsarClient,
         topics: list,
         debug: bool = False,
     ):
@@ -312,7 +325,8 @@ class RpcOutlierDetector:
         Traceback (most recent call last):
         ...
         RuntimeError: Wrong client.
-        """  # noqa: E501
+
+        """
         if istypedinstance(config, FileClient):
             if debug:
                 source = Stream()
@@ -322,14 +336,18 @@ class RpcOutlierDetector:
                 source = Stream.from_iterable(data.iterrows())
         elif istypedinstance(config, MQTTClient):
             source = Stream.from_mqtt(
-                **config, topic=[(topic, 0) for topic in topics]
+                **config,
+                topic=[(topic, 0) for topic in topics],
             )
             source = source.accumulate(
-                _func, start={}, **{"topics": topics}
+                _func,
+                start={},
+                topics=topics,
             ).filter(_filt, topics)
         elif istypedinstance(config, KafkaClient):
             source = Stream.from_kafka(
-                topics, {**config, "group.id": "detection_service"}
+                topics,
+                {**config, "group.id": "detection_service"},
             )
         elif istypedinstance(config, PulsarClient):
             import sys
@@ -341,14 +359,16 @@ class RpcOutlierDetector:
                     subscription_name="detection_service",
                 )
             else:
-                raise ValueError("Pulsar client requires Python < 3.12.*")
+                msg = "Pulsar client requires Python < 3.12.*"
+                raise ValueError(msg)
         else:
-            raise RuntimeError(f"Wrong client: {config}")
+            msg = f"Wrong client: {config}"
+            raise RuntimeError(msg)
         return source
 
     def get_sink(
         self,
-        config: Union[FileClient, MQTTClient, KafkaClient, PulsarClient],
+        config: FileClient | MQTTClient | KafkaClient | PulsarClient,
         topics: list,
         detector,
     ):
@@ -361,22 +381,25 @@ class RpcOutlierDetector:
 
         Returns:
             streamz.core.map: streamz pipeline with sink
+
         """
         prefix: str = common_prefix(topics)
         topic: str = f"{prefix}dynamic_limits"
-        print(f"Sinking to '{topic}'\n")
         if istypedinstance(config, FileClient):
             f = open(config.get("output", ""), "a")
             open_files.append(f)
             detector.sink(self.dump_to_file, f)
         elif istypedinstance(config, MQTTClient):  # pragma: no cover
             detector.to_mqtt(
-                **config, topic=prefix, publish_kwargs={"retain": True}
+                **config,
+                topic=prefix,
+                publish_kwargs={"retain": True},
             )
         # TODO: add coverage test
         elif istypedinstance(config, KafkaClient):  # pragma: no cover
             detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(
-                topic, config
+                topic,
+                config,
             )
         elif istypedinstance(config, PulsarClient):  # pragma: no cover
             from pulsar.schema import JsonSchema, Record, String
@@ -395,20 +418,17 @@ class RpcOutlierDetector:
 
         return detector
 
-    def run(self, config, source, detector, debug):
+    def run(self, config, source, detector, debug) -> None:
         # TODO: handle combination of debug and remote broker
         if debug and istypedinstance(config, FileClient):
-            print("=== Debugging started... ===")
             data = pd.read_csv(config["path"], index_col=0)
             data.index = pd.to_datetime(data.index, utc=True)
             for row in data.head().iterrows():
                 source.emit(row)
             for file in open_files:
                 file.close()
-            print("=== Debugging finished with success... ===")
         else:  # pragma: no cover
             detector.start()
-            print("=== Service started ===")
 
             while True:
                 try:
@@ -421,12 +441,12 @@ class RpcOutlierDetector:
 
     def start(
         self,
-        client: Union[FileClient, MQTTClient, KafkaClient, PulsarClient],
+        client: FileClient | MQTTClient | KafkaClient | PulsarClient,
         io: IOConfig,
         model_params: ModelConfig,
         setup: SetupConfig,
-        email: Union[EmailConfig, None] = None,
-    ):
+        email: EmailConfig | None = None,
+    ) -> None:
         """Process the limits in a streaming manner.
 
         The function sets up the necessary components for streaming processing
@@ -454,6 +474,7 @@ class RpcOutlierDetector:
         === Debugging started... ===
         === Debugging finished with success... ===
         === Service stopped ===
+
         """
         recovery_path = setup.get("recovery_path", "")
         key_path = setup.get("key_path", "")
@@ -488,7 +509,8 @@ class RpcOutlierDetector:
         source = self.get_source(client, in_topics, debug)
 
         detector = source.map(self.preprocess, in_topics).map(
-            self.fit_transform, model
+            self.fit_transform,
+            model,
         )
 
         if key_path:
@@ -502,12 +524,13 @@ class RpcOutlierDetector:
         if email is not None and email.get("sender_email") is not None:
             email_client = EmailClient(**email)
             detector.sliding_window(2).sink(
-                self.send_anomaly_email, email_client, model
+                self.send_anomaly_email,
+                email_client,
+                model,
             )
 
         try:
             self.run(client, source, detector, debug)
         finally:
             detector.stop()
-            print("=== Service stopped ===")
             save_model(recovery_path, in_topics, model)

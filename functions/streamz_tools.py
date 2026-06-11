@@ -1,5 +1,4 @@
 import logging
-from typing import Union
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import MQTTMessage
@@ -10,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 @Stream.register_api()
 class map(Stream):
-    def __init__(self, upstream, func, *args, **kwargs):
+    def __init__(self, upstream, func, *args, **kwargs) -> None:
         self.func = func
         # this is one of a few stream specific kwargs
         stream_name = kwargs.pop("stream_name", None)
@@ -26,7 +25,7 @@ class map(Stream):
             self.stop()
             self.destroy()
             logger.exception(e)
-            raise e
+            raise
         else:
             return self._emit(result, metadata=metadata)
 
@@ -92,6 +91,7 @@ class to_mqtt(Sink):
     True
 
     >>> mqtt_sink.destroy()
+
     """
 
     def __init__(
@@ -104,38 +104,43 @@ class to_mqtt(Sink):
         client_kwargs=None,
         publish_kwargs=None,
         **kwargs,
-    ):
+    ) -> None:
         self.host = host
         self.port = port
         self.c_kw = client_kwargs or {}
         self.p_kw = publish_kwargs or {}
-        self.client: Union[mqtt.Client, None] = None
+        self.client: mqtt.Client | None = None
         self.topic = topic
         self.keepalive = keepalive
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
-    def update(self, x, who=None, metadata=None):
+    def update(self, x, who=None, metadata=None) -> None:
         def publish_many(
             client: mqtt.Client,
             topics: list[str],
             payloads: list,
             *args,
             **kwargs,
-        ):
-            for topic, payload in zip(topics, payloads):
+        ) -> None:
+            for topic, payload in zip(topics, payloads, strict=False):
                 client.publish(topic, payload, *args, **kwargs)
 
         if self.client is None:
             self.client = mqtt.Client(clean_session=True)
             self.client.connect(
-                self.host, self.port, self.keepalive, **self.c_kw
+                self.host,
+                self.port,
+                self.keepalive,
+                **self.c_kw,
             )
         # TODO: wait on successful delivery
         if isinstance(x, bytes):
             self.client.publish(self.topic, x, **self.p_kw)
         else:
             self.client.publish(
-                f"{self.topic}anomaly", x["anomaly"], **self.p_kw
+                f"{self.topic}anomaly",
+                x["anomaly"],
+                **self.p_kw,
             )
             if isinstance(x["level_high"], dict):
                 for key in x["level_high"]:
@@ -161,7 +166,7 @@ class to_mqtt(Sink):
                     **self.p_kw,
                 )
 
-    def destroy(self):
+    def destroy(self) -> None:
         if self.client is not None:
             self.client.disconnect()
             self.client = None
@@ -186,6 +191,7 @@ def _filt(msgs: dict, topics: list) -> bool:
     >>> topics = ['a', 'b', 'c']
     >>> _filt(msgs, topics)
     False
+
     """
     return all(topic in msgs for topic in topics)
 
@@ -218,6 +224,7 @@ def _func(previous_state: dict, new_msg: MQTTMessage, topics: list) -> dict:
     >>> new_msg.payload = b'2.'
     >>> _func(previous_state, new_msg, topics)
     {'foo': b'2.'}
+
     """
     MQTTMessage()
     if new_msg.topic in topics:

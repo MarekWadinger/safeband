@@ -2,19 +2,20 @@ import inspect
 import os
 import time
 from collections import defaultdict
-from typing import Literal, Union
+from collections.abc import Sequence
+from typing import Literal, cast
 
 import pandas as pd
 from river.compose import Pipeline
-from river.metrics.base import BinaryMetric, Metric, MultiClassMetric
+from river.metrics.base import Metric, MultiClassMetric
 
-from functions.compose import build_model, convert_to_nested_dict  # noqa: E402
+from functions.compose import build_model, convert_to_nested_dict
 
 
 def progressive_val_predict(  # noqa: C901
     model,
     dataset: pd.DataFrame,
-    metrics: Union[list[Union[BinaryMetric, MultiClassMetric]], None] = None,
+    metrics: Sequence[Metric] | None = None,
     print_every: int = 0,
     print_final: bool = True,
     compute_limits: bool = False,
@@ -25,10 +26,7 @@ def progressive_val_predict(  # noqa: C901
     **kwargs,
 ):
     # CREATE REFERENCE TO LAST STEP OF PIPELINE (TRACK STATE OF MDOEL)
-    if isinstance(model, Pipeline):
-        model_ = model[-1]
-    else:
-        model_ = model
+    model_ = model[-1] if isinstance(model, Pipeline) else model
     y_pred = []
     meta: dict[str, list] = {}
     if compute_limits:
@@ -46,7 +44,7 @@ def progressive_val_predict(  # noqa: C901
     if hasattr(model_, "forecast"):
         period = kwargs.get("period", 5)
 
-    start = time.time()
+    time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
         if compute_latency:
             start_i = time.time()
@@ -54,16 +52,11 @@ def progressive_val_predict(  # noqa: C901
         if isinstance(t, pd.Timestamp):
             t = t.tz_localize(None)
         x_: dict[str, float] = x.to_dict()
-        if "anomaly" in x_:
-            y = x_.pop("anomaly", "")
-        else:
-            y = None
+        y = x_.pop("anomaly", "") if "anomaly" in x_ else None
         # PREDICT
         if (
             metrics is not None
-            and all(
-                [isinstance(metric, MultiClassMetric) for metric in metrics]
-            )
+            and all(isinstance(metric, MultiClassMetric) for metric in metrics)
             and hasattr(model_, "get_root_cause")
         ):
             is_anomaly = model_.get_root_cause()
@@ -81,15 +74,16 @@ def progressive_val_predict(  # noqa: C901
         # EVALUATE
         if metrics is not None:
             if y is not None:
-                if not isinstance(metrics, list):
+                if isinstance(metrics, Metric):
                     metrics = [metrics]
                 for metric in metrics:
-                    metric = metric.update(y, is_anomaly)
+                    metric = metric.update(cast("bool", y), is_anomaly)
                     if (print_every > 0) and (i % print_every == 0):
-                        print(metric)
+                        pass
             else:
+                msg = "Dataset must contain column 'anomaly' to use metrics."
                 raise ValueError(
-                    "Dataset must contain column 'anomaly' to use metrics."
+                    msg,
                 )
 
         # DYNAMIC OPERATING LIMITS
@@ -107,15 +101,15 @@ def progressive_val_predict(  # noqa: C901
                 }
                 meta["Signal Anomaly"].append(
                     {
-                        k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
+                        k: not (thresh_low[k] < v < thresh_high[k])
                         for k, v in x_in.items()
-                    }
+                    },
                 )
 
         # DETECT NON-UNIFORM SAMPLING
         if sampling_model is not None and isinstance(t, pd.Timestamp):
             if i > 0:
-                t_ = (t - t_prev).seconds  # noqa: F821
+                t_ = (t - t_prev).seconds
                 sample_a = sampling_model.predict_one(t_)
                 meta["Sampling Anomaly"].append(sample_a)
 
@@ -123,7 +117,7 @@ def progressive_val_predict(  # noqa: C901
                 sampling_model.learn_one(t_, w=w)
             else:
                 meta["Sampling Anomaly"].append(0)
-            t_prev = t  # noqa: F841
+            t_prev = t
 
         # DETECT CHANGE POINTS
         if detect_change:
@@ -131,9 +125,9 @@ def progressive_val_predict(  # noqa: C901
 
         # UPDATE MODEL
         if hasattr(model, "gaussian") and inspect.signature(
-            model.gaussian.update
+            model.gaussian.update,
         ).parameters.get("t"):
-            model.learn_one(x_, **{"t": t})
+            model.learn_one(x_, t=t)
         elif hasattr(model, "_supervised") and model._supervised:
             model_up = model.learn_one(x_, y)
             model = model_up if model_up is not None else model
@@ -153,32 +147,21 @@ def progressive_val_predict(  # noqa: C901
     if hasattr(model_, "forecast"):
         y_pred = y_pred[:-period]
 
-    end = time.time()
+    time.time()
 
-    if print_final:
-        print(
-            f"Avg. latency per sample: {(end - start) * 1000 / len(dataset)}ms"
-        )
-        if metrics is not None:
-            for metric in metrics:
-                print(metric)
+    if print_final and metrics is not None:
+        for metric in metrics:
+            pass
 
     return y_pred, meta
 
 
-def print_stats(df, y_pred):
+def print_stats(df, y_pred) -> None:
     df_y_pred = pd.Series(y_pred, index=df.anomaly.index)
     res = pd.concat([df.anomaly, df_y_pred], axis=1)
     real = res[res["anomaly"] == 1]
-    sum_ = sum(real.apply(lambda x: x["anomaly"] == x[0], axis=1))
-    len_real = len(real) if not len(real) == 0 else float("nan")
-    print(
-        f"{'Pred anomalous samples | events | proportion:':<55} "
-        f"{sum(df_y_pred):<8} | {sum(df_y_pred.diff().dropna() == 1):<5} | "
-        f"{sum(df_y_pred) / len(df_y_pred):.02%}\n"
-        f"{'Found samples | events | proportion:':<55} "
-        f"{sum_:<8} | {' ':<5} | {sum_ / len_real:.02%}"
-    )
+    sum(real.apply(lambda x: x["anomaly"] == x[0], axis=1))
+    len(real) if len(real) != 0 else float("nan")
 
 
 def cluster_map(y_true, y_pred):
@@ -186,12 +169,15 @@ def cluster_map(y_true, y_pred):
     overlap_counts = defaultdict(lambda: defaultdict(int))
 
     # Iterate over y_true and y_pred to count overlaps
-    for true_val, pred_val in zip(y_true, y_pred):
+    for true_val, pred_val in zip(y_true, y_pred, strict=False):
         overlap_counts[pred_val][true_val] += 1
 
     # Map values in y_pred to values in y_true based on maximum overlap count
     return [
-        max(overlap_counts[pred_val], key=overlap_counts[pred_val].get)
+        max(
+            overlap_counts[pred_val],
+            key=lambda k, pv=pred_val: overlap_counts[pv][k],
+        )
         for pred_val in y_pred
     ]
 
@@ -215,7 +201,7 @@ def save_evaluate_metrics(
     task: Literal["classification", "clustering"],
     map_cluster_to_rc: bool,
     drop_no_support: bool,
-):
+) -> None:
     col_names = [metric.__class__.__name__ for metric in metrics]
     report_in_metrics = "ClassificationReport" in col_names
     if report_in_metrics:
@@ -238,7 +224,7 @@ def save_evaluate_metrics(
         metrics_ = [metric.clone() for metric in metrics]
         if map_cluster_to_rc and df_ys[col].dtypes == "int64":
             df_ys[col] = cluster_map(df_ys.anomaly, df_ys[col])
-        for y_true, y_pred in zip(df_ys.anomaly, df_ys[col]):
+        for y_true, y_pred in zip(df_ys.anomaly, df_ys[col], strict=False):
             for metric in metrics_:
                 metric = metric.update(y_true, y_pred)
         if drop_no_support:
@@ -273,11 +259,11 @@ def batch_save_evaluate_metrics(
     task: Literal["classification", "clustering"] = "classification",
     map_cluster_to_rc: bool = False,
     drop_no_support: bool = False,
-):
+) -> None:
     for folder in os.listdir(path):
         # check if listed object is a folder and does not start with a period
         if os.path.isdir(os.path.join(path, folder)) and not folder.startswith(
-            "."
+            ".",
         ):
             # loop through the files in the folder
             for file in os.listdir(os.path.join(path, folder)):
@@ -304,15 +290,18 @@ def build_fit_evaluate(
     metric = metric.__class__()  # Make sure metric is fresh
     try:
         y_pred, _ = progressive_val_predict(
-            model, df, [], print_every=0, print_final=False
+            model,
+            df,
+            [],
+            print_every=0,
+            print_final=False,
         )
         if map_cluster_to_rc:
             y_pred = cluster_map(df.anomaly, y_pred)
-        for yt, yp in zip(df.anomaly, y_pred):
+        for yt, yp in zip(df.anomaly, y_pred, strict=False):
             metric.update(yt, yp)
         if drop_no_support:
             metric = drop_no_support_labels(metric)
         return metric.get() if metric.bigger_is_better else -metric.get()
-    except Exception as e:
-        print(e)
+    except Exception:
         return 0 if metric.bigger_is_better else -float("inf")

@@ -29,6 +29,7 @@ def convert_to_nested_dict(d):
     >>> convert_to_nested_dict(input_dict)  # doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
     ValueError: Up to 3 parts supported. You gave 4
+
     """
     result: dict = {}
     for key, value in d.items():
@@ -49,7 +50,8 @@ def convert_to_nested_dict(d):
                     value = type_(value)
             current[parts[-2]] = value
         else:
-            raise ValueError(f"Up to 3 parts supported. You gave {len(parts)}")
+            msg = f"Up to 3 parts supported. You gave {len(parts)}"
+            raise ValueError(msg)
     return result
 
 
@@ -63,16 +65,15 @@ def nest_step(steps, params):
         steps = [steps]
     if len(steps) == 1:
         return init_step(steps[0], params)
-    else:
-        first_step = steps[0]
-        remaining_steps = steps[1::].copy()[0]
-        nested_result = nest_step(remaining_steps, params)
-        name = (
-            first_step.func.__name__
-            if isinstance(first_step, partial)
-            else first_step.__name__
-        )
-        return first_step(nested_result, **params.get(name, {}))
+    first_step = steps[0]
+    remaining_steps = steps[1::].copy()[0]
+    nested_result = nest_step(remaining_steps, params)
+    name = (
+        first_step.func.__name__
+        if isinstance(first_step, partial)
+        else first_step.__name__
+    )
+    return first_step(nested_result, **params.get(name, {}))
 
 
 def build_model(steps: list, params: dict):
@@ -111,7 +112,7 @@ def build_model(steps: list, params: dict):
         else:
             model |= nest_step(step, params)
     if len(model.steps) == 1:
-        model = model[list(model.steps.keys())[0]]
+        model = model[next(iter(model.steps.keys()))]
     return model
 
 

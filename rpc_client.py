@@ -7,6 +7,7 @@ if __name__ == "__main__":
     config = get_params()
 
     client: RpcOutlierDetector = RpcOutlierDetector()
+    assert config["client"] is not None
     client.start(
         client=config["client"],
         io=config["io"],

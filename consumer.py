@@ -1,7 +1,7 @@
 import datetime as dt
 import json
 from argparse import Namespace
-from typing import cast
+from typing import Any, cast
 
 import paho.mqtt.client as mqtt
 
@@ -13,7 +13,7 @@ PORT = 1883
 
 
 # MQTT callback functions
-def on_connect(self: mqtt.Client, userdata, flags, rc):
+def on_connect(self: mqtt.Client, userdata, flags, rc) -> None:
     """MQTT callback function for handling the connect event.
 
     Args:
@@ -26,12 +26,12 @@ def on_connect(self: mqtt.Client, userdata, flags, rc):
         >>> usr = Namespace(topic=["my_topic"])
         >>> on_connect(mqtt.Client(), usr, None, 0)
         Connected with result code 0
+
     """
-    print("Connected with result code " + str(rc))
     self.subscribe([(topic, 0) for topic in userdata.topic])
 
 
-def on_message(self, userdata, msg):
+def on_message(self, userdata, msg) -> None:
     """MQTT callback function for handling incoming messages.
 
     Args:
@@ -44,19 +44,20 @@ def on_message(self, userdata, msg):
         >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
         >>> on_message(obj, usr, msg)
         Received message at 1970-01-01 ...: Hello
+
     """
     if isinstance(userdata, Namespace) and "receiver" in userdata:
         item = verify_and_decrypt_data(
-            json.loads(msg.payload.decode()), userdata.receiver
+            json.loads(msg.payload.decode()),
+            userdata.receiver,
         )
         item = json.dumps(item)
     else:
         item = msg.payload.decode()
-    t = dt.datetime.fromtimestamp(msg.timestamp).replace(microsecond=0)
-    print(f"Received message at {t}: {item}")
+    dt.datetime.fromtimestamp(msg.timestamp).replace(microsecond=0)
 
 
-def query_file(config: FileClient, **kwargs):
+def query_file(config: FileClient, **kwargs) -> None:
     """Query a JSON file based on the command-line arguments and print the closest past item.
 
     Args:
@@ -67,16 +68,24 @@ def query_file(config: FileClient, **kwargs):
         >>> config = {"output": "tests/sample.json"}
         >>> query_file(config)
         {'time': datetime.datetime(2023, 1, 1, 0, 0), 'anomaly': 0, ...}
+
     """
     # Load the JSON file as a list of dictionaries
     with open(config.get("output", ""), encoding="utf-8") as f:
-        data: list[dict] = [json.loads(line) for line in f]
+        data: list[dict[str, Any]] = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects
-    for item in data:
+    for i, item in enumerate(data):
         if "receiver" in kwargs and not item["time"].isascii():
-            item = verify_and_decrypt_data(item, kwargs["receiver"])
-        item["time"] = dt.datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
+            item = cast(
+                "dict[str, Any]",
+                verify_and_decrypt_data(item, kwargs["receiver"]),
+            )
+            data[i] = item
+        item["time"] = dt.datetime.strptime(
+            str(item["time"]),
+            "%Y-%m-%d %H:%M:%S",
+        )
 
     # Sort the data by time in descending order
     data.sort(key=lambda x: x["time"], reverse=True)
@@ -84,14 +93,12 @@ def query_file(config: FileClient, **kwargs):
     # Find the closest past item
     for item in data:
         if item["time"] <= dt.datetime.strptime(
-            dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+            dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M:%S"),
             "%Y-%m-%d %H:%M:%S",
         ):
-            closest_item = item
             break
 
     # Print the closest past item
-    print(closest_item)
 
 
 def query_mqtt(config: MQTTClient):
@@ -110,6 +117,7 @@ def query_mqtt(config: MQTTClient):
         >>> client = query_mqtt(config)
         >>> isinstance(client, mqtt.Client)
         True
+
     """
     # Create MQTT client instance
     client = mqtt.Client()
@@ -131,7 +139,7 @@ if __name__ == "__main__":
 
     client = config["client"]
     if istypedinstance(client, FileClient):
-        query_file(cast(FileClient, client), receiver=receiver)
+        query_file(cast("FileClient", client), receiver=receiver)
     elif istypedinstance(client, MQTTClient):
-        client = query_mqtt(cast(MQTTClient, client))
+        client = query_mqtt(cast("MQTTClient", client))
         client.loop_forever()

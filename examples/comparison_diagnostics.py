@@ -19,15 +19,15 @@ from bayes_opt.logger import JSONLogger
 from river import cluster, metrics, utils
 from river.metrics import MacroF1
 
-sys.path.insert(1, str(Path().resolve().parent))
-from functions.anomaly import ConditionalGaussianScorer  # noqa: E402
-from functions.compose import build_model, convert_to_nested_dict  # noqa: E402
-from functions.evaluate import (  # noqa: E402
+sys.path.insert(1, str(Path.cwd().parent))
+from functions.anomaly import ConditionalGaussianScorer
+from functions.compose import build_model, convert_to_nested_dict
+from functions.evaluate import (
     batch_save_evaluate_metrics,
     build_fit_evaluate,
     progressive_val_predict,
 )
-from functions.proba import MultivariateGaussian  # noqa: E402
+from functions.proba import MultivariateGaussian
 
 # CONSTANTS
 RANDOM_STATE = 42
@@ -36,13 +36,13 @@ np.random.seed(RANDOM_STATE)
 
 
 # FUNCTIONS
-def save_model(model, path):
+def save_model(model, path) -> None:
     os.makedirs(path, exist_ok=True)
     with open(f"{path}/{alg[0]}.pkl", "wb") as f:
         pickle.dump(model, f)
 
 
-def save_results_y(df_ys, path):
+def save_results_y(df_ys, path) -> None:
     os.makedirs(path, exist_ok=True)
     df_ys.to_csv(f"{path}/ys.csv", index=False)
 
@@ -55,7 +55,7 @@ detection_algorithms = [
             [
                 partial(ConditionalGaussianScorer, grace_period=16667),
                 [utils.Rolling, MultivariateGaussian],
-            ]
+            ],
         ],
         {
             "ConditionalGaussianScorer__threshold": (0.95, 0.99994),
@@ -78,12 +78,14 @@ detection_algorithms = [
 
 # DATASETS
 df = pd.read_csv("data/multivariate/cats/data_1t_agg_last.csv", index_col=0)
+assert isinstance(df, pd.DataFrame)
 df.index = pd.to_datetime(df.index, utc=True)
 
 df_y = df[["y", "category"]]
 df = df.drop(columns=["y", "category"])
 
 df_meta = pd.read_csv("data/multivariate/cats/metadata.csv")
+assert isinstance(df_meta, pd.DataFrame)
 df_meta.start_time = pd.to_datetime(df_meta.start_time, utc=True)
 df_meta.end_time = pd.to_datetime(df_meta.end_time, utc=True)
 
@@ -114,8 +116,9 @@ if __name__ == "__main__":
         for dataset in datasets:
             # PREPROCESS DATA
             df = dataset["data"]
+            assert isinstance(df, pd.DataFrame)
             df.index = pd.to_timedelta(
-                range(0, len(df)), "T"
+                list(range(len(df))), "min",
             ) + pd.Timestamp.utcnow().replace(microsecond=0)
             if isinstance(dataset["anomaly_col"], str):
                 df = df.rename(columns={dataset["anomaly_col"]: "anomaly"})
@@ -124,12 +127,10 @@ if __name__ == "__main__":
                 df["anomaly"] = df_y.rename("anomaly").values
             if dataset["drop"] is not None:
                 df = df.drop(columns=dataset["drop"])
-            print(f"\n=== {dataset['name']} === [{len(df)}]".ljust(80, "="))
 
             df_ys = df[["anomaly"]].copy()
             # RUN EACH MODEL AGAINST DATASET
             for alg in detection_algorithms:
-                print(f"\n===== {alg[0]}".ljust(80, "="))
                 # INITIALIZE OPTIMIZER
                 pbounds = alg[2]
                 mod_fun = partial(
@@ -150,16 +151,18 @@ if __name__ == "__main__":
                     allow_duplicate_points=True,
                     bounds_transformer=SequentialDomainReductionTransformer(),
                 )
-                logger = JSONLogger(path=f"./.results/{dataset['name']}-{alg[0]}.log")
+                logger = JSONLogger(
+                    path=f"./.results/{dataset['name']}-{alg[0]}.log",
+                )
                 optimizer.subscribe(Events.OPTIMIZATION_END, logger)
                 optimizer.maximize()  # init_points=1, n_iter=5)
+                assert optimizer.max is not None
                 params = convert_to_nested_dict(optimizer.max["params"])
-                print(params)
                 model = build_model(alg[1], params)
                 if hasattr(model, "seed"):
-                    model.seed = RANDOM_STATE  # type: ignore
+                    model.seed = RANDOM_STATE
                 if hasattr(model, "random_state"):
-                    model.random_state = RANDOM_STATE  # type: ignore
+                    model.random_state = RANDOM_STATE
                 # USE TUNED MODEL
                 # PROGRESSIVE PREDICT
                 y_pred, _ = progressive_val_predict(model, df, metrics=[])
@@ -194,7 +197,9 @@ if __name__ == "__main__":
 
             path = ".results/MF1_opt_rc"
 
-            batch_save_evaluate_metrics(metrics_clustering, path, task="clustering")
+            batch_save_evaluate_metrics(
+                metrics_clustering, path, task="clustering",
+            )
 
             batch_save_evaluate_metrics(
                 metrics_classification,

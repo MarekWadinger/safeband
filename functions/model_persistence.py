@@ -13,6 +13,7 @@ def load_model(path: str, topics: list[str]):
     Args:
         path: The path to the model.
         topics: The topics of the model.
+
     """
     if path:
         model_name = f"model_{common_prefix(topics).replace('/', '_')}_*.pkl"
@@ -22,29 +23,26 @@ def load_model(path: str, topics: list[str]):
             for latest_model in model_files:
                 recovery_data = joblib.load(latest_model)
                 if recovery_data["topics"] == topics:
-                    model = recovery_data["model"]
-                    print("Latest model found:", latest_model)
-                    return model
-            print("No matching model files found in the recovery folder.")
+                    return recovery_data["model"]
         else:
-            print("No model files found in the recovery folder.")
+            pass
     return None
 
 
-def save_model(path: str, topics: list[str], model):
+def save_model(path: str, topics: list[str], model) -> None:
     """Save a model to a given path.
 
     Args:
         path: The path to the model.
         topics: The topics of the model.
         model: The model to save.
+
     """
     if path:
         model_prefix = f"model_{common_prefix(topics).replace('/', '_')}"
-        now = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
+        now = dt.datetime.now(dt.UTC).strftime("%Y%m%d-%H%M%S")
         if not os.path.exists(path):
             os.makedirs(path)
         recovery_path = f"{path}/{model_prefix}_{now}.pkl"
         with open(recovery_path, "wb") as f:
             joblib.dump({"model": model, "topics": topics}, f)
-            print(f"Model saved to {recovery_path}")

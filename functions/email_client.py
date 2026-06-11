@@ -2,7 +2,6 @@ import json
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Union
 
 
 class EmailClient:  # pragma: no cover
@@ -24,11 +23,15 @@ class EmailClient:  # pragma: no cover
         ...     msg="Hello, world!"
         ... )
         Email sent successfully!
+
     """
 
     def __init__(
-        self, sender_email: str, sender_password: str, recipient_email: str
-    ):
+        self,
+        sender_email: str,
+        sender_password: str,
+        recipient_email: str,
+    ) -> None:
         self.sender_email = sender_email
         self.sender_password = sender_password
         self.recipient_email = recipient_email
@@ -36,8 +39,8 @@ class EmailClient:  # pragma: no cover
     def send_email(
         self,
         subject: str,
-        msg: Union[str, dict],
-    ):
+        msg: str | dict,
+    ) -> None:
         # Create the email message
         body = MIMEMultipart()
         body["From"] = self.sender_email
@@ -64,7 +67,8 @@ class EmailClient:  # pragma: no cover
         }
         # Create an SMTP connection
         smtp_server = smtps.get(
-            self.sender_email.split("@")[1], "smtp.mail.com"
+            self.sender_email.split("@")[1],
+            "smtp.mail.com",
         )
         with smtplib.SMTP(smtp_server, 587) as server:
             server.starttls()  # Enable TLS encryption
@@ -72,7 +76,7 @@ class EmailClient:  # pragma: no cover
 
             # Send the email
             server.sendmail(
-                self.sender_email, self.recipient_email, body.as_string()
+                self.sender_email,
+                self.recipient_email,
+                body.as_string(),
             )
-
-        print("Email sent successfully!")

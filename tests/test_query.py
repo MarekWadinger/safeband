@@ -11,19 +11,23 @@ import paho.mqtt.client as mqtt
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from consumer import on_message, query_file  # noqa: E402
-from functions.encryption import (  # noqa: E402
+from typing import TYPE_CHECKING
+
+from consumer import on_message, query_file
+from functions.encryption import (
     decode_data,
     encrypt_data,
     sign_data,
 )
-from functions.model_persistence import load_model, save_model  # noqa: E402
-from functions.typing_extras import FileClient  # noqa: E402
-from functions.utils import common_prefix  # noqa: E402
+from functions.model_persistence import load_model, save_model
+from functions.utils import common_prefix
+
+if TYPE_CHECKING:
+    from functions.typing_extras import FileClient
 
 
 class TestConsumer:
-    def setup_class(self):
+    def setup_class(self) -> None:
         self.parent_path = Path(__file__).parent
         self.config: FileClient = {
             "path": "",
@@ -42,11 +46,11 @@ class TestConsumer:
         with open(self.config["output"], "w") as f:
             json.dump(ciphertext, f)
 
-    def teardown_class(self):
+    def teardown_class(self) -> None:
         if os.path.exists(self.config["output"]):
             os.remove(self.config["output"])
 
-    def test_verify_mqtt_message(self):
+    def test_verify_mqtt_message(self) -> None:
         obj = mqtt.Client()
         msg = mqtt.MQTTMessage()
         msg.payload = self.encrypted_msg.encode("latin-1")
@@ -66,11 +70,11 @@ class TestConsumer:
             is not None
         )
 
-    def test_verify_file_message(self):
+    def test_verify_file_message(self) -> None:
         f = StringIO()
         stdout_ = sys.stdout  # Keep track of the previous value.
         sys.stdout = f
-        query_file(self.config, **{"receiver": self.args.receiver})
+        query_file(self.config, receiver=self.args.receiver)
         sys.stdout = stdout_
         assert (
             f.getvalue() == "{'time': datetime.datetime(2022, 1, 1, 0, 0)}\n"
@@ -78,32 +82,34 @@ class TestConsumer:
 
 
 class TestModelPresistence:
-    def setup_class(self):
+    def setup_class(self) -> None:
         self.parent_path = Path(__file__).parent
         self.path = str(Path(__file__).parent / ".recovery_models/")
         self.topics = ["test"]
 
-    def teardown_class(self):
+    def teardown_class(self) -> None:
         models = glob.glob(
             os.path.join(
-                self.path, f"model_{common_prefix(self.topics)}_*.pkl"
-            )
+                self.path,
+                f"model_{common_prefix(self.topics)}_*.pkl",
+            ),
         )
         for model in models:
             os.remove(model)
         os.rmdir(self.path)
 
-    def test_load_model(self):
+    def test_load_model(self) -> None:
         model = load_model(self.path, self.topics)
         assert model is None
 
-    def test_save_model(self):
+    def test_save_model(self) -> None:
         model = {"model": 1}
         save_model(self.path, self.topics, model)
         models = glob.glob(
             os.path.join(
-                self.path, f"model_{common_prefix(self.topics)}_*.pkl"
-            )
+                self.path,
+                f"model_{common_prefix(self.topics)}_*.pkl",
+            ),
         )
         assert len(models) == 1
 

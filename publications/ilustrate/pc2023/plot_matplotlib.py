@@ -1,7 +1,7 @@
 import os
 import textwrap
 from datetime import timedelta
-from typing import Literal, Union
+from typing import Literal
 
 import matplotlib as mpl
 import matplotlib.dates as mdates
@@ -30,7 +30,7 @@ plt.rcParams.update(
         "figure.subplot.top": 0.85,
         "axes.formatter.use_mathtext": True,
         # "backend": "macOsX"
-    }
+    },
 )
 
 PLOT_WIDTH = 0.75 * 398.3386
@@ -44,7 +44,7 @@ formatter = mdates.ConciseDateFormatter(
 
 
 def set_size(
-    width: Union[float, int, Literal["thesis", "beamer"]] = 307.28987,
+    width: float | Literal["thesis", "beamer"] = 307.28987,
     fraction=1,
     subplots=(1, 1),
 ):
@@ -58,10 +58,12 @@ def set_size(
             Fraction of the width which you wish the figure to occupy
     subplots: array-like, optional
             The number of rows and columns of subplots.
+
     Returns
     -------
     fig_dim: tuple
             Dimensions of figure in inches
+
     """
     if width == "thesis":
         width_pt = 426.79135
@@ -87,7 +89,7 @@ def set_size(
     return (fig_width_in, fig_height_in)
 
 
-def set_axis_style(ax: plt.Axes, ser, xlabel="", ylabel=""):
+def set_axis_style(ax: plt.Axes, ser, xlabel="", ylabel="") -> None:
     ylabel = "\n".join(textwrap.wrap(ylabel, 11))
     ax.set_xlabel(xlabel)
     ax.set_ylabel(
@@ -103,10 +105,15 @@ def set_axis_style(ax: plt.Axes, ser, xlabel="", ylabel=""):
     ax.tick_params(axis="x", labelrotation=50, labelsize=8)
 
 
-def plot_anomalies(ax, a):
-    for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
+def plot_anomalies(ax, a) -> None:
+    for x0, x1 in zip(a[a == 1].index, a[a == -1].index, strict=False):
         ax.axvspan(
-            x0, x1, facecolor="red", alpha=0.5, linewidth=1.1, edgecolor="red"
+            x0,
+            x1,
+            facecolor="red",
+            alpha=0.5,
+            linewidth=1.1,
+            edgecolor="red",
         )
 
 
@@ -124,20 +131,20 @@ def make_name(name, window, file_name):
 
 def plot_limits_(
     ser: pd.Series,
-    anomalies: Union[pd.Series, None] = None,
-    ser_high: Union[pd.Series, None] = None,
-    ser_low: Union[pd.Series, None] = None,
-    window: Union[timedelta, None] = None,
-    file_name: Union[str, None] = None,
+    anomalies: pd.Series | None = None,
+    ser_high: pd.Series | None = None,
+    ser_low: pd.Series | None = None,
+    window: timedelta | None = None,
+    file_name: str | None = None,
     save: bool = True,
     **kwargs,
-):
+) -> None:
     file_name = make_name(ser.name, window, file_name)
 
     fig, ax = plt.subplots(
         figsize=set_size(
             PLOT_WIDTH,
-        )
+        ),
     )
 
     set_axis_style(ax, ser, "Date", f"{ser.name} [-]")
@@ -191,7 +198,7 @@ def plot_limits(
         ax.fill_between(
             ser_high.index,
             ser_high,
-            ylim[1],  # type: ignore
+            ylim[1],
             label=r"Limits",
             color=(1, 0, 0, 0.1),
             edgecolor=(1, 0, 0, 0.25),
@@ -201,7 +208,7 @@ def plot_limits(
         ax.fill_between(
             ser_low.index,
             ser_low,
-            ylim[0],  # type: ignore
+            ylim[0],
             color=(1, 0, 0, 0.1),
             edgecolor=(1, 0, 0, 0.25),
             linestyle="-",
@@ -213,16 +220,19 @@ def plot_limits(
 def plot_compare_anomalies_(
     ser: pd.Series,
     anomalies: pd.DataFrame,
-    window: Union[timedelta, None] = None,
-    file_name: Union[str, None] = None,
+    window: timedelta | None = None,
+    file_name: str | None = None,
     save: bool = True,
     **kwargs,
-):
+) -> None:
     file_name = make_name(ser.name, window, file_name)
 
     n_rows = len(anomalies.columns)
     _, axs = plt.subplots(
-        nrows=n_rows, ncols=1, figsize=set_size(subplots=(1, 1)), sharex=True
+        nrows=n_rows,
+        ncols=1,
+        figsize=set_size(subplots=(1, 1)),
+        sharex=True,
     )
 
     if "ylim" not in kwargs:
@@ -243,7 +253,9 @@ def plot_compare_anomalies_(
 
     for row, anomaly in enumerate(anomalies, start=0):
         axs[row].plot(
-            ser.resample("1t").asfreq(), linewidth=0.7, label="Signal"
+            ser.resample("1t").asfreq(),
+            linewidth=0.7,
+            label="Signal",
         )
 
         axs[row].set_ylim(kwargs["ylim"])
@@ -266,7 +278,7 @@ def plot_compare_anomalies_(
     plt.show()
 
 
-def plot_anomaly_bars(args, colors, axs):
+def plot_anomaly_bars(args, colors, axs) -> None:
     for i, a in enumerate(args, start=1):
         if isinstance(a, pd.Series):
             ax: plt.Axes = axs[-i]
@@ -277,7 +289,7 @@ def plot_anomaly_bars(args, colors, axs):
                 elif a[a != 0].iloc[-1] == 1:
                     a.iloc[-1] = -1
             for s_idx, (x0, x1) in enumerate(
-                zip(a[a == 1].index, a[a == -1].index)
+                zip(a[a == 1].index, a[a == -1].index, strict=False),
             ):
                 ax.axvspan(
                     x0,
@@ -304,17 +316,17 @@ def plot_anomaly_bars(args, colors, axs):
 def plot_limits_grid_(
     df: pd.DataFrame,
     *args,
-    ser_high: Union[pd.Series, None] = None,
-    ser_low: Union[pd.Series, None] = None,
-    signal_anomaly: Union[pd.Series, None] = None,
-    file_name: Union[str, None] = None,
+    ser_high: pd.Series | None = None,
+    ser_low: pd.Series | None = None,
+    signal_anomaly: pd.Series | None = None,
+    file_name: str | None = None,
     save: bool = True,
     # anomalies: pd.Series,
     # changepoints: Union[pd.Series, None] = None,
     # samplings: Union[pd.Series, None] = None,
     # ground_truth: Union[pd.Series, None] = None,
     **kwargs,
-):
+) -> None:
     colors = [
         "#1f77b4",
         "#ff7f0e",
@@ -340,7 +352,8 @@ def plot_limits_grid_(
         nrows=int(n_rows + n_bar_plots),
         ncols=1,
         figsize=set_size(
-            "thesis", subplots=((n_rows + n_bar_plots * 0.2) / 2.3, 1)
+            "thesis",
+            subplots=((n_rows + n_bar_plots * 0.2) / 2.3, 1),
         ),  # Kokam divide by 3.5
         sharex="col",
         sharey="row",
@@ -348,13 +361,14 @@ def plot_limits_grid_(
             "height_ratios": [*(n_rows * [1]), *(n_bar_plots * [0.2])],
         },
     )
-    if isinstance(axs, plt.Axes):
-        axs = np.array([axs])
-    else:
-        axs = axs.T.flatten()
+    axs = np.array([axs]) if isinstance(axs, plt.Axes) else axs.T.flatten()
 
     fig.subplots_adjust(
-        left=0.05, bottom=0.1, right=0.85, top=0.95, hspace=0.15
+        left=0.05,
+        bottom=0.1,
+        right=0.85,
+        top=0.95,
+        hspace=0.15,
     )
 
     for i, col_name in enumerate(df.columns):
@@ -384,7 +398,10 @@ def plot_limits_grid_(
 
         if ser_high_ is not None and ser_low_ is not None:
             ax = plot_limits(
-                ax, ser_high_, ser_low_, (min(ser.min(), 0), max(ser.max(), 1))
+                ax,
+                ser_high_,
+                ser_low_,
+                (min(ser.min(), 0), max(ser.max(), 1)),
             )
 
         if signal_anomaly is not None:
@@ -400,14 +417,14 @@ def plot_limits_grid_(
             if isinstance(kwargs["grace_period"], int):
                 xmax = ser.index[int(kwargs["grace_period"])]
             elif isinstance(kwargs["grace_period"], timedelta):
-                xmax = ser.index[0] + kwargs["grace_period"]  # type: ignore
+                xmax = ser.index[0] + kwargs["grace_period"]
             elif isinstance(kwargs["grace_period"], pd.Timestamp):
                 xmax = kwargs["grace_period"]
             else:
                 xmax = ser.index[0]
             ax.axvspan(
-                ser.index[0],  # type: ignore
-                xmax,  # type: ignore
+                ser.index[0],
+                xmax,
                 color="0.8",
                 alpha=0.75,
                 label="Grace Period",
