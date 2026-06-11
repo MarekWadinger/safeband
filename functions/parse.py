@@ -210,6 +210,7 @@ def get_valid_type(type_) -> type:
         <class 'bool'>
         >>> get_valid_type(list[int])
         list[int]
+        >>> from typing import Union
         >>> get_valid_type(Union[int, float])
         <class 'int'>
         >>> from typing import Optional
@@ -390,9 +391,9 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
             else:
                 param_value = None
 
-            if param_value is not None and param_value not in {"None", ""}:
+            if param_value is not None and param_value not in ("None", ""):
                 config_dyn[section][param] = type_(param_value)
-            elif param_value is None or param_value in {"None", ""}:
+            elif param_value is None or param_value in ("None", ""):
                 config_dyn[section][param] = None
 
     return config

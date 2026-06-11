@@ -41,8 +41,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     >>> p.mv_conditional(list(x.values()), 0, p.mu, p.var)
     Traceback (most recent call last):
     ...
-    ValueError: Arguments must be either dict, str, dict, pd.DataFrame or
-    np.ndarray, int, np.ndarray, np.ndarray.
+    TypeError: Arguments must be either dict, str, dict, pd.DataFrame ...
 
     """
 

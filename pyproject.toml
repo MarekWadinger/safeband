@@ -46,6 +46,17 @@ example = [
     "numpy>=2.3.2",
 ]
 
+[tool.ruff]
+line-length = 79
+# Script collections, not importable packages
+namespace-packages = [
+    ".",
+    "examples",
+    "examples/models",
+    "publications/ilustrate/pc2023",
+    "scripts",
+]
+
 [tool.markdownlint]
 no-duplicate-heading = { siblings_only = true, allow_different_nesting = true }
 line-length = { stern = true, code_blocks = true }

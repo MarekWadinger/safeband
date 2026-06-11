@@ -118,7 +118,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     ...     )
     Traceback (most recent call last):
     ...
-    ValueError:  does not satisfy the necessary protocol
+    TypeError: ... does not satisfy the necessary protocol
 
     Gaussian scorer on rolling window
     >>> from river.utils import Rolling
@@ -132,7 +132,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer.score_one(2.4715629565996924)
     0.5
     >>> scorer.limit_one()
-    (nan, nan)
+    (np.float64(nan), np.float64(nan))
     >>> scorer.learn_one(1).gaussian.mu
     1.0
     >>> scorer.gaussian.sigma
@@ -140,7 +140,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer.learn_one(0).gaussian.sigma
     0.7071067811865476
     >>> scorer.limit_one()
-    (2.4715629565996924, -1.4715629565996926)
+    (np.float64(2.4715629565996924), np.float64(-1.4715629565996926))
     >>> scorer.predict_one(2.4715629565996924)
     0
     >>> scorer.score_one(2.4715629565996924)
@@ -158,7 +158,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer.learn_one(1).gaussian.sigma
     0.5773502691896258
     >>> scorer.process_one(0.5)
-    (0, 2.276441079814074, -0.943107746480741)
+    (0, np.float64(2.276441079814074), np.float64(-0.943107746480741))
 
     Gaussian scorer on time rolling window
     >>> import datetime as dt
@@ -167,12 +167,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     ...     TimeRolling(Gaussian(),
     ...     period=dt.timedelta(hours=24*7)))
     >>> scorer.process_one(1, t=dt.datetime(2022,2,2))
-    (0, nan, nan)
+    (0, np.float64(nan), np.float64(nan))
 
     Gaussian scorer without window
     >>> scorer = GaussianScorer(Gaussian(), grace_period=2)
     >>> scorer.process_one(1)
-    (0, nan, nan)
+    (0, np.float64(nan), np.float64(nan))
 
     Gaussian scorer with multivariate support. In this case it might be
     practical to specify threshold as lower bound log_threshold for better
@@ -185,16 +185,16 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer.learn_one({"a": 2, "b": 3}).gaussian.mu
     {'a': 1.5, 'b': 2.5}
     >>> np.log(scorer.score_one({"a": 0, "b": 0}))
-    -8.4999624532873
+    np.float64(-8.49996245328...)
     >>> scorer.predict_one({"a": 0, "b": 0})
     0
     >>> scorer.limit_one()
-    ({'a': 3.767..., 'b': 4.767...}, {'a': -2.160..., 'b': -1.160...})
+    ({'a': np.float64(3.767...), 'b': np.float64(4.767...)}, {'a': np.float64(-2.160...), 'b': np.float64(-1.160...)})
 
     Behind the scenes, the threshold is adapted to the dimensionality of the
     input
     >>> np.log(scorer.score_one({"a": -2.161, "b": -1.161}))
-    -16.000...
+    np.float64(-16.000...)
     >>> scorer.predict_one({"a": -2.161, "b": -1.161})
     1
     >>> scorer.predict_one({"a": -2.160, "b": -1.160})
@@ -469,11 +469,11 @@ class ConditionalGaussianScorer(GaussianScorer):
     ...     )
     Traceback (most recent call last):
     ...
-    ValueError:  does not satisfy the necessary protocol
+    TypeError: ... does not satisfy the necessary protocol
 
     Gaussian scorer on rolling window
     >>> from river.utils import Rolling
-    >>> from proba import MultivariateGaussian
+    >>> from functions.proba import MultivariateGaussian
     >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 3),
     ...     grace_period=1, protect_anomaly_detector=False)
 
@@ -491,7 +491,7 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> scorer.predict_one({"a": 1, "b": 2})
     0
     >>> scorer.limit_one({"a": 1, "b": 2})
-    ({'a': 1.5, 'b': 0.5}, {'a': 1.5, 'b': 0.5})
+    ({'a': np.float64(1.5), 'b': np.float64(0.5)}, {'a': np.float64(1.5), 'b': np.float64(0.5)})
 
     Let's learn some more samples
     >>> scorer.learn_one({"a": 1., "b": 2.}).gaussian.mu
@@ -503,23 +503,23 @@ class ConditionalGaussianScorer(GaussianScorer):
     a  0.250 -0.375
     b -0.375  0.750
     >>> scorer.score_one({"a": 1., "b": 1.5})
-    0.5
+    np.float64(0.5)
     >>> scorer.score_one({"a": 1., "b": 2.})
-    0.875...
+    np.float64(0.875...)
     >>> scorer.limit_one({"a": 1., "b": 2.})
-    ({'a': 1.501..., 'b': 2.801...}, {'a': -0.001..., 'b': 0.198...})
+    ({'a': np.float64(1.501...), 'b': np.float64(2.801...)}, {'a': np.float64(-0.001...), 'b': np.float64(0.198...)})
     >>> scorer.limit_one({"b": 2., "a": 1.})
-    ({'a': 1.501..., 'b': 2.801...}, {'a': -0.001..., 'b': 0.198...})
+    ({'a': np.float64(1.501...), 'b': np.float64(2.801...)}, {'a': np.float64(-0.001...), 'b': np.float64(0.198...)})
     >>> scorer.predict_one({"a": 1.0, "b": 2.802})
     1
     >>> scorer.get_root_cause()
     'b'
     >>> scorer.score_one({"a": 1.0, "b": 2.802})
-    0.998...
+    np.float64(0.998...)
     >>> scorer.predict_one({"a": 1.0, "b": 2.801})
     0
     >>> scorer.score_one({"a": 1.0, "b": 2.801})
-    0.99867
+    np.float64(0.99867...)
 
     """
 

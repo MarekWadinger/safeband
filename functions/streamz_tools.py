@@ -18,7 +18,8 @@ class MapStream(Stream):
 
         Stream.__init__(self, upstream, stream_name=stream_name)
 
-    def update(self, x, _who=None, metadata=None):
+    def update(self, x, who=None, metadata=None):
+        del who  # unused; required by the streamz Stream.update API
         try:
             result = self.func(x, *self.args, **self.kwargs)
         except Exception as e:
@@ -114,7 +115,9 @@ class to_mqtt(Sink):
         self.keepalive = keepalive
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
-    def update(self, x, _who=None, _metadata=None) -> None:
+    def update(self, x, who=None, metadata=None) -> None:
+        del who, metadata  # unused; required by the streamz Sink.update API
+
         def publish_many(
             client: mqtt.Client,
             topics: list[str],

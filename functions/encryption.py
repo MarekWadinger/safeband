@@ -397,7 +397,7 @@ def encode_data(
     Examples:
         >>> msg = {
         ...     'key1': 'Hello',
-        ...     'key2': ['abcó\\x9cÆ', 'xyz']
+        ...     'key2': ['abcó\x9cÆ', 'xyz']
         ... }
         >>> encode_data(msg, encoding='latin1')
         {'key1': b'Hello', 'key2': [b'abc\xf3\x9c\xc6', b'xyz']}
@@ -452,7 +452,7 @@ def decode_data(
     Examples:
         >>> msg = {
         ...     'key1': b'abc',
-        ...     'key2': [b"abc\\xf3\\x9c\\xc6", b"xyz"]
+        ...     'key2': [b"abc\xf3\x9c\xc6", b"xyz"]
         ... }
         >>> decode_data(msg)
         {'key1': 'abc', 'key2': ['abcó\x9cÆ', 'xyz']}
