@@ -57,7 +57,9 @@ def on_message(self, userdata, msg) -> None:
         item = json.dumps(item)
     else:
         item = msg.payload.decode()
-    t = dt.datetime.fromtimestamp(msg.timestamp).replace(microsecond=0)
+    t = dt.datetime.fromtimestamp(msg.timestamp, tz=dt.UTC).replace(
+        microsecond=0
+    )
     logger.info("Received message at %s: %s", t, item)
 
 
@@ -88,7 +90,7 @@ def query_file(config: FileClient, **kwargs) -> None:
         item["time"] = dt.datetime.strptime(
             str(item["time"]),
             "%Y-%m-%d %H:%M:%S",
-        )
+        ).replace(tzinfo=dt.UTC)
 
     # Sort the data by time in descending order
     data.sort(key=lambda x: x["time"], reverse=True)
@@ -96,10 +98,7 @@ def query_file(config: FileClient, **kwargs) -> None:
     # Find the closest past item
     closest_item = None
     for item in data:
-        if item["time"] <= dt.datetime.strptime(
-            dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-            "%Y-%m-%d %H:%M:%S",
-        ):
+        if item["time"] <= dt.datetime.now(dt.UTC).replace(microsecond=0):
             closest_item = item
             break
 

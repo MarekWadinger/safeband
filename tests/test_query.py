@@ -58,7 +58,8 @@ class TestConsumer:
         assert (
             re.search(
                 (
-                    r"Received message at 1970-01-01 \d{2}:\d{2}:\d{2}: "
+                    r"Received message at 1970-01-01 \d{2}:\d{2}:\d{2}"
+                    r"[+\-]\d{2}:\d{2}: "
                     r'{"time": "2022-01-01 00:00:00"}'
                 ),
                 caplog.text,

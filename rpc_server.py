@@ -170,25 +170,19 @@ class RpcOutlierDetector:
             }
         if isinstance(x, dict):
             return {
-                "time": dt.datetime.now(dt.UTC).replace(
-                    tzinfo=None,
-                    microsecond=0,
-                ),
+                "time": dt.datetime.now(dt.UTC).replace(microsecond=0),
                 "data": {k: float(v) for k, v in x.items() if k in topics},
             }
         if isinstance(x, MQTTMessage):
             return {
-                "time": dt.datetime.fromtimestamp(x.timestamp).replace(
-                    microsecond=0,
-                ),
+                "time": dt.datetime.fromtimestamp(
+                    x.timestamp, tz=dt.UTC
+                ).replace(microsecond=0),
                 "data": {x.topic.split("/")[-1]: float(x.payload)},
             }
         if isinstance(x, bytes):
             return {
-                "time": dt.datetime.now(dt.UTC).replace(
-                    tzinfo=None,
-                    microsecond=0,
-                ),
+                "time": dt.datetime.now(dt.UTC).replace(microsecond=0),
                 "data": {topics[0]: float(x.decode("utf-8"))},
             }
         return None
