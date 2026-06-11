@@ -7,7 +7,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import IO
+from typing import IO, cast
 
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
@@ -46,7 +46,9 @@ open_files: list[IO] = []
 
 
 # DEFINITIONS
-def expand_model_params(model_params):
+def expand_model_params(
+    model_params: ModelConfig,
+) -> tuple[float, dt.timedelta, dt.timedelta, dt.timedelta]:
     """Extract and convert model parameters from the configuration dictionary.
 
     Args:
@@ -90,14 +92,14 @@ def expand_model_params(model_params):
         msg = "t_e cannot be None"
         raise ValueError(msg)
     t_e = period_to_timedelta(t_e)
-    t_a = model_params.get("t_a", t_e)
+    t_a = cast("pd.Timedelta", model_params.get("t_a", t_e))
     t_a = period_to_timedelta(t_a)
-    t_g = model_params.get("t_g", t_e)
+    t_g = cast("pd.Timedelta", model_params.get("t_g", t_e))
     t_g = period_to_timedelta(t_g)
     return threshold, t_e, t_a, t_g
 
 
-def print_summary(df) -> None:
+def print_summary(df: pd.DataFrame) -> None:
     """Print a summary of the given DataFrame.
 
     The function calculates and prints the proportion of anomalous samples
@@ -129,7 +131,15 @@ class RpcOutlierDetector:
         """Initialize the detector in a stopped state."""
         self.stopped = True
 
-    def preprocess(self, x, topics: list):
+    def preprocess(
+        self,
+        x: pd.Series
+        | tuple[pd.Timestamp, pd.Series]
+        | dict[str, float | str | bytes]
+        | MQTTMessage
+        | bytes,
+        topics: list,
+    ) -> dict | None:
         """Normalize heterogeneous input into a ``{time, data}`` dictionary.
 
         Accepts a pd.Series (with optional Timestamp name), a (timestamp,
@@ -151,13 +161,17 @@ class RpcOutlierDetector:
             return {"time": t, "data": x[topics].to_dict()}
         if isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
             return {
-                "time": x[0].tz_localize(None),
+                "time": cast("pd.Timestamp", x[0]).tz_localize(None),
                 "data": x[1][topics].to_dict(),
             }
         if isinstance(x, dict):
             return {
                 "time": dt.datetime.now(dt.UTC).replace(microsecond=0),
-                "data": {k: float(v) for k, v in x.items() if k in topics},
+                "data": {
+                    k: float(cast("float | str | bytes", v))
+                    for k, v in x.items()
+                    if k in topics
+                },
             }
         if isinstance(x, MQTTMessage):
             return {
@@ -173,7 +187,7 @@ class RpcOutlierDetector:
             }
         return None
 
-    def fit_transform(self, x, model: GaussianScorer):
+    def fit_transform(self, x: dict, model: GaussianScorer) -> dict:
         """Apply the anomaly detection model and return a serialisable result.
 
         Calls ``model.process_one`` with the appropriately shaped feature
@@ -208,7 +222,7 @@ class RpcOutlierDetector:
             "level_low": thresh_low,
         }
 
-    def dump_to_file(self, x, f) -> None:  # pragma: no cover
+    def dump_to_file(self, x: dict, f: IO[str]) -> None:  # pragma: no cover
         """Serialize a result dictionary as JSON and append it to a file."""
         print(json.dumps(x), file=f)
 
@@ -237,7 +251,7 @@ class RpcOutlierDetector:
         config: FileClient | MQTTClient | KafkaClient | PulsarClient,
         topics: list,
         debug: bool = False,
-    ):
+    ) -> Stream:
         """Return a Streamz source stream based on the transport configuration.
 
         Dispatches to ``from_iterable`` (file), ``from_mqtt``, ``from_kafka``,
@@ -297,8 +311,8 @@ class RpcOutlierDetector:
         self,
         config: FileClient | MQTTClient | KafkaClient | PulsarClient,
         topics: list,
-        detector,
-    ):
+        detector: Stream,
+    ) -> Stream:
         """Get the data sink based on the provided configuration.
 
         Args:
@@ -346,7 +360,13 @@ class RpcOutlierDetector:
 
         return detector
 
-    def run(self, config, source, detector, debug) -> None:
+    def run(
+        self,
+        config: FileClient | MQTTClient | KafkaClient | PulsarClient,
+        source: Stream,
+        detector: Stream,
+        debug: bool,
+    ) -> None:
         """Run the detection pipeline until the source stream is exhausted.
 
         Args:
@@ -359,7 +379,7 @@ class RpcOutlierDetector:
         # TODO(MarekWadinger): handle combination of debug and remote broker
         if debug and istypedinstance(config, FileClient):
             logger.info("=== Debugging started... ===")
-            data = pd.read_csv(config["path"], index_col=0)
+            data = pd.read_csv(cast("FileClient", config)["path"], index_col=0)
             data.index = pd.to_datetime(data.index, utc=True)
             for row in data.head().iterrows():
                 source.emit(row)

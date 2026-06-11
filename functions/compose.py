@@ -1,11 +1,12 @@
 """Utilities for building and initializing river pipeline models."""
 
 from functools import partial
+from typing import cast
 
 from river import compose
 
 
-def convert_to_nested_dict(d):
+def convert_to_nested_dict(d: dict) -> dict:
     """Convert flat parameters dict to nested dict.
 
     Examples:
@@ -57,13 +58,17 @@ def convert_to_nested_dict(d):
     return result
 
 
-def init_step(step, params):
+def init_step(step: partial | type, params: dict) -> object:
     """Instantiate a single pipeline step using its name-matched params entry."""
-    name = step.func.__name__ if isinstance(step, partial) else step.__name__
+    name = (
+        cast("type", step.func).__name__
+        if isinstance(step, partial)
+        else step.__name__
+    )
     return step(**params.get(name, {}))
 
 
-def nest_step(steps, params):
+def nest_step(steps: list | partial | type, params: dict) -> object:
     """Recursively nest a list of steps into a composed river estimator."""
     if not isinstance(steps, list):
         steps = [steps]

@@ -2,8 +2,9 @@
 
 import collections
 import warnings
-from datetime import timedelta
-from typing import Protocol, cast, runtime_checkable
+from collections.abc import Iterator, Sized
+from datetime import datetime, timedelta
+from typing import Protocol, Self, cast, runtime_checkable
 
 import numpy as np
 import pandas as pd
@@ -20,11 +21,11 @@ class Distribution(Protocol):  # pragma: no cover
     sigma: float | pd.DataFrame
     n_samples: float | int
 
-    def update(self, *args, **kwargs) -> None:
+    def update(self, x: dict[str, float]) -> None:
         """Update the distribution with a new observation."""
         ...
 
-    def cdf(self, *args, **kwargs) -> float:
+    def cdf(self, x: dict[str, float]) -> float:
         """Return the cumulative distribution function value."""
         ...
 
@@ -41,18 +42,20 @@ class ConditionableDistribution(
     var: pd.DataFrame
     n_samples: float | int
 
-    def update(self, *args, **kwargs) -> None:
+    def update(self, x: dict[str, float]) -> None:
         """Update the distribution with a new observation."""
         ...
 
-    def cdf(self, *args, **kwargs) -> float:
+    def cdf(self, x: dict[str, float]) -> float:
         """Return the cumulative distribution function value."""
         ...
 
     def mv_conditional(
         self,
-        *args,
-        **kwargs,
+        observed_values: dict[str, float] | np.ndarray,
+        var_idx: str | int,
+        mean: dict[str, float] | np.ndarray,
+        covariance: pd.DataFrame | np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return conditional mean, covariance, and std for a variable."""
         ...
@@ -92,11 +95,11 @@ class Store:
         """Initialize an empty store."""
         self.x: list = []
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[float]:
         """Yield items in insertion order."""
         yield from self.x
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> float:
         """Return the item at the given index."""
         return self.x[idx]
 
@@ -104,15 +107,15 @@ class Store:
         """Return the number of stored items."""
         return len(self.x)
 
-    def append(self, *args, **_kwargs) -> None:
+    def append(self, *args: float, **_kwargs: object) -> None:
         """Append the first positional argument to the store."""
         self.x.append(args[0])
 
-    def update(self, *args, **_kwargs) -> None:
+    def update(self, *args: float, **_kwargs: object) -> None:
         """Append the first positional argument to the store."""
         self.x.append(args[0])
 
-    def revert(self, *_args, **_kwargs) -> None:
+    def revert(self, *_args: float, **_kwargs: object) -> None:
         """Remove the oldest item from the store."""
         self.x.pop(0)
 
@@ -298,23 +301,27 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             if isinstance(self.t_a, timedelta):
                 self.buffer = TimeRolling(Store(), period=self.t_a)
 
-    def _get_feature_dim_in(self, x) -> None:
+    def _get_feature_dim_in(self, x: float | dict[str, float]) -> None:
         if not hasattr(self, "_feature_dim_in"):
             if hasattr(x, "__len__"):
-                self._feature_dim_in: int = len(x)
+                self._feature_dim_in: int = len(cast("Sized", x))
             else:
                 self._feature_dim_in = 1
 
-    def _get_feature_names_in(self, x: dict[str, float]) -> None:
+    def _get_feature_names_in(self, x: float | dict[str, float]) -> None:
         if not hasattr(self, "feature_names_in_") and isinstance(x, dict):
             self.feature_names_in_ = sorted(x.keys())
 
-    def _learn_one(self, x, **kwargs):
+    def _learn_one(
+        self,
+        x: float | dict[str, float],
+        **kwargs: datetime | float | None,
+    ) -> Self:
         if not hasattr(self, "feature_names_in_") and isinstance(x, dict):
             self._get_feature_names_in(x)
         if not hasattr(self, "_feature_dim_in"):
             self._get_feature_dim_in(x)
-        self.gaussian.update(x, **kwargs)
+        cast("Rolling", self.gaussian).update(x, **kwargs)
         return self
 
     def _drift_detected(self) -> bool:
@@ -324,7 +331,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             return sum(self.buffer) / len_ > (self.threshold)  # type: ignore
         return False
 
-    def n_seen(self):
+    def n_seen(self) -> timedelta | float:
         """Return the number of observations seen, as count or timedelta."""
         if isinstance(self.grace_period, timedelta) and isinstance(
             self.gaussian,
@@ -343,7 +350,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             n_seen = self.gaussian.n_samples
         return n_seen
 
-    def learn_one(self, x, **learn_kwargs):
+    def learn_one(
+        self,
+        x: float | dict[str, float],
+        **learn_kwargs: datetime | float | None,
+    ):
         """Update the distribution, skipping anomalous samples when protected."""
         if self.protect_anomaly_detector:
             is_anomaly = self.predict_one(x)
@@ -355,22 +366,25 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             self._learn_one(x, **learn_kwargs)
         return self
 
-    def score_one(self, x) -> float:
+    def score_one(self, x: float | dict[str, float]) -> float:
         """Return the CDF anomaly score for x; 0.5 during grace period."""
         # TODO(MarekWadinger): find out why return different results on each invocation
-        if self.n_seen() >= self.grace_period:
-            return self.gaussian.cdf(x)
+        if cast("float", self.n_seen()) >= cast("float", self.grace_period):
+            return self.gaussian.cdf(cast("dict[str, float]", x))
         if not hasattr(self, "_feature_dim_in"):
             return 0.5
         return 0.5**self._feature_dim_in
 
-    def predict_one(self, x) -> int:
+    def predict_one(self, x: float | dict[str, float]) -> int:
         """Return 1 if x is anomalous under the threshold, else 0."""
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
 
         score = self.score_one(x)
-        if self.n_seen() > self.grace_period and self._feature_dim_in:
+        if (
+            cast("float", self.n_seen()) > cast("float", self.grace_period)
+            and self._feature_dim_in
+        ):
             if self.log_threshold:
                 score = -np.inf if score <= 0 else np.log(score)
                 if (
@@ -383,7 +397,14 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 return 1
         return 0
 
-    def limit_one(self, *args, diagonal_only=True):
+    def limit_one(
+        self,
+        *args: float | dict[str, float],
+        diagonal_only: bool = True,
+    ) -> tuple[
+        float | np.ndarray | dict[str, float],
+        float | np.ndarray | dict[str, float],
+    ]:
         """Return (upper, lower) Gaussian limits derived from the threshold."""
         if len(args) > 0:
             self._get_feature_dim_in(args[0])
@@ -449,7 +470,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             )
         return thresh_high, thresh_low
 
-    def process_one(self, x, t=None):
+    def process_one(
+        self,
+        x: float | dict[str, float],
+        t: datetime | None = None,
+    ) -> tuple[
+        int,
+        float | np.ndarray | dict[str, float],
+        float | np.ndarray | dict[str, float],
+    ]:
         """Predict, compute limits, and conditionally learn from x in one step."""
         if self.gaussian.n_samples == 0:
             if isinstance(self.gaussian, (Rolling, TimeRolling)):
@@ -586,7 +615,10 @@ class ConditionalGaussianScorer(GaussianScorer):
         self.root_cause = None
         self.alpha = (1 - threshold) / 2
 
-    def _farthest_from_center(self, input_list):
+    def _farthest_from_center(
+        self,
+        input_list: list[float],
+    ) -> tuple[float | None, int | None]:
         # Initialize variables to keep track of the farthest element and its
         #  difference
         farthest_element = None
@@ -606,7 +638,7 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         return farthest_element, farthest_index
 
-    def _scores_one(self, x) -> list:
+    def _scores_one(self, x: dict[str, float]) -> list:
         scores = []
         cg = cast("ConditionableDistribution", self.gaussian)
         mean = cg.mu
@@ -626,30 +658,36 @@ class ConditionalGaussianScorer(GaussianScorer):
                 scores.append(0.0)
         return scores
 
-    def _score_one(self, x):
+    def _score_one(
+        self,
+        x: float | dict[str, float],
+    ) -> tuple[float, int | None]:
         # TODO(MarekWadinger): find out why return different results on each invocation
         #   Due to scipy's cdf function
-        if not self.grace_period or self.n_seen() > self.grace_period:
+        if not self.grace_period or cast("float", self.n_seen()) > cast(
+            "float",
+            self.grace_period,
+        ):
             # Deactivate grace period after first invocation
             self.grace_period = None
             # TODO(MarekWadinger): generally score is None when the
             #  conditional covariance is maldefined. This
             #  case should be handled differently.
-            scores = self._scores_one(x)
+            scores = self._scores_one(cast("dict[str, float]", x))
             score, idx = self._farthest_from_center(scores)
             return score or 1, idx
         return 0.5, None
 
-    def get_root_cause(self):
+    def get_root_cause(self) -> str | int | None:
         """Return the feature name identified as root cause of the last anomaly."""
         return self.root_cause
 
-    def score_one(self, x) -> float:
+    def score_one(self, x: float | dict[str, float]) -> float:
         """Return the conditional anomaly score farthest from 0.5."""
         score, _ = self._score_one(x)
         return score
 
-    def predict_one(self, x) -> int:
+    def predict_one(self, x: float | dict[str, float]) -> int:
         """Return 1 and set root cause if x is conditionally anomalous, else 0."""
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
@@ -666,7 +704,11 @@ class ConditionalGaussianScorer(GaussianScorer):
         self.root_cause = None
         return 0
 
-    def _get_limits(self, c_mean: np.ndarray, c_std: np.ndarray):
+    def _get_limits(
+        self,
+        c_mean: np.ndarray,
+        c_std: np.ndarray,
+    ) -> tuple[float, float]:
         z_critical = norm.ppf(1 - self.alpha)
 
         lower_bound = c_mean - z_critical * c_std
@@ -674,7 +716,12 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         return lower_bound[0], upper_bound[0]
 
-    def limit_one(self, x: dict[str, float] | None = None, *_args, **_kwargs):  # type: ignore[override]
+    def limit_one(  # type: ignore[override]
+        self,
+        x: dict[str, float] | None = None,
+        *_args,
+        **_kwargs,
+    ) -> tuple[dict[str, float], dict[str, float]]:
         """Return per-feature (upper, lower) conditional limits."""
         # TODO(MarekWadinger): might break the things up in Pipeline if called before
         #  predict_one or learn_one

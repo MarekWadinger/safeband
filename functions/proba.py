@@ -47,7 +47,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
 
     """
 
-    def __init__(self, seed=None) -> None:
+    def __init__(self, seed: int | None = None) -> None:
         """Initialize the distribution, forwarding seed to the parent class."""
         super().__init__(seed=seed)
 
@@ -57,7 +57,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
         var_idx: str | int,
         mean: dict[str, float] | np.ndarray,
         covariance: pd.DataFrame | np.ndarray,
-    ):
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return conditional mean, covariance, and std of var_idx given observed_values."""
         if (
             isinstance(observed_values, dict)

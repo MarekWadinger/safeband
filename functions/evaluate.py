@@ -4,7 +4,7 @@ import inspect
 import logging
 import time
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Literal, cast
 
@@ -12,6 +12,7 @@ import pandas as pd
 from river.compose import Pipeline
 from river.metrics.base import Metric, MultiClassMetric
 
+from functions.anomaly import GaussianScorer
 from functions.compose import build_model, convert_to_nested_dict
 
 logger = logging.getLogger(__name__)
@@ -26,10 +27,10 @@ def progressive_val_predict(  # noqa: C901
     compute_limits: bool = False,
     detect_signal: bool = False,
     detect_change: bool = False,
-    sampling_model=None,
+    sampling_model: GaussianScorer | None = None,
     compute_latency: bool = False,
-    **kwargs,
-):
+    **kwargs: int,
+) -> tuple[list, dict[str, list]]:
     """Run prequential (test-then-train) evaluation and return predictions and metadata."""
     # CREATE REFERENCE TO LAST STEP OF PIPELINE (TRACK STATE OF MDOEL)
     model_ = model[-1] if isinstance(model, Pipeline) else model
@@ -169,7 +170,7 @@ def progressive_val_predict(  # noqa: C901
     return y_pred, meta
 
 
-def print_stats(df, y_pred) -> None:
+def print_stats(df: pd.DataFrame, y_pred: list) -> None:
     """Log predicted vs actual anomaly sample counts and event proportions."""
     df_y_pred = pd.Series(y_pred, index=df.anomaly.index)
     res = pd.concat([df.anomaly, df_y_pred], axis=1)
@@ -189,7 +190,7 @@ def print_stats(df, y_pred) -> None:
     )
 
 
-def cluster_map(y_true, y_pred):
+def cluster_map(y_true: Iterable, y_pred: Iterable) -> list:
     """Remap cluster labels in y_pred to true labels by maximum overlap."""
     # Create a dictionary to store the counts of overlaps
     overlap_counts = defaultdict(lambda: defaultdict(int))
@@ -208,7 +209,7 @@ def cluster_map(y_true, y_pred):
     ]
 
 
-def drop_no_support_labels(metric):
+def drop_no_support_labels[M: MultiClassMetric](metric: M) -> M:
     """Remove zero-support labels from the confusion matrix in-place."""
     for c in metric.cm.classes:
         if metric.cm.support(c) == 0.0:
@@ -305,13 +306,13 @@ def batch_save_evaluate_metrics(
 
 
 def build_fit_evaluate(
-    steps,
-    df,
+    steps: list,
+    df: pd.DataFrame,
     metric: Metric,
     map_cluster_to_rc: bool = False,  # 2023-10-30 - ADD: DBStream comparison
     drop_no_support: bool = False,  # 2023-10-30 - ADD: DBStream comparison
-    **params,
-):
+    **params: float,
+) -> float:
     """Build, fit, and evaluate a model; return the scalar metric value."""
     params = convert_to_nested_dict(params)
     model = build_model(steps, params)
@@ -329,7 +330,9 @@ def build_fit_evaluate(
         for yt, yp in zip(df.anomaly, y_pred, strict=False):
             metric.update(yt, yp)
         if drop_no_support:
-            metric = drop_no_support_labels(metric)
+            metric = drop_no_support_labels(
+                cast("MultiClassMetric", metric),
+            )
         return metric.get() if metric.bigger_is_better else -metric.get()
     except Exception:
         logger.exception("build_fit_evaluate failed")

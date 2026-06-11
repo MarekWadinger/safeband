@@ -3,6 +3,7 @@
 import logging
 import sys
 from argparse import ArgumentParser
+from collections.abc import KeysView
 from pathlib import Path
 
 import pulsar
@@ -24,11 +25,11 @@ class Example(Record):
     """Pulsar schema record mirroring the anomaly detection output fields."""
 
     # keys and __getitem__ serve as minimum implementation of mapping protocol
-    def keys(self):
+    def keys(self) -> KeysView[str]:
         """Return the declared schema field names."""
         return self._fields.keys()  # ty: ignore[unresolved-attribute]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> object:
         """Return the value for the given field name."""
         return {
             k: v

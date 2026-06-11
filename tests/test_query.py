@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
+import pytest
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
@@ -55,7 +56,9 @@ class TestConsumer:
         if output_path.exists():
             output_path.unlink()
 
-    def test_verify_mqtt_message(self, caplog) -> None:
+    def test_verify_mqtt_message(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Processing an encrypted MQTT message logs the decrypted payload."""
         obj = mqtt.Client()
         msg = mqtt.MQTTMessage()
@@ -74,7 +77,9 @@ class TestConsumer:
             is not None
         )
 
-    def test_verify_file_message(self, caplog) -> None:
+    def test_verify_file_message(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Reading and verifying an encrypted file logs the message timestamp and strips the signature."""
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(self.config, receiver=self.args.receiver)

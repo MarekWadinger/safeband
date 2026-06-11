@@ -1,5 +1,6 @@
 """TypedDict definitions and instance-checking utilities for configuration types."""
 
+from collections.abc import Mapping
 from typing import NotRequired, Union
 
 from pandas import Timedelta
@@ -64,7 +65,7 @@ class SetupConfig(TypedDict):
     debug: NotRequired[bool]
 
 
-def istypedinstance(obj, type_):
+def istypedinstance(obj: Mapping[str, object], type_: type) -> bool:
     """Check if the given object matches the provided type annotation.
 
     This function checks if the object `obj` is an instance that conforms

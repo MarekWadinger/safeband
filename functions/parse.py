@@ -5,7 +5,7 @@ from configparser import ConfigParser
 from os import getenv
 from pathlib import Path
 from types import GenericAlias
-from typing import Any, NotRequired, cast
+from typing import IO, Any, NotRequired, cast
 
 from pandas import Timedelta
 from typing_extensions import TypedDict
@@ -94,7 +94,7 @@ def get_args() -> Namespace:
         "setup related parameters",
     )
 
-    def file_or_none(value):
+    def file_or_none(value: str | None) -> IO[str] | None:
         if value is not None and Path(value).is_file():
             return FileType("r")(value)  # ty: ignore[deprecated]
         return None
@@ -187,7 +187,7 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 
-def get_valid_type(type_) -> type:
+def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
     """Return a valid type from a given type hint.
 
     This function takes a type hint and returns a valid Python type that
@@ -244,7 +244,7 @@ def get_valid_type(type_) -> type:
         #     return type(None)
         if "NotRequired" in str(type_):
             return str
-        return get_valid_type(type_.__args__[0])
+        return get_valid_type(cast("tuple[type, ...]", type_.__args__)[0])
     msg = f"Invalid type: {type_}"
     raise ValueError(msg)
 
@@ -384,7 +384,7 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
     for section, struct in config_struct.items():
         config_dyn[section] = {}
         for param, type_ann in struct.__annotations__.items():
-            type_ = get_valid_type(type_ann)
+            type_ = cast("type", get_valid_type(type_ann))
             if args_.get(param) is not None:
                 param_value = args_[param]
             elif config_parser.has_option(section, param):

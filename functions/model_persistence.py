@@ -6,12 +6,13 @@ from pathlib import Path
 
 import joblib
 
+from functions.anomaly import GaussianScorer
 from functions.utils import common_prefix
 
 logger = logging.getLogger(__name__)
 
 
-def load_model(path: str, topics: list[str]):
+def load_model(path: str, topics: list[str]) -> GaussianScorer | None:
     """Load a model from a given path.
 
     Args:
@@ -36,7 +37,7 @@ def load_model(path: str, topics: list[str]):
     return None
 
 
-def save_model(path: str, topics: list[str], model) -> None:
+def save_model(path: str, topics: list[str], model: object) -> None:
     """Save a model to a given path.
 
     Args:

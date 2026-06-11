@@ -3,7 +3,7 @@
 import textwrap
 from datetime import timedelta
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypedDict, Unpack
 
 import matplotlib as mpl
 import matplotlib.dates as mdates
@@ -37,6 +37,21 @@ plt.rcParams.update(
 
 PLOT_WIDTH = 0.75 * 398.3386
 
+
+class LimitsKwargs(TypedDict, total=False):
+    """Optional keyword arguments shared by the limit plotting helpers."""
+
+    ylim: tuple[float, float]
+    xticks_on: pd.Series
+
+
+class GridKwargs(TypedDict, total=False):
+    """Optional keyword arguments for the grid plotting helper."""
+
+    resample: str
+    grace_period: int | timedelta
+
+
 locator = mdates.AutoDateLocator()
 formatter = mdates.ConciseDateFormatter(
     locator,
@@ -47,9 +62,9 @@ formatter = mdates.ConciseDateFormatter(
 
 def set_size(
     width: float | Literal["thesis", "beamer"] = 307.28987,
-    fraction=1,
-    subplots=(1, 1),
-):
+    fraction: float = 1,
+    subplots: tuple[float, float] = (1, 1),
+) -> tuple[float, float]:
     """Set figure dimensions to avoid scaling in LaTeX.
 
     Parameters
@@ -91,7 +106,12 @@ def set_size(
     return (fig_width_in, fig_height_in)
 
 
-def set_axis_style(ax: plt.Axes, ser, xlabel="", ylabel="") -> None:
+def set_axis_style(
+    ax: plt.Axes,
+    ser: pd.Series,
+    xlabel: str = "",
+    ylabel: str = "",
+) -> None:
     """Apply shared axis labels, limits, and date formatting to an axis."""
     ylabel = "\n".join(textwrap.wrap(ylabel, 11))
     ax.set_xlabel(xlabel)
@@ -108,7 +128,7 @@ def set_axis_style(ax: plt.Axes, ser, xlabel="", ylabel="") -> None:
     ax.tick_params(axis="x", labelrotation=50, labelsize=8)
 
 
-def plot_anomalies(ax, a) -> None:
+def plot_anomalies(ax: plt.Axes, a: pd.Series) -> None:
     """Shade red vertical spans between anomaly start and end indices."""
     for x0, x1 in zip(a[a == 1].index, a[a == -1].index, strict=False):
         ax.axvspan(
@@ -121,7 +141,11 @@ def plot_anomalies(ax, a) -> None:
         )
 
 
-def make_name(name, window, file_name):
+def make_name(
+    name: str,
+    window: timedelta | None,
+    file_name: str | None,
+) -> str:
     """Build a default output file name from the series name and window."""
     if file_name is None:
         if window:
@@ -142,7 +166,7 @@ def plot_limits_(
     window: timedelta | None = None,
     file_name: str | None = None,
     save: bool = True,
-    **kwargs,
+    **kwargs: Unpack[LimitsKwargs],
 ) -> None:
     """Plot a signal with anomalies and dynamic limits, optionally saving.
 
@@ -157,7 +181,7 @@ def plot_limits_(
         **kwargs: Optional ``ylim`` tuple and ``xticks_on`` selector.
 
     """
-    file_name = make_name(ser.name, window, file_name)
+    file_name = make_name(str(ser.name), window, file_name)
 
     fig, ax = plt.subplots(
         figsize=set_size(
@@ -211,7 +235,7 @@ def plot_limits(
     ser_high: pd.Series,
     ser_low: pd.Series,
     ylim: tuple[float, float],
-):
+) -> plt.Axes:
     """Fill the regions outside the high/low limits on the given axis.
 
     Args:
@@ -253,7 +277,7 @@ def plot_compare_anomalies_(
     window: timedelta | None = None,
     file_name: str | None = None,
     save: bool = True,
-    **kwargs,
+    **kwargs: Unpack[LimitsKwargs],
 ) -> None:
     """Plot the signal in stacked subplots, one per anomaly detector.
 
@@ -266,7 +290,7 @@ def plot_compare_anomalies_(
         **kwargs: Optional ``ylim`` tuple and ``xticks_on`` selector.
 
     """
-    file_name = make_name(ser.name, window, file_name)
+    file_name = make_name(str(ser.name), window, file_name)
 
     n_rows = len(anomalies.columns)
     _, axs = plt.subplots(
@@ -319,7 +343,11 @@ def plot_compare_anomalies_(
     plt.show()
 
 
-def plot_anomaly_bars(args, colors, axs) -> None:
+def plot_anomaly_bars(
+    args: tuple[pd.Series | None, ...],
+    colors: list[str],
+    axs: np.ndarray,
+) -> None:
     """Draw labelled anomaly-event bars on the trailing subplot axes.
 
     Args:
@@ -368,7 +396,7 @@ def plot_anomaly_bars(args, colors, axs) -> None:
 
 def plot_limits_grid_(
     df: pd.DataFrame,
-    *args,
+    *args: pd.Series | None,
     ser_high: pd.Series | None = None,
     ser_low: pd.Series | None = None,
     signal_anomaly: pd.Series | None = None,
@@ -378,7 +406,7 @@ def plot_limits_grid_(
     # changepoints: Union[pd.Series, None] = None,
     # samplings: Union[pd.Series, None] = None,
     # ground_truth: Union[pd.Series, None] = None,
-    **kwargs,
+    **kwargs: Unpack[GridKwargs],
 ) -> None:
     """Plot a grid of signals with limits, anomalies, and event bars.
 

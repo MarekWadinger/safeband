@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import paho.mqtt.client as mqtt
+from human_security import HumanRSA
 
 from functions.encryption import init_rsa_security, verify_and_decrypt_data
 from functions.parse import get_params
@@ -19,7 +20,12 @@ PORT = 1883
 
 
 # MQTT callback functions
-def on_connect(self: mqtt.Client, userdata, _flags, rc) -> None:
+def on_connect(
+    self: mqtt.Client,
+    userdata: Namespace,
+    _flags: dict[str, int],
+    rc: int,
+) -> None:
     """Subscribe to configured topics after a successful broker connection.
 
     Args:
@@ -33,7 +39,11 @@ def on_connect(self: mqtt.Client, userdata, _flags, rc) -> None:
     self.subscribe([(topic, 0) for topic in userdata.topic])
 
 
-def on_message(_self, userdata, msg) -> None:
+def on_message(
+    _self: mqtt.Client,
+    userdata: Namespace | None,
+    msg: mqtt.MQTTMessage,
+) -> None:
     """Decrypt and log an incoming MQTT message.
 
     Args:
@@ -56,7 +66,7 @@ def on_message(_self, userdata, msg) -> None:
     logger.info("Received message at %s: %s", t, item)
 
 
-def query_file(config: FileClient, **kwargs) -> None:
+def query_file(config: FileClient, **kwargs: HumanRSA) -> None:
     """Read a JSON output file and log the entry with the closest past timestamp.
 
     Args:
@@ -95,7 +105,7 @@ def query_file(config: FileClient, **kwargs) -> None:
     logger.info("%s", closest_item)
 
 
-def query_mqtt(config: MQTTClient):
+def query_mqtt(config: MQTTClient) -> mqtt.Client:
     """Create an MQTT client instance and connect to the configured broker.
 
     Args:
@@ -125,8 +135,8 @@ if __name__ == "__main__":
         _, receiver = init_rsa_security(config["setup"]["key_path"])
 
     client = config["client"]
-    if istypedinstance(client, FileClient):
+    if istypedinstance(cast("FileClient", client), FileClient):
         query_file(cast("FileClient", client), receiver=receiver)
-    elif istypedinstance(client, MQTTClient):
+    elif istypedinstance(cast("MQTTClient", client), MQTTClient):
         client = query_mqtt(cast("MQTTClient", client))
         client.loop_forever()

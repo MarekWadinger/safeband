@@ -38,7 +38,7 @@ def plot_limits(
     window: timedelta | None = None,
     file_name: str | None = None,
     save: bool = True,
-    **kwargs,
+    **kwargs: pd.Series,
 ) -> None:
     """Plot a signal with anomaly markers and optional dynamic operating limits."""
     if not file_name:
@@ -110,19 +110,20 @@ def plot_limits(
     fig.show()
 
 
-def get_file_name(ser, window=None):
+def get_file_name(ser: pd.Series, window: timedelta | None = None) -> str:
     """Build a file name stem from the series name and optional window duration."""
+    ser_name = cast("str", ser.name)
     if window is not None:
         file_name = (
-            f"{ser.name.replace(' ', '_')}_"
+            f"{ser_name.replace(' ', '_')}_"
             f"{int(window.total_seconds() / 60 / 60)}_hours_sliding"
         )
     else:
-        file_name = f"{ser.name.replace(' ', '_')}_sliding"
+        file_name = f"{ser_name.replace(' ', '_')}_sliding"
     return file_name
 
 
-def plot_add_signal(fig, ser) -> None:
+def plot_add_signal(fig: go.Figure, ser: pd.Series) -> None:
     """Add a signal scatter trace to fig."""
     fig.add_trace(
         go.Scatter(
@@ -137,7 +138,11 @@ def plot_add_signal(fig, ser) -> None:
     )
 
 
-def plot_add_mean_std(fig, ser, kwargs) -> None:
+def plot_add_mean_std(
+    fig: go.Figure,
+    ser: pd.Series,
+    kwargs: dict[str, pd.Series],
+) -> None:
     """Add a shaded moving-mean ± std band and mean line trace to fig."""
     fig.add_trace(
         go.Scatter(
@@ -163,7 +168,7 @@ def plot_add_mean_std(fig, ser, kwargs) -> None:
     )
 
 
-def set_invisible(fig, inv_lines: list) -> None:
+def set_invisible(fig: go.Figure, inv_lines: list) -> None:
     """Hide the traces at the given indices in fig."""
     for trace in inv_lines:
         fig.data[trace].visible = False
@@ -177,7 +182,7 @@ def plot_limits_3d(
     y: str | None = None,
     z: str | None = None,
     save: bool = False,
-):
+) -> go.Figure:
     """Render a 3D scatter of two signals with anomaly markers and DOL panels."""
     col1 = df.columns.get_loc(y)
     col2 = df.columns.get_loc(z)
@@ -297,9 +302,9 @@ def plot_limits_3d(
 
 
 def add_thresholds(
-    fig,
-    thresh_high,
-    thresh_low,
+    fig: go.Figure,
+    thresh_high: pd.Series,
+    thresh_low: pd.Series,
     row: int | None,
     col: int | None,
     yaxis_range: list,

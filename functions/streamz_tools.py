@@ -1,6 +1,8 @@
 """Streamz stream operators and MQTT sink for real-time data pipelines."""
 
 import logging
+from collections.abc import Callable
+from typing import Never
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import MQTTMessage
@@ -13,7 +15,13 @@ logger = logging.getLogger(__name__)
 class MapStream(Stream):
     """Stream operator that applies a function to each upstream element."""
 
-    def __init__(self, upstream, func, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        upstream: Stream | None,
+        func: Callable,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
         """Store func and extra args, then initialize the parent Stream."""
         self.func = func
         # this is one of a few stream specific kwargs
@@ -23,7 +31,12 @@ class MapStream(Stream):
 
         Stream.__init__(self, upstream, stream_name=stream_name)
 
-    def update(self, x, who=None, metadata=None):
+    def update(
+        self,
+        x: object,
+        who: Stream | None = None,
+        metadata: list | None = None,
+    ) -> object:
         """Apply func to x and emit the result, stopping the stream on error."""
         del who  # unused; required by the streamz Stream.update API
         try:
@@ -103,14 +116,14 @@ class to_mqtt(Sink):
 
     def __init__(
         self,
-        upstream,
-        host,
-        port,
-        topic,
-        keepalive=60,
-        client_kwargs=None,
-        publish_kwargs=None,
-        **kwargs,
+        upstream: Stream,
+        host: str,
+        port: int,
+        topic: str,
+        keepalive: int = 60,
+        client_kwargs: dict | None = None,
+        publish_kwargs: dict | None = None,
+        **kwargs: object,
     ) -> None:
         """Store connection parameters and initialize the Sink."""
         self.host = host
@@ -122,7 +135,12 @@ class to_mqtt(Sink):
         self.keepalive = keepalive
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
-    def update(self, x, who=None, metadata=None) -> None:
+    def update(
+        self,
+        x: bytes | dict,
+        who: Stream | None = None,
+        metadata: list | None = None,
+    ) -> None:
         """Publish x to the MQTT broker, connecting lazily on first call."""
         del who, metadata  # unused; required by the streamz Sink.update API
 
@@ -130,8 +148,8 @@ class to_mqtt(Sink):
             client: mqtt.Client,
             topics: list[str],
             payloads: list,
-            *args,
-            **kwargs,
+            *args: Never,
+            **kwargs: Never,
         ) -> None:
             for topic, payload in zip(topics, payloads, strict=False):
                 client.publish(topic, payload, *args, **kwargs)

@@ -1,30 +1,57 @@
 """Physics-based battery energy storage system (BESS) thermal model."""
 
 import collections
+from collections.abc import Callable
+from typing import overload
 
 from river import base
 
 
-def C_to_K(T):
+@overload
+def C_to_K(T: float) -> float: ...
+
+
+@overload
+def C_to_K(T: list[float]) -> list[float]: ...
+
+
+def C_to_K(T: float | list[float]) -> float | list[float]:
     """Convert Celsius temperature (or list thereof) to Kelvin."""
     if isinstance(T, list):
         return [C_to_K(x) for x in T]
     return T + 273.15
 
 
-def K_to_C(T):
+@overload
+def K_to_C(T: float) -> float: ...
+
+
+@overload
+def K_to_C(T: list[float]) -> list[float]: ...
+
+
+def K_to_C(T: float | list[float]) -> float | list[float]:
     """Convert Kelvin temperature (or list thereof) to Celsius."""
     if isinstance(T, list):
         return [K_to_C(x) for x in T]
     return T - 273.15
 
 
-def calcul_Q(P):
+def calcul_Q(P: float) -> float:
     """Estimate heat generation (kW) from demanded power P using empirical coefficients."""
     return 0.0003667 * abs(P) ** 2 + 0.005 * abs(P)
 
 
-def bess_model(T_bat_0, P, Tout, q_fan, q_circ_fan, q_cool, q_heat, Ts):
+def bess_model(
+    T_bat_0: float,
+    P: float,
+    Tout: float,
+    q_fan: float,
+    q_circ_fan: float,
+    q_cool: float,
+    q_heat: float,
+    Ts: int,
+) -> float:
     """Compute the next battery cell temperature using a lumped thermal model.
 
     Args:
@@ -69,15 +96,14 @@ def bess_model(T_bat_0, P, Tout, q_fan, q_circ_fan, q_cool, q_heat, Ts):
 class BESS(base.Transformer):
     """River transformer that augments a sample with a modelled temperature diff."""
 
-    def __init__(self, model=bess_model) -> None:
+    def __init__(self, model: Callable[..., float] = bess_model) -> None:
         """Initialise with an optional custom thermal model callable."""
         self.buffer = collections.deque(maxlen=1)
         self.model = model
 
-    def learn_one(self, x: dict):
+    def learn_one(self, x: dict) -> None:
         """Store the current sample for use as the previous-step reference."""
         self.buffer.append(x)
-        return self
 
     def transform_one(self, x: dict) -> dict:
         """Add modelled temperature residual to the current sample."""
