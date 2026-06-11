@@ -346,7 +346,9 @@ def verify_signature(
             signature,
             key,
         )
-    #     return all(verify_signature(v, signature, key) for v in data.values())
+    #     return all(
+    #         verify_signature(v, signature, key) for v in data.values()
+    #     )
     if isinstance(data, str):
         return key.verify(data.encode("utf-8"), signature)
     return key.verify(data, signature)
@@ -392,7 +394,7 @@ def encode_data(
 
     Args:
         data (dict): The data to encode.
-        encoding (str): Codec used to encode string values (default ``latin1``).
+        encoding (str): Codec for string values (default ``latin1``).
 
     Returns:
         dict: The encoded data.

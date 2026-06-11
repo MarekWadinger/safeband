@@ -1,9 +1,18 @@
 """Utilities for building and initializing river pipeline models."""
 
+from collections.abc import Callable
 from functools import partial
 from typing import cast
 
 from river import compose
+
+_TYPE_MAP: dict[str, Callable[..., object]] = {
+    "int": int,
+    "float": float,
+    "round": round,
+    "str": str,
+    "bool": bool,
+}
 
 
 def convert_to_nested_dict(d: dict) -> dict:
@@ -46,7 +55,7 @@ def convert_to_nested_dict(d: dict) -> dict:
             current = result
             for part in parts[:-2]:
                 current = current.setdefault(part, {})
-                type_ = eval(parts[-1])
+                type_ = _TYPE_MAP[parts[-1]]
                 if isinstance(value, list):
                     value_t = [type_(v) for v in value]
                 else:
@@ -59,7 +68,7 @@ def convert_to_nested_dict(d: dict) -> dict:
 
 
 def init_step(step: partial | type, params: dict) -> object:
-    """Instantiate a single pipeline step using its name-matched params entry."""
+    """Instantiate a pipeline step using its name-matched params entry."""
     name = (
         cast("type", step.func).__name__
         if isinstance(step, partial)

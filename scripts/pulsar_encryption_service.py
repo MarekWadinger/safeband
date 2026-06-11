@@ -25,7 +25,7 @@ def encryption_service(
     subscription_name: str,
     service_url: str,
 ) -> None:
-    """Subscribe to a Pulsar topic, encrypt messages, and forward or print them.
+    """Subscribe to a Pulsar topic, encrypt messages, and forward them.
 
     Args:
         in_topic: Pulsar topics to consume from.

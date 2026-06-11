@@ -1,10 +1,10 @@
-"""Streaming anomaly detection server with MQTT, Kafka, and file I/O support."""
+"""Streaming anomaly detection server with MQTT, Kafka, and file I/O."""
 
 # IMPORTS
+import contextlib
 import datetime as dt
 import json
 import logging
-import sys
 import time
 from pathlib import Path
 from typing import IO, cast
@@ -13,6 +13,14 @@ import pandas as pd
 from paho.mqtt.client import MQTTMessage
 from river import proba, utils
 from streamz import Stream
+
+try:
+    from pulsar.schema import JsonSchema, Record
+    from pulsar.schema import String as PulsarString
+
+    _PULSAR_AVAILABLE = True
+except ImportError:
+    _PULSAR_AVAILABLE = False
 
 from functions.anomaly import ConditionalGaussianScorer, GaussianScorer
 from functions.email_client import EmailClient
@@ -42,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 # CONSTANTS
 
-open_files: list[IO] = []
+_exit_stack: contextlib.ExitStack = contextlib.ExitStack()
 
 
 # DEFINITIONS
@@ -176,7 +184,8 @@ class RpcOutlierDetector:
         if isinstance(x, MQTTMessage):
             return {
                 "time": dt.datetime.fromtimestamp(
-                    x.timestamp, tz=dt.UTC
+                    x.timestamp,
+                    tz=dt.UTC,
                 ).replace(microsecond=0),
                 "data": {x.topic.split("/")[-1]: float(x.payload)},
             }
@@ -293,15 +302,8 @@ class RpcOutlierDetector:
                 {**config, "group.id": "detection_service"},
             )
         elif istypedinstance(config, PulsarClient):
-            if sys.version_info.major == 3 and sys.version_info.minor < 12:
-                source = Stream.from_pulsar(
-                    config.get("service_url"),
-                    topics,
-                    subscription_name="detection_service",
-                )
-            else:
-                msg = "Pulsar client requires Python < 3.12.*"
-                raise ValueError(msg)
+            msg = "Pulsar client requires Python < 3.12.*"
+            raise ValueError(msg)
         else:
             msg = f"Wrong client: {config}"
             raise RuntimeError(msg)
@@ -328,8 +330,9 @@ class RpcOutlierDetector:
         topic: str = f"{prefix}dynamic_limits"
         logger.info("Sinking to '%s'\n", topic)
         if istypedinstance(config, FileClient):
-            f = Path(config.get("output", "")).open("a")
-            open_files.append(f)
+            output_path = Path(config.get("output", ""))
+            f = output_path.open("a")
+            _exit_stack.callback(f.close)
             detector.sink(self.dump_to_file, f)
         elif istypedinstance(config, MQTTClient):  # pragma: no cover
             detector.to_mqtt(
@@ -344,13 +347,15 @@ class RpcOutlierDetector:
                 config,
             )
         elif istypedinstance(config, PulsarClient):  # pragma: no cover
-            from pulsar.schema import JsonSchema, Record, String
+            if not _PULSAR_AVAILABLE:
+                msg = "pulsar-client is not installed"
+                raise RuntimeError(msg)
 
-            class Example(Record):
-                time = String()
-                anomaly = String()
-                level_high = String()
-                level_low = String()
+            class Example(Record):  # type: ignore[misc]
+                time = PulsarString()
+                anomaly = PulsarString()
+                level_high = PulsarString()
+                level_low = PulsarString()
 
             detector.map(lambda x: Example(**x)).to_pulsar(
                 config.get("service_url"),
@@ -383,8 +388,7 @@ class RpcOutlierDetector:
             data.index = pd.to_datetime(data.index, utc=True)
             for row in data.head().iterrows():
                 source.emit(row)
-            for file in open_files:
-                file.close()
+            _exit_stack.close()
             logger.info("=== Debugging finished with success... ===")
         else:  # pragma: no cover
             detector.start()
@@ -415,7 +419,7 @@ class RpcOutlierDetector:
 
         Args:
             client: Transport configuration (file, MQTT, Kafka, or Pulsar).
-            io: I/O configuration with ``in_topics`` and optional ``out_topics``.
+            io: I/O configuration with ``in_topics`` and ``out_topics``.
             model_params: Model hyper-parameters including ``t_e`` and optional
                 ``t_a``, ``t_g``, and ``threshold``.
             setup: Runtime options such as ``debug``, ``key_path``, and

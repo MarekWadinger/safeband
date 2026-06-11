@@ -1,4 +1,4 @@
-"""Bayesian hyperparameter optimisation comparing anomaly detection algorithms."""
+"""Bayesian hyperparameter optimisation comparing anomaly detectors."""
 
 # IMPORTS
 import ast
@@ -147,7 +147,9 @@ if __name__ == "__main__":
             # RUN EACH MODEL AGAINST DATASET
             for alg in detection_algorithms:
                 logger.info(
-                    "\n===== %s%s", alg[0], "=" * (80 - 6 - len(alg[0]))
+                    "\n===== %s%s",
+                    alg[0],
+                    "=" * (80 - 6 - len(alg[0])),
                 )
                 # INITIALIZE OPTIMIZER
                 pbounds = alg[2]

@@ -58,7 +58,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
         mean: dict[str, float] | np.ndarray,
         covariance: pd.DataFrame | np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Return conditional mean, covariance, and std of var_idx given observed_values."""
+        """Return conditional mean, covariance, and std of var_idx."""
         if (
             isinstance(observed_values, dict)
             and isinstance(mean, dict)

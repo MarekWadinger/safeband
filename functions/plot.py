@@ -40,7 +40,7 @@ def plot_limits(
     save: bool = True,
     **kwargs: pd.Series,
 ) -> None:
-    """Plot a signal with anomaly markers and optional dynamic operating limits."""
+    """Plot signal with anomaly markers and optional DOL bands."""
     if not file_name:
         file_name = get_file_name(ser, window)
 
@@ -111,7 +111,7 @@ def plot_limits(
 
 
 def get_file_name(ser: pd.Series, window: timedelta | None = None) -> str:
-    """Build a file name stem from the series name and optional window duration."""
+    """Build a file-name stem from the series name and optional window."""
     ser_name = cast("str", ser.name)
     if window is not None:
         file_name = (
@@ -183,7 +183,7 @@ def plot_limits_3d(
     z: str | None = None,
     save: bool = False,
 ) -> go.Figure:
-    """Render a 3D scatter of two signals with anomaly markers and DOL panels."""
+    """Render a 3D scatter of two signals with anomaly markers and DOL."""
     col1 = df.columns.get_loc(y)
     col2 = df.columns.get_loc(z)
     fig = make_subplots(
@@ -378,7 +378,7 @@ def plot_compare_anomalies(
     file_name: str | None = None,
     save: bool = True,
 ) -> None:
-    """Plot one subplot per anomaly column with vrect highlights on the signal."""
+    """Plot one subplot per anomaly column with vrect highlights."""
     if not file_name:
         file_name = get_file_name(ser, window)
 
@@ -462,7 +462,7 @@ def plot_limits_grid(
     changepoints: pd.Series | None = None,
     samplings: pd.Series | None = None,
 ) -> None:
-    """Plot all DataFrame columns with DOL bands in a vertically stacked grid."""
+    """Plot all DataFrame columns with DOL bands in a stacked grid."""
     a = anomalies.astype(int).diff()
     # Show dates of anomalous events
     b = a[a == 1].resample("1d").sum()
@@ -546,7 +546,9 @@ def plot_limits_grid(
             if samplings is not None:
                 a = samplings.astype(int).diff()
                 for x0, x1 in zip(
-                    a[a == 1].index, a[a == -1].index, strict=False
+                    a[a == 1].index,
+                    a[a == -1].index,
+                    strict=False,
                 ):
                     fig.add_vrect(
                         x0=x0,

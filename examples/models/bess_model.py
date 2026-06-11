@@ -38,7 +38,7 @@ def K_to_C(T: float | list[float]) -> float | list[float]:
 
 
 def calcul_Q(P: float) -> float:
-    """Estimate heat generation (kW) from demanded power P using empirical coefficients."""
+    """Estimate heat generation (kW) from demanded power P."""
     return 0.0003667 * abs(P) ** 2 + 0.005 * abs(P)
 
 
@@ -94,7 +94,7 @@ def bess_model(
 
 
 class BESS(base.Transformer):
-    """River transformer that augments a sample with a modelled temperature diff."""
+    """River transformer that augments a sample with modelled temp diff."""
 
     def __init__(self, model: Callable[..., float] = bess_model) -> None:
         """Initialise with an optional custom thermal model callable."""

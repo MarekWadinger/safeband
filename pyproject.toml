@@ -50,7 +50,6 @@ example = [
 line-length = 79
 # Script collections, not importable packages
 namespace-packages = [
-    ".",
     "examples",
     "examples/models",
     "publications/ilustrate/pc2023",

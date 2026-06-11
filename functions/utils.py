@@ -2,7 +2,7 @@
 
 
 def common_prefix(topics: list) -> str:
-    """Find the common prefix among topics, truncated to the last '/' character.
+    """Find common prefix among topics, truncated to the last '/' character.
 
     Args:
         topics (list): A list of string topics.

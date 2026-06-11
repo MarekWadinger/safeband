@@ -24,7 +24,7 @@ from functions.encryption import (
 
 
 class TestSecurity:
-    """End-to-end security tests covering key generation, persistence, and crypto operations."""
+    """End-to-end security tests: key generation, persistence, crypto ops."""
 
     def setup_class(self) -> None:
         """Generate sender/receiver key pairs and exchange public keys."""
@@ -76,7 +76,7 @@ class TestSecurity:
         assert self.receiver.public_pem() == remote_sender.public_pem()
 
     def test_key_retaining(self) -> None:
-        """Saving and loading private PEM files preserves the private key material."""
+        """Saving and loading private PEM files preserves the key material."""
         save_public_key(self.security_dir / "s_pem.pub", self.sender)
         save_private_key(self.security_dir / "s_pem", self.sender)
         save_public_key(self.security_dir / "r_pem.pub", self.receiver)
@@ -90,21 +90,21 @@ class TestSecurity:
         assert self.receiver.private_pem() == remote_sender.private_pem()
 
     def test_bytes_encryption_and_decryption(self) -> None:
-        """Encrypting then decrypting bytes round-trips to the original value."""
+        """Encrypting then decrypting bytes round-trips to original value."""
         control_action = b"4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
         assert control_action == decrypted_c_a
 
     def test_bytes_signing_and_verification(self) -> None:
-        """Signing bytes and verifying against the sender's public key succeeds."""
+        """Signing bytes and verifying against sender's public key succeeds."""
         control_action = b"4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(control_action, signature, self.receiver)
         assert verified is True
 
     def test_str_encryption_and_decryption(self) -> None:
-        """Encrypting a str round-trips as UTF-8 bytes; passing a str to decrypt raises TypeError."""
+        """Encrypting a str round-trips as bytes; decrypt(str) raises error."""
         control_action = "4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
@@ -113,7 +113,7 @@ class TestSecurity:
             decrypted_c_a = decrypt_data(control_action, self.receiver)  # type: ignore
 
     def test_str_signing_and_verification(self) -> None:
-        """Signing a str and verifying its UTF-8 bytes against the sender's key succeeds."""
+        """Signing a str and verifying its UTF-8 bytes against sender's key."""
         control_action = "4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(
@@ -126,7 +126,7 @@ class TestSecurity:
     def test_message_signing_encryption_decryption_and_verification(
         self,
     ) -> None:
-        """Signing, encrypting, decrypting, and verifying a dict message succeeds end-to-end."""
+        """Signing, encrypting, decrypting, and verifying a dict succeeds."""
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
@@ -136,7 +136,7 @@ class TestSecurity:
         assert verify is True
 
     def test_message_signing_encryption_dump_verify_and_decrypt(self) -> None:
-        """Encoding to base64, verifying, and decrypting recovers the original message payload."""
+        """Encoding to base64, verifying, and decrypting recovers payload."""
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)

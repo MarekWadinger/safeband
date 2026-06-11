@@ -31,7 +31,7 @@ class TestConsumer:
     """Tests for the MQTT on_message handler and file-based query path."""
 
     def setup_class(self) -> None:
-        """Create receiver keys and write an encrypted message to the output file."""
+        """Create receiver keys and write encrypted message to output file."""
         self.parent_path = Path(__file__).parent
         self.config: FileClient = {
             "path": "",
@@ -57,7 +57,8 @@ class TestConsumer:
             output_path.unlink()
 
     def test_verify_mqtt_message(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Processing an encrypted MQTT message logs the decrypted payload."""
         obj = mqtt.Client()
@@ -78,9 +79,10 @@ class TestConsumer:
         )
 
     def test_verify_file_message(
-        self, caplog: pytest.LogCaptureFixture
+        self,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Reading and verifying an encrypted file logs the message timestamp and strips the signature."""
+        """Verifying an encrypted file logs timestamp and strips signature."""
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(self.config, receiver=self.args.receiver)
         assert "2022, 1, 1, 0, 0" in caplog.text
@@ -97,7 +99,7 @@ class TestModelPresistence:
         self.topics = ["test"]
 
     def teardown_class(self) -> None:
-        """Delete saved model pickle files and remove the recovery directory."""
+        """Delete saved model pickles and remove the recovery directory."""
         models = list(
             Path(self.path).glob(
                 f"model_{common_prefix(self.topics)}_*.pkl",
@@ -113,7 +115,7 @@ class TestModelPresistence:
         assert model is None
 
     def test_save_model(self) -> None:
-        """Saving a model writes one pickle; reloading returns an equal object; unknown topics return None."""
+        """Saving writes one pickle; reloading returns equal object."""
         model = {"model": 1}
         save_model(self.path, self.topics, model)
         models = list(

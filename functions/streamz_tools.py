@@ -37,14 +37,14 @@ class MapStream(Stream):
         who: Stream | None = None,
         metadata: list | None = None,
     ) -> object:
-        """Apply func to x and emit the result, stopping the stream on error."""
+        """Apply func to x and emit the result, stop stream on error."""
         del who  # unused; required by the streamz Stream.update API
         try:
             result = self.func(x, *self.args, **self.kwargs)
-        except Exception as e:
+        except Exception:
             self.stop()
             self.destroy()
-            logger.exception(e)
+            logger.exception("Stream update failed")
             raise
         else:
             return self._emit(result, metadata=metadata)

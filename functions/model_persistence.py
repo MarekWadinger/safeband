@@ -30,7 +30,7 @@ def load_model(path: str, topics: list[str]) -> GaussianScorer | None:
                     logger.info("Latest model found: %s", latest_model)
                     return recovery_data["model"]
             logger.info(
-                "No matching model files found in the recovery folder."
+                "No matching model files found in the recovery folder.",
             )
         else:
             logger.info("No model files found in the recovery folder.")

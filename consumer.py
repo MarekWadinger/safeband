@@ -61,18 +61,18 @@ def on_message(
     else:
         item = msg.payload.decode()
     t = dt.datetime.fromtimestamp(msg.timestamp, tz=dt.UTC).replace(
-        microsecond=0
+        microsecond=0,
     )
     logger.info("Received message at %s: %s", t, item)
 
 
 def query_file(config: FileClient, **kwargs: HumanRSA) -> None:
-    """Read a JSON output file and log the entry with the closest past timestamp.
+    """Read a JSON output file and log the entry closest to now.
 
     Args:
-        config: File client configuration with an ``output`` key pointing to the
-            JSON file to read.
-        **kwargs: Optional keyword arguments. Pass ``receiver`` (RSA private key)
+        config: File client configuration with an ``output`` key pointing
+            to the JSON file to read.
+        **kwargs: Optional keyword arguments. Pass ``receiver`` (RSA key)
             to decrypt entries before processing.
 
     """

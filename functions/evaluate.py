@@ -31,7 +31,7 @@ def progressive_val_predict(  # noqa: C901
     compute_latency: bool = False,
     **kwargs: int,
 ) -> tuple[list, dict[str, list]]:
-    """Run prequential (test-then-train) evaluation and return predictions and metadata."""
+    """Run prequential evaluation and return predictions and metadata."""
     # CREATE REFERENCE TO LAST STEP OF PIPELINE (TRACK STATE OF MDOEL)
     model_ = model[-1] if isinstance(model, Pipeline) else model
     y_pred = []
@@ -56,10 +56,7 @@ def progressive_val_predict(  # noqa: C901
         if compute_latency:
             start_i = time.time()
         # PREPOCESSING
-        if isinstance(t, pd.Timestamp):
-            t_loc = t.tz_localize(None)
-        else:
-            t_loc = t
+        t_loc = t.tz_localize(None) if isinstance(t, pd.Timestamp) else t
         x_: dict[str, float] = x.to_dict()
         y = x_.pop("anomaly", "") if "anomaly" in x_ else None
         # PREDICT

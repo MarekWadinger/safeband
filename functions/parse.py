@@ -1,6 +1,10 @@
 """Argument parsing and configuration building for the consumer pipeline."""
 
-from argparse import ArgumentParser, FileType, Namespace  # ty: ignore[deprecated]
+from argparse import (
+    ArgumentParser,
+    FileType,  # ty: ignore[deprecated]
+    Namespace,
+)
 from configparser import ConfigParser
 from os import getenv
 from pathlib import Path
@@ -250,7 +254,7 @@ def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
 
 
 def get_valid_client(config: Config) -> Config:
-    """Check the validity of the specified client configuration in the given 'config'.
+    """Check validity of client configuration in the given ``config``.
 
     The 'config' dictionary contains configuration information for different
     client types such as 'file', 'mqtt', 'kafka', and 'pulsar'. This function
@@ -401,7 +405,7 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
 
 
 def get_params() -> Config:  # pragma: no cover
-    """Parse command line arguments and a configuration file to create a Config object.
+    """Parse command line arguments and config file into a Config object.
 
     This function combines command line arguments and settings from a
     configuration file to create a configuration object.

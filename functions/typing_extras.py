@@ -1,7 +1,7 @@
-"""TypedDict definitions and instance-checking utilities for configuration types."""
+"""TypedDict definitions and instance-checking utilities for config types."""
 
 from collections.abc import Mapping
-from typing import NotRequired, Union
+from typing import NotRequired
 
 from pandas import Timedelta
 from typing_extensions import TypedDict
@@ -49,7 +49,7 @@ class IOConfig(TypedDict):
 
 
 class ModelConfig(TypedDict):
-    """Anomaly model hyper-parameters controlling thresholds and time windows."""
+    """Anomaly model hyper-parameters: thresholds and time windows."""
 
     threshold: float
     t_e: Timedelta
@@ -104,7 +104,7 @@ def istypedinstance(obj: Mapping[str, object], type_: type) -> bool:
             or str(type(property_type)) == "<class 'typing._GenericAlias'>"
         ):
             if hasattr(property_type, "__args__"):
-                resolved_type = Union[property_type.__args__[0], None]
+                resolved_type = property_type.__args__[0] | None
             else:
                 resolved_type = type(None)
         else:

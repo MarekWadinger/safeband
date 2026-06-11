@@ -6,7 +6,7 @@ source = Stream()
 producer_ = source.to_pulsar("pulsar://localhost:6650", "my-topic")
 
 for i in range(3):
-    source.emit(("%d" % i).encode("utf-8"))
+    source.emit(f"{i}".encode())
 
 producer_.stop()
 producer_.flush()

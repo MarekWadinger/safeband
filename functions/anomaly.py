@@ -214,8 +214,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     np.float64(-8.49996245328...)
     >>> scorer.predict_one({"a": 0, "b": 0})
     0
-    >>> scorer.limit_one()
-    ({'a': np.float64(3.767...), 'b': np.float64(4.767...)}, {'a': np.float64(-2.160...), 'b': np.float64(-1.160...)})
+    >>> scorer.limit_one()  # doctest: +NORMALIZE_WHITESPACE
+    ({'a': np.float64(3.767...), 'b': np.float64(4.767...)},
+     {'a': np.float64(-2.160...), 'b': np.float64(-1.160...)})
 
     Behind the scenes, the threshold is adapted to the dimensionality of the
     input
@@ -273,7 +274,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             and (grace_period > self.t_e)
         ):
             warnings.warn(
-                f"Grace period must be between 1 and {self.t_e} minutes or None.",
+                f"Grace period must be between 1 and "
+                f"{self.t_e} minutes or None.",
                 stacklevel=2,
             )
             self.grace_period = self.t_e
@@ -355,7 +357,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         x: float | dict[str, float],
         **learn_kwargs: datetime | float | None,
     ):
-        """Update the distribution, skipping anomalous samples when protected."""
+        """Update distribution, skipping anomalous samples when protected."""
         if self.protect_anomaly_detector:
             is_anomaly = self.predict_one(x)
             self.buffer.append(is_anomaly)
@@ -368,7 +370,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
     def score_one(self, x: float | dict[str, float]) -> float:
         """Return the CDF anomaly score for x; 0.5 during grace period."""
-        # TODO(MarekWadinger): find out why return different results on each invocation
+        # TODO(MarekWadinger): find out why return different results on each
+        #   invocation
         if cast("float", self.n_seen()) >= cast("float", self.grace_period):
             return self.gaussian.cdf(cast("dict[str, float]", x))
         if not hasattr(self, "_feature_dim_in"):
@@ -422,7 +425,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             ]
         # TODO(MarekWadinger): consider strict process boundaries
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
-        # TODO(MarekWadinger): following code changes the limits given by former
+        # TODO(MarekWadinger): following code changes the limits given by
+        #  former
         if not hasattr(self, "_feature_dim_in"):
             _feature_dim_in = 1
         else:
@@ -448,10 +452,10 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             and len(thresh_high) == len(self.feature_names_in_)
         ):
             thresh_high = dict(
-                zip(self.gaussian.mu.keys(), thresh_high, strict=False)
+                zip(self.gaussian.mu.keys(), thresh_high, strict=False),
             )
             thresh_low = dict(
-                zip(self.gaussian.mu.keys(), thresh_low, strict=False)
+                zip(self.gaussian.mu.keys(), thresh_low, strict=False),
             )
         elif hasattr(self, "feature_names_in_"):
             thresh_high = dict(
@@ -479,7 +483,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         float | np.ndarray | dict[str, float],
         float | np.ndarray | dict[str, float],
     ]:
-        """Predict, compute limits, and conditionally learn from x in one step."""
+        """Predict, compute limits, and learn from x in one step."""
         if self.gaussian.n_samples == 0:
             if isinstance(self.gaussian, (Rolling, TimeRolling)):
                 if hasattr(self.gaussian.obj, "_from_state"):
@@ -503,9 +507,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         if not is_anomaly:
             if isinstance(self.gaussian, utils.TimeRolling):
-                self = self.learn_one(x, t=t)
+                self.learn_one(x, t=t)
             else:
-                self = self.learn_one(x)
+                self.learn_one(x)
 
         return is_anomaly, thresh_high, thresh_low
 
@@ -549,8 +553,9 @@ class ConditionalGaussianScorer(GaussianScorer):
     0.5
     >>> scorer.predict_one({"a": 1, "b": 2})
     0
-    >>> scorer.limit_one({"a": 1, "b": 2})
-    ({'a': np.float64(1.5), 'b': np.float64(0.5)}, {'a': np.float64(1.5), 'b': np.float64(0.5)})
+    >>> scorer.limit_one({"a": 1, "b": 2})  # doctest: +NORMALIZE_WHITESPACE
+    ({'a': np.float64(1.5), 'b': np.float64(0.5)},
+     {'a': np.float64(1.5), 'b': np.float64(0.5)})
 
     Let's learn some more samples
     >>> scorer.learn_one({"a": 1., "b": 2.}).gaussian.mu
@@ -565,10 +570,12 @@ class ConditionalGaussianScorer(GaussianScorer):
     np.float64(0.5)
     >>> scorer.score_one({"a": 1., "b": 2.})
     np.float64(0.875...)
-    >>> scorer.limit_one({"a": 1., "b": 2.})
-    ({'a': np.float64(1.501...), 'b': np.float64(2.801...)}, {'a': np.float64(-0.001...), 'b': np.float64(0.198...)})
-    >>> scorer.limit_one({"b": 2., "a": 1.})
-    ({'a': np.float64(1.501...), 'b': np.float64(2.801...)}, {'a': np.float64(-0.001...), 'b': np.float64(0.198...)})
+    >>> scorer.limit_one({"a": 1., "b": 2.})  # doctest: +NORMALIZE_WHITESPACE
+    ({'a': np.float64(1.501...), 'b': np.float64(2.801...)},
+     {'a': np.float64(-0.001...), 'b': np.float64(0.198...)})
+    >>> scorer.limit_one({"b": 2., "a": 1.})  # doctest: +NORMALIZE_WHITESPACE
+    ({'a': np.float64(1.501...), 'b': np.float64(2.801...)},
+     {'a': np.float64(-0.001...), 'b': np.float64(0.198...)})
     >>> scorer.predict_one({"a": 1.0, "b": 2.802})
     1
     >>> scorer.get_root_cause()
@@ -592,7 +599,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         t_a: timedelta | int | None = None,
         protect_anomaly_detector: bool = True,
     ) -> None:
-        """Initialize ConditionalGaussianScorer with a conditionable distribution."""
+        """Initialize ConditionalGaussianScorer with a conditionable dist."""
         if not isinstance(gaussian, ConditionableDistribution):
             if isinstance(gaussian, (Rolling, TimeRolling)) and isinstance(
                 gaussian.obj,
@@ -643,7 +650,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         cg = cast("ConditionableDistribution", self.gaussian)
         mean = cg.mu
         covariance = cg.var
-        for var_key in x:
+        for var_key, var_val in x.items():
             cond_mean, _, cond_std = cg.mv_conditional(
                 x,
                 var_key,
@@ -652,7 +659,7 @@ class ConditionalGaussianScorer(GaussianScorer):
             )
             if cond_std[0] > 0:
                 scores.append(
-                    norm.cdf(x[var_key], loc=cond_mean[0], scale=cond_std[0]),
+                    norm.cdf(var_val, loc=cond_mean[0], scale=cond_std[0]),
                 )
             else:
                 scores.append(0.0)
@@ -662,8 +669,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         self,
         x: float | dict[str, float],
     ) -> tuple[float, int | None]:
-        # TODO(MarekWadinger): find out why return different results on each invocation
-        #   Due to scipy's cdf function
+        # TODO(MarekWadinger): find out why return different results on each
+        #   invocation -- Due to scipy's cdf function
         if not self.grace_period or cast("float", self.n_seen()) > cast(
             "float",
             self.grace_period,
@@ -679,7 +686,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         return 0.5, None
 
     def get_root_cause(self) -> str | int | None:
-        """Return the feature name identified as root cause of the last anomaly."""
+        """Return feature name identified as root cause of the last anomaly."""
         return self.root_cause
 
     def score_one(self, x: float | dict[str, float]) -> float:
@@ -688,7 +695,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         return score
 
     def predict_one(self, x: float | dict[str, float]) -> int:
-        """Return 1 and set root cause if x is conditionally anomalous, else 0."""
+        """Return 1 and set root cause if x is anomalous, else 0."""
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
 
@@ -723,8 +730,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         **_kwargs,
     ) -> tuple[dict[str, float], dict[str, float]]:
         """Return per-feature (upper, lower) conditional limits."""
-        # TODO(MarekWadinger): might break the things up in Pipeline if called before
-        #  predict_one or learn_one
+        # TODO(MarekWadinger): might break the things up in Pipeline if called
+        #  before predict_one or learn_one
         if x is None:
             x = {}
         self._get_feature_dim_in(x)
