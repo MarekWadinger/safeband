@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -26,7 +25,7 @@ class TestSecurity:
     def setup_class(self) -> None:
         self.parent_path = Path(__file__).parent
         self.security_dir = self.parent_path / ".security"
-        os.makedirs(self.security_dir, exist_ok=True)
+        self.security_dir.mkdir(parents=True, exist_ok=True)
         self.sender, self.receiver = generate_keys()
         sender_pub = self.sender.public_pem()
         receiver_pub = self.receiver.public_pem()
@@ -35,17 +34,21 @@ class TestSecurity:
 
     def teardown_class(self) -> None:
         # Delete files if created
-        if os.path.exists(self.security_dir / "s_pem.pub"):
-            os.remove(self.security_dir / "s_pem.pub")
+        s_pem_pub = self.security_dir / "s_pem.pub"
+        if s_pem_pub.exists():
+            s_pem_pub.unlink()
 
-        if os.path.exists(self.security_dir / "s_pem"):
-            os.remove(self.security_dir / "s_pem")
+        s_pem = self.security_dir / "s_pem"
+        if s_pem.exists():
+            s_pem.unlink()
 
-        if os.path.exists(self.security_dir / "r_pem.pub"):
-            os.remove(self.security_dir / "r_pem.pub")
+        r_pem_pub = self.security_dir / "r_pem.pub"
+        if r_pem_pub.exists():
+            r_pem_pub.unlink()
 
-        if os.path.exists(self.security_dir / "r_pem"):
-            os.remove(self.security_dir / "r_pem")
+        r_pem = self.security_dir / "r_pem"
+        if r_pem.exists():
+            r_pem.unlink()
 
     def test_key_generation(self) -> None:
         assert self.sender is not None

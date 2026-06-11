@@ -1,9 +1,9 @@
 import inspect
 import logging
-import os
 import time
 from collections import defaultdict
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Literal, cast
 
 import pandas as pd
@@ -262,7 +262,7 @@ def save_evaluate_metrics(
                 cm.total_false_positives
                 / (cm.total_false_positives + cm.total_true_negatives),
             ]
-            with open(f"{path}/{col.split('__', 1)[0]}.txt", "w") as f:
+            with (Path(path) / f"{col.split('__', 1)[0]}.txt").open("w") as f:
                 f.write(str(cr))
         else:
             result = [metric.get() for metric in metrics_]
@@ -279,17 +279,15 @@ def batch_save_evaluate_metrics(
     map_cluster_to_rc: bool = False,
     drop_no_support: bool = False,
 ) -> None:
-    for folder in os.listdir(path):
+    for folder in Path(path).iterdir():
         # check if listed object is a folder and does not start with a period
-        if os.path.isdir(os.path.join(path, folder)) and not folder.startswith(
-            ".",
-        ):
+        if folder.is_dir() and not folder.name.startswith("."):
             # loop through the files in the folder
-            for file in os.listdir(os.path.join(path, folder)):
-                if file == "ys.csv":
+            for file in folder.iterdir():
+                if file.name == "ys.csv":
                     save_evaluate_metrics(
                         metrics,
-                        os.path.join(path, folder),
+                        str(folder),
                         task,
                         map_cluster_to_rc,
                         drop_no_support,

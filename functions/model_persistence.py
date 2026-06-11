@@ -1,7 +1,6 @@
 import datetime as dt
-import glob
 import logging
-import os
+from pathlib import Path
 
 import joblib
 
@@ -20,9 +19,8 @@ def load_model(path: str, topics: list[str]):
     """
     if path:
         model_name = f"model_{common_prefix(topics).replace('/', '_')}_*.pkl"
-        model_files = glob.glob(os.path.join(path, model_name))
+        model_files = sorted(Path(path).glob(model_name), reverse=True)
         if model_files:
-            model_files.sort(reverse=True)
             for latest_model in model_files:
                 recovery_data = joblib.load(latest_model)
                 if recovery_data["topics"] == topics:
@@ -48,9 +46,10 @@ def save_model(path: str, topics: list[str], model) -> None:
     if path:
         model_prefix = f"model_{common_prefix(topics).replace('/', '_')}"
         now = dt.datetime.now(dt.UTC).strftime("%Y%m%d-%H%M%S")
-        if not os.path.exists(path):
-            os.makedirs(path)
-        recovery_path = f"{path}/{model_prefix}_{now}.pkl"
-        with open(recovery_path, "wb") as f:
+        p = Path(path)
+        if not p.exists():
+            p.mkdir(parents=True)
+        recovery_path = p / f"{model_prefix}_{now}.pkl"
+        with recovery_path.open("wb") as f:
             joblib.dump({"model": model, "topics": topics}, f)
             logger.info("Model saved to %s", recovery_path)

@@ -3,6 +3,7 @@ import datetime as dt
 import json
 import logging
 import time
+from pathlib import Path
 from typing import IO
 
 import pandas as pd
@@ -389,7 +390,7 @@ class RpcOutlierDetector:
         topic: str = f"{prefix}dynamic_limits"
         logger.info("Sinking to '%s'\n", topic)
         if istypedinstance(config, FileClient):
-            f = open(config.get("output", ""), "a")
+            f = Path(config.get("output", "")).open("a")
             open_files.append(f)
             detector.sink(self.dump_to_file, f)
         elif istypedinstance(config, MQTTClient):  # pragma: no cover

@@ -2,6 +2,7 @@ import datetime as dt
 import json
 import logging
 from argparse import Namespace
+from pathlib import Path
 from typing import Any, cast
 
 import paho.mqtt.client as mqtt
@@ -73,7 +74,7 @@ def query_file(config: FileClient, **kwargs) -> None:
 
     """
     # Load the JSON file as a list of dictionaries
-    with open(config.get("output", ""), encoding="utf-8") as f:
+    with Path(config.get("output", "")).open(encoding="utf-8") as f:
         data: list[dict[str, Any]] = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects

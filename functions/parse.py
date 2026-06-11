@@ -1,6 +1,7 @@
 from argparse import ArgumentParser, FileType, Namespace  # ty: ignore[deprecated]
 from configparser import ConfigParser
-from os import getenv, path
+from os import getenv
+from pathlib import Path
 from typing import Any, NotRequired, cast
 
 from pandas import Timedelta
@@ -89,7 +90,7 @@ def get_args() -> Namespace:
     )
 
     def file_or_none(value):
-        if value is not None and path.isfile(value):
+        if value is not None and Path(value).is_file():
             return FileType("r")(value)  # ty: ignore[deprecated]
         return None
 

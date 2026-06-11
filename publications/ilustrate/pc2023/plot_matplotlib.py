@@ -1,6 +1,6 @@
-import os
 import textwrap
 from datetime import timedelta
+from pathlib import Path
 from typing import Literal
 
 import matplotlib as mpl
@@ -507,8 +507,7 @@ def plot_limits_grid_(
     fig.tight_layout()
 
     if save:
-        if not os.path.exists("plots"):
-            os.makedirs("plots")
+        Path("plots").mkdir(parents=True, exist_ok=True)
         plt.savefig(f"plots/{file_name}_thresh.pdf")
 
     plt.show()

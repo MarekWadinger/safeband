@@ -1,6 +1,7 @@
 import json
 import os
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import cast, overload
 
 from cryptography.exceptions import InvalidSignature
@@ -23,7 +24,7 @@ def save_public_key(file: str | os.PathLike, key: HumanRSA) -> None:
         >>> save_public_key('public_key.pem', key)  # doctest: +SKIP
 
     """
-    with open(file, "w") as pub:
+    with Path(file).open("w") as pub:
         pub.write(key.public_pem())
 
 
@@ -41,7 +42,7 @@ def save_private_key(file: str | os.PathLike, key: HumanRSA) -> None:
         >>> save_private_key('private_key.pem', key)  # doctest: +SKIP
 
     """
-    with open(file, "w") as private:
+    with Path(file).open("w") as private:
         private.write(key.private_pem())
 
 
@@ -58,7 +59,7 @@ def load_public_key(file: str | os.PathLike, key: HumanRSA) -> None:
         >>> load_public_key('public_key.pem', key)  # doctest: +SKIP
 
     """
-    with open(file) as pub:
+    with Path(file).open() as pub:
         key.load_public_pem("".join(pub))
 
 
@@ -75,7 +76,7 @@ def load_private_key(file: str | os.PathLike, key: HumanRSA) -> None:
         >>> load_private_key('private_key.pem', key)  # doctest: +SKIP
 
     """
-    with open(file) as pub:
+    with Path(file).open() as pub:
         key.load_private_pem("".join(pub))
 
 
@@ -492,29 +493,28 @@ def decode_data(
 
 def init_rsa_security(key_path: str) -> tuple[HumanRSA, HumanRSA]:
     sender, receiver = generate_keys()
-    if not os.path.exists(key_path):  # pragma: no cover
-        os.makedirs(key_path, exist_ok=True)
-        save_private_key(key_path + "/sender_pem", sender)
-        save_public_key(key_path + "/sender_pem.pub", sender)
-        save_private_key(key_path + "/receiver_pem", receiver)
-        save_public_key(key_path + "/receiver_pem.pub", receiver)
-        load_public_key(key_path + "/receiver_pem.pub", sender)
+    kp = Path(key_path)
+    if not kp.exists():  # pragma: no cover
+        kp.mkdir(parents=True, exist_ok=True)
+        save_private_key(kp / "sender_pem", sender)
+        save_public_key(kp / "sender_pem.pub", sender)
+        save_private_key(kp / "receiver_pem", receiver)
+        save_public_key(kp / "receiver_pem.pub", receiver)
+        load_public_key(kp / "receiver_pem.pub", sender)
     else:  # pragma: no cover
-        if os.path.exists(key_path + "/sender_pem") and os.path.exists(
-            key_path + "/sender_pem.pub",
-        ):
-            load_private_key(key_path + "/sender_pem", sender)
-            load_public_key(key_path + "/sender_pem.pub", receiver)
+        if (kp / "sender_pem").exists() and (kp / "sender_pem.pub").exists():
+            load_private_key(kp / "sender_pem", sender)
+            load_public_key(kp / "sender_pem.pub", receiver)
         else:
-            save_private_key(key_path + "/sender_pem", sender)
-            save_public_key(key_path + "/sender_pem.pub", sender)
+            save_private_key(kp / "sender_pem", sender)
+            save_public_key(kp / "sender_pem.pub", sender)
 
-        if os.path.exists(key_path + "/receiver_pem") and os.path.exists(
-            key_path + "/receiver_pem.pub",
-        ):
-            load_private_key(key_path + "/receiver_pem", receiver)
-            load_public_key(key_path + "/receiver_pem.pub", sender)
+        if (kp / "receiver_pem").exists() and (
+            kp / "receiver_pem.pub"
+        ).exists():
+            load_private_key(kp / "receiver_pem", receiver)
+            load_public_key(kp / "receiver_pem.pub", sender)
         else:
-            save_private_key(key_path + "/receiver_pem", receiver)
-            save_public_key(key_path + "/receiver_pem.pub", receiver)
+            save_private_key(kp / "receiver_pem", receiver)
+            save_public_key(kp / "receiver_pem.pub", receiver)
     return sender, receiver

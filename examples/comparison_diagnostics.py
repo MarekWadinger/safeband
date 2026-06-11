@@ -1,7 +1,6 @@
 # IMPORTS
 import ast
 import logging
-import os
 import pickle
 import random
 import sys
@@ -40,13 +39,13 @@ np.random.seed(RANDOM_STATE)
 
 # FUNCTIONS
 def save_model(model, path) -> None:
-    os.makedirs(path, exist_ok=True)
-    with open(f"{path}/{alg[0]}.pkl", "wb") as f:
+    Path(path).mkdir(parents=True, exist_ok=True)
+    with Path(f"{path}/{alg[0]}.pkl").open("wb") as f:
         pickle.dump(model, f)
 
 
 def save_results_y(df_ys, path) -> None:
-    os.makedirs(path, exist_ok=True)
+    Path(path).mkdir(parents=True, exist_ok=True)
     df_ys.to_csv(f"{path}/ys.csv", index=False)
 
 

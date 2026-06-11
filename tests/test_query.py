@@ -1,8 +1,6 @@
 import argparse
-import glob
 import json
 import logging
-import os
 import re
 import sys
 from pathlib import Path
@@ -43,12 +41,13 @@ class TestConsumer:
         ciphertext = encrypt_data(signed_msg, self.args.receiver)
         ciphertext = decode_data(ciphertext)
         self.encrypted_msg = json.dumps(ciphertext)
-        with open(self.config["output"], "w") as f:
+        with Path(self.config["output"]).open("w") as f:
             json.dump(ciphertext, f)
 
     def teardown_class(self) -> None:
-        if os.path.exists(self.config["output"]):
-            os.remove(self.config["output"])
+        output_path = Path(self.config["output"])
+        if output_path.exists():
+            output_path.unlink()
 
     def test_verify_mqtt_message(self, caplog) -> None:
         obj = mqtt.Client()
@@ -81,15 +80,14 @@ class TestModelPresistence:
         self.topics = ["test"]
 
     def teardown_class(self) -> None:
-        models = glob.glob(
-            os.path.join(
-                self.path,
+        models = list(
+            Path(self.path).glob(
                 f"model_{common_prefix(self.topics)}_*.pkl",
             ),
         )
         for model in models:
-            os.remove(model)
-        os.rmdir(self.path)
+            model.unlink()
+        Path(self.path).rmdir()
 
     def test_load_model(self) -> None:
         model = load_model(self.path, self.topics)
@@ -98,9 +96,8 @@ class TestModelPresistence:
     def test_save_model(self) -> None:
         model = {"model": 1}
         save_model(self.path, self.topics, model)
-        models = glob.glob(
-            os.path.join(
-                self.path,
+        models = list(
+            Path(self.path).glob(
                 f"model_{common_prefix(self.topics)}_*.pkl",
             ),
         )
