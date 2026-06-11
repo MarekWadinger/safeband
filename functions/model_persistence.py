@@ -1,10 +1,13 @@
 import datetime as dt
 import glob
+import logging
 import os
 
 import joblib
 
 from functions.utils import common_prefix
+
+logger = logging.getLogger(__name__)
 
 
 def load_model(path: str, topics: list[str]):
@@ -23,9 +26,13 @@ def load_model(path: str, topics: list[str]):
             for latest_model in model_files:
                 recovery_data = joblib.load(latest_model)
                 if recovery_data["topics"] == topics:
+                    logger.info("Latest model found: %s", latest_model)
                     return recovery_data["model"]
+            logger.info(
+                "No matching model files found in the recovery folder."
+            )
         else:
-            pass
+            logger.info("No model files found in the recovery folder.")
     return None
 
 
@@ -46,3 +53,4 @@ def save_model(path: str, topics: list[str], model) -> None:
         recovery_path = f"{path}/{model_prefix}_{now}.pkl"
         with open(recovery_path, "wb") as f:
             joblib.dump({"model": model, "topics": topics}, f)
+            logger.info("Model saved to %s", recovery_path)

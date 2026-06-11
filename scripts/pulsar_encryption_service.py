@@ -1,3 +1,4 @@
+import logging
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -12,6 +13,8 @@ from functions.encryption import (
     init_rsa_security,
 )
 from functions.streamz_tools import map  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 def encryption_service(
@@ -40,10 +43,12 @@ def encryption_service(
     while True:
         try:
             if source.stopped:
+                logger.info("Stopping encryption...")
                 break
             if L:
-                pass
+                logger.info("%s", L.pop(0))
         except pulsar.Interrupted:
+            logger.info("Stop receiving messages")
             if args.out_topic is not None:
                 producer.stop()
                 producer.flush()
@@ -81,6 +86,7 @@ if __name__ == "__main__":
         help="The scheme and broker as 'scheme://IP:port.",
         type=str,
     )
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = parser.parse_args()
 
     encryption_service(

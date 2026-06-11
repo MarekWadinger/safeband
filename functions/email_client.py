@@ -1,7 +1,10 @@
 import json
+import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+logger = logging.getLogger(__name__)
 
 
 class EmailClient:  # pragma: no cover
@@ -18,11 +21,8 @@ class EmailClient:  # pragma: no cover
         ...     sender_password="password",
         ...     recipient_email="recipient@example.com"
         ... )
-        >>> email_client.send_email(
-        ...     subject="Test",
-        ...     msg="Hello, world!"
-        ... )
-        Email sent successfully!
+        >>> email_client.sender_email
+        'test@example.com'
 
     """
 
@@ -80,3 +80,5 @@ class EmailClient:  # pragma: no cover
                 self.recipient_email,
                 body.as_string(),
             )
+
+        logger.info("Email sent successfully!")

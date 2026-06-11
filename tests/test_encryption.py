@@ -1,7 +1,6 @@
 import os
 import sys
 from pathlib import Path
-from typing import cast
 
 import pytest
 from cryptography.exceptions import InvalidSignature
@@ -123,10 +122,7 @@ class TestSecurity:
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
-        ciphertext_dec = cast(
-            "dict[str, str | list[str]]",
-            decode_data(ciphertext),
-        )
+        ciphertext_dec = decode_data(ciphertext)
         item = verify_and_decrypt_data(ciphertext_dec, self.receiver)
         assert msg["a"] == item["a"]
 
@@ -136,9 +132,6 @@ class TestSecurity:
         other_msg = sign_data({"a": "2"}, self.sender)
         signed_msg["signature"] = other_msg["signature"]
         ciphertext = encrypt_data(signed_msg, self.sender)
-        ciphertext_str = cast(
-            "dict[str, str | list[str]]",
-            decode_data(ciphertext),
-        )
+        ciphertext_str = decode_data(ciphertext)
         with pytest.raises(InvalidSignature):
             verify_and_decrypt_data(ciphertext_str, self.receiver)

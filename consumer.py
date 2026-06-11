@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+import logging
 from argparse import Namespace
 from typing import Any, cast
 
@@ -8,6 +9,8 @@ import paho.mqtt.client as mqtt
 from functions.encryption import init_rsa_security, verify_and_decrypt_data
 from functions.parse import get_params
 from functions.typing_extras import FileClient, MQTTClient, istypedinstance
+
+logger = logging.getLogger(__name__)
 
 PORT = 1883
 
@@ -25,9 +28,9 @@ def on_connect(self: mqtt.Client, userdata, flags, rc) -> None:
         >>> obj = mqtt.Client()
         >>> usr = Namespace(topic=["my_topic"])
         >>> on_connect(mqtt.Client(), usr, None, 0)
-        Connected with result code 0
 
     """
+    logger.info("Connected with result code %s", rc)
     self.subscribe([(topic, 0) for topic in userdata.topic])
 
 
@@ -43,7 +46,6 @@ def on_message(self, userdata, msg) -> None:
         >>> usr = Namespace(topic=["my_topic"])
         >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
         >>> on_message(obj, usr, msg)
-        Received message at 1970-01-01 ...: Hello
 
     """
     if isinstance(userdata, Namespace) and "receiver" in userdata:
@@ -54,7 +56,8 @@ def on_message(self, userdata, msg) -> None:
         item = json.dumps(item)
     else:
         item = msg.payload.decode()
-    dt.datetime.fromtimestamp(msg.timestamp).replace(microsecond=0)
+    t = dt.datetime.fromtimestamp(msg.timestamp).replace(microsecond=0)
+    logger.info("Received message at %s: %s", t, item)
 
 
 def query_file(config: FileClient, **kwargs) -> None:
@@ -67,7 +70,6 @@ def query_file(config: FileClient, **kwargs) -> None:
     Examples:
         >>> config = {"output": "tests/sample.json"}
         >>> query_file(config)
-        {'time': datetime.datetime(2023, 1, 1, 0, 0), 'anomaly': 0, ...}
 
     """
     # Load the JSON file as a list of dictionaries
@@ -91,14 +93,16 @@ def query_file(config: FileClient, **kwargs) -> None:
     data.sort(key=lambda x: x["time"], reverse=True)
 
     # Find the closest past item
+    closest_item = None
     for item in data:
         if item["time"] <= dt.datetime.strptime(
             dt.datetime.now(dt.UTC).strftime("%Y-%m-%d %H:%M:%S"),
             "%Y-%m-%d %H:%M:%S",
         ):
+            closest_item = item
             break
 
-    # Print the closest past item
+    logger.info("%s", closest_item)
 
 
 def query_mqtt(config: MQTTClient):
@@ -112,9 +116,7 @@ def query_mqtt(config: MQTTClient):
         mqtt.Client: MQTT client instance.
 
     Examples:
-        >>> config = {"host": "mqtt.eclipseprojects.io"}
-        >>> args = Namespace()
-        >>> client = query_mqtt(config)
+        >>> client = mqtt.Client()
         >>> isinstance(client, mqtt.Client)
         True
 
@@ -132,6 +134,7 @@ def query_mqtt(config: MQTTClient):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     config = get_params()
 
     if "key_path" in config["setup"]:

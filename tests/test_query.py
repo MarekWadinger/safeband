@@ -1,10 +1,10 @@
 import argparse
 import glob
 import json
+import logging
 import os
 import re
 import sys
-from io import StringIO
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
@@ -50,35 +50,28 @@ class TestConsumer:
         if os.path.exists(self.config["output"]):
             os.remove(self.config["output"])
 
-    def test_verify_mqtt_message(self) -> None:
+    def test_verify_mqtt_message(self, caplog) -> None:
         obj = mqtt.Client()
         msg = mqtt.MQTTMessage()
         msg.payload = self.encrypted_msg.encode("latin-1")
-        stdout_ = sys.stdout  # Keep track of the previous value.
-        f = StringIO()
-        sys.stdout = f
-        on_message(obj, self.args, msg)
-        sys.stdout = stdout_  # restore the previous stdout.
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            on_message(obj, self.args, msg)
         assert (
-            re.match(
+            re.search(
                 (
                     r"Received message at 1970-01-01 \d{2}:\d{2}:\d{2}: "
-                    r'{"time": "2022-01-01 00:00:00"}\n'
+                    r'{"time": "2022-01-01 00:00:00"}'
                 ),
-                f.getvalue(),
+                caplog.text,
             )
             is not None
         )
 
-    def test_verify_file_message(self) -> None:
-        f = StringIO()
-        stdout_ = sys.stdout  # Keep track of the previous value.
-        sys.stdout = f
-        query_file(self.config, receiver=self.args.receiver)
-        sys.stdout = stdout_
-        assert (
-            f.getvalue() == "{'time': datetime.datetime(2022, 1, 1, 0, 0)}\n"
-        )
+    def test_verify_file_message(self, caplog) -> None:
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            query_file(self.config, receiver=self.args.receiver)
+        assert "2022, 1, 1, 0, 0" in caplog.text
+        assert "signature" not in caplog.text
 
 
 class TestModelPresistence:

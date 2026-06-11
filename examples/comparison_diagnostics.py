@@ -1,5 +1,6 @@
 # IMPORTS
 import ast
+import logging
 import os
 import pickle
 import random
@@ -28,6 +29,8 @@ from functions.evaluate import (
     progressive_val_predict,
 )
 from functions.proba import MultivariateGaussian
+
+logger = logging.getLogger(__name__)
 
 # CONSTANTS
 RANDOM_STATE = 42
@@ -111,6 +114,7 @@ datasets = [
 
 # RUN
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for dataset in datasets:
@@ -118,7 +122,8 @@ if __name__ == "__main__":
             df = dataset["data"]
             assert isinstance(df, pd.DataFrame)
             df.index = pd.to_timedelta(
-                list(range(len(df))), "min",
+                list(range(len(df))),
+                "min",
             ) + pd.Timestamp.utcnow().replace(microsecond=0)
             if isinstance(dataset["anomaly_col"], str):
                 df = df.rename(columns={dataset["anomaly_col"]: "anomaly"})
@@ -127,10 +132,20 @@ if __name__ == "__main__":
                 df["anomaly"] = df_y.rename("anomaly").values
             if dataset["drop"] is not None:
                 df = df.drop(columns=dataset["drop"])
+            ds_name = str(dataset["name"])
+            logger.info(
+                "\n=== %s === [%s]%s",
+                ds_name,
+                len(df),
+                "=" * (80 - len(ds_name) - len(str(len(df))) - 12),
+            )
 
             df_ys = df[["anomaly"]].copy()
             # RUN EACH MODEL AGAINST DATASET
             for alg in detection_algorithms:
+                logger.info(
+                    "\n===== %s%s", alg[0], "=" * (80 - 6 - len(alg[0]))
+                )
                 # INITIALIZE OPTIMIZER
                 pbounds = alg[2]
                 mod_fun = partial(
@@ -151,13 +166,14 @@ if __name__ == "__main__":
                     allow_duplicate_points=True,
                     bounds_transformer=SequentialDomainReductionTransformer(),
                 )
-                logger = JSONLogger(
+                json_logger = JSONLogger(
                     path=f"./.results/{dataset['name']}-{alg[0]}.log",
                 )
-                optimizer.subscribe(Events.OPTIMIZATION_END, logger)
+                optimizer.subscribe(Events.OPTIMIZATION_END, json_logger)
                 optimizer.maximize()  # init_points=1, n_iter=5)
                 assert optimizer.max is not None
                 params = convert_to_nested_dict(optimizer.max["params"])
+                logger.info("%s", params)
                 model = build_model(alg[1], params)
                 if hasattr(model, "seed"):
                     model.seed = RANDOM_STATE
@@ -198,7 +214,9 @@ if __name__ == "__main__":
             path = ".results/MF1_opt_rc"
 
             batch_save_evaluate_metrics(
-                metrics_clustering, path, task="clustering",
+                metrics_clustering,
+                path,
+                task="clustering",
             )
 
             batch_save_evaluate_metrics(

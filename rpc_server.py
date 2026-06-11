@@ -1,6 +1,7 @@
 # IMPORTS
 import datetime as dt
 import json
+import logging
 import time
 from typing import IO
 
@@ -32,6 +33,8 @@ from functions.typing_extras import (
     istypedinstance,
 )
 from functions.utils import common_prefix
+
+logger = logging.getLogger(__name__)
 
 # CONSTANTS
 
@@ -95,16 +98,15 @@ def print_summary(df) -> None:
         >>> import pandas as pd
         >>> df = pd.DataFrame({'anomaly': [False, True, True, False]})
         >>> print_summary(df)
-        Proportion of anomalous samples: 50.00%
-        Total number of anomalous events: 2
 
     """
-    (
+    text = (
         f"Proportion of anomalous samples: "
         f"{sum(df['anomaly']) / len(df['anomaly']) * 100:.02f}%\n"
         f"Total number of anomalous events: "
         f"{sum(pd.Series(df['anomaly']).diff().dropna() == 1)}"
     )
+    logger.info("%s", text)
 
 
 class RpcOutlierDetector:
@@ -385,6 +387,7 @@ class RpcOutlierDetector:
         """
         prefix: str = common_prefix(topics)
         topic: str = f"{prefix}dynamic_limits"
+        logger.info("Sinking to '%s'\n", topic)
         if istypedinstance(config, FileClient):
             f = open(config.get("output", ""), "a")
             open_files.append(f)
@@ -421,14 +424,17 @@ class RpcOutlierDetector:
     def run(self, config, source, detector, debug) -> None:
         # TODO: handle combination of debug and remote broker
         if debug and istypedinstance(config, FileClient):
+            logger.info("=== Debugging started... ===")
             data = pd.read_csv(config["path"], index_col=0)
             data.index = pd.to_datetime(data.index, utc=True)
             for row in data.head().iterrows():
                 source.emit(row)
             for file in open_files:
                 file.close()
+            logger.info("=== Debugging finished with success... ===")
         else:  # pragma: no cover
             detector.start()
+            logger.info("=== Service started ===")
 
             while True:
                 try:
@@ -469,11 +475,6 @@ class RpcOutlierDetector:
         >>> setup = {"key_path": ".temp", "debug": True}
         >>> obj = RpcOutlierDetector()
         >>> obj.start(client, io, model_params, setup)
-        Sinking to 'dynamic_limits'
-        <BLANKLINE>
-        === Debugging started... ===
-        === Debugging finished with success... ===
-        === Service stopped ===
 
         """
         recovery_path = setup.get("recovery_path", "")
@@ -533,4 +534,5 @@ class RpcOutlierDetector:
             self.run(client, source, detector, debug)
         finally:
             detector.stop()
+            logger.info("=== Service stopped ===")
             save_model(recovery_path, in_topics, model)

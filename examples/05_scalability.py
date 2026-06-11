@@ -2,6 +2,7 @@
 # Import
 
 import datetime as dt
+import logging
 import sys
 from pathlib import Path
 
@@ -12,6 +13,9 @@ sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 from functions.anomaly import ConditionalGaussianScorer
 from functions.evaluate import progressive_val_predict
 from functions.proba import MultivariateGaussian
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 output_path = Path(__file__).resolve().parent / ".results/scalability/"
 if not Path(output_path).exists():
@@ -56,12 +60,14 @@ for compute_limits in [True, False]:
             )
 
             df_out = pd.DataFrame(
-                {"System Anomaly": system_anomaly, **meta}, index=df_.index,
+                {"System Anomaly": system_anomaly, **meta},
+                index=df_.index,
             )
             latencies_df[n_cols] = df_out.Latency
             latencies_desc_df[n_cols] = df_out.Latency.describe()
+            logger.info("Done with %s columns", n_cols)
     except Exception:
-        pass
+        logger.exception("Scalability run failed")
     finally:
         file_name = "latencies_detection" + (
             "_limits" if compute_limits else ""

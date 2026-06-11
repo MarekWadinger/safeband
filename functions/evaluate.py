@@ -1,4 +1,5 @@
 import inspect
+import logging
 import os
 import time
 from collections import defaultdict
@@ -10,6 +11,8 @@ from river.compose import Pipeline
 from river.metrics.base import Metric, MultiClassMetric
 
 from functions.compose import build_model, convert_to_nested_dict
+
+logger = logging.getLogger(__name__)
 
 
 def progressive_val_predict(  # noqa: C901
@@ -44,7 +47,7 @@ def progressive_val_predict(  # noqa: C901
     if hasattr(model_, "forecast"):
         period = kwargs.get("period", 5)
 
-    time.time()
+    start = time.time()
     for i, (t, x) in enumerate(dataset.iterrows()):
         if compute_latency:
             start_i = time.time()
@@ -79,7 +82,7 @@ def progressive_val_predict(  # noqa: C901
                 for metric in metrics:
                     metric = metric.update(cast("bool", y), is_anomaly)
                     if (print_every > 0) and (i % print_every == 0):
-                        pass
+                        logger.info("%s", metric)
             else:
                 msg = "Dataset must contain column 'anomaly' to use metrics."
                 raise ValueError(
@@ -147,11 +150,16 @@ def progressive_val_predict(  # noqa: C901
     if hasattr(model_, "forecast"):
         y_pred = y_pred[:-period]
 
-    time.time()
+    end = time.time()
 
-    if print_final and metrics is not None:
-        for metric in metrics:
-            pass
+    if print_final:
+        logger.info(
+            "Avg. latency per sample: %sms",
+            (end - start) * 1000 / len(dataset),
+        )
+        if metrics is not None:
+            for metric in metrics:
+                logger.info("%s", metric)
 
     return y_pred, meta
 
@@ -160,8 +168,19 @@ def print_stats(df, y_pred) -> None:
     df_y_pred = pd.Series(y_pred, index=df.anomaly.index)
     res = pd.concat([df.anomaly, df_y_pred], axis=1)
     real = res[res["anomaly"] == 1]
-    sum(real.apply(lambda x: x["anomaly"] == x[0], axis=1))
-    len(real) if len(real) != 0 else float("nan")
+    sum_ = sum(real.apply(lambda x: x["anomaly"] == x[0], axis=1))
+    len_real = len(real) if len(real) != 0 else float("nan")
+    logger.info(
+        "%s %s | %s | %s\n%s %s | %s | %s",
+        "Pred anomalous samples | events | proportion:".ljust(55),
+        str(sum(df_y_pred)).ljust(8),
+        str(sum(df_y_pred.diff().dropna() == 1)).ljust(5),
+        f"{sum(df_y_pred) / len(df_y_pred):.02%}",
+        "Found samples | events | proportion:".ljust(55),
+        str(sum_).ljust(8),
+        " ".ljust(5),
+        f"{sum_ / len_real:.02%}",
+    )
 
 
 def cluster_map(y_true, y_pred):
@@ -304,4 +323,5 @@ def build_fit_evaluate(
             metric = drop_no_support_labels(metric)
         return metric.get() if metric.bigger_is_better else -metric.get()
     except Exception:
+        logger.exception("build_fit_evaluate failed")
         return 0 if metric.bigger_is_better else -float("inf")

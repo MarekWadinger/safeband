@@ -420,14 +420,16 @@ def encode_data(
     return result
 
 
-JsonStr = Mapping[str, "str | Sequence[str] | JsonStr"]
-JsonBytes = Mapping[str, "bytes | Sequence[bytes] | JsonBytes"]
+type JsonStr = Mapping[str, str | Sequence[str] | JsonStr]
+type JsonBytes = Mapping[str, bytes | Sequence[bytes] | JsonBytes]
 
 
 @overload
 def decode_data(
     data: Mapping[str, bytes | list[bytes]],
 ) -> dict[str, str | list[str]]: ...
+@overload
+def decode_data(data: JsonBytes) -> JsonStr: ...
 @overload
 def decode_data(data: Sequence[bytes]) -> Sequence[str]: ...
 @overload
