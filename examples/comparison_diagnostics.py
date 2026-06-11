@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # CONSTANTS
 RANDOM_STATE = 42
 random.seed(RANDOM_STATE)
-np.random.seed(RANDOM_STATE)
+rng = np.random.default_rng(RANDOM_STATE)
 
 
 # FUNCTIONS
