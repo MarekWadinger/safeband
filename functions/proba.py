@@ -67,7 +67,7 @@ class MultivariateGaussian(proba.MultivariateGaussian):
             observed_values = np.array([_ov[key] for key in _mn])
             var_idx = list(mean.keys()).index(var_idx)
             mean = np.array([*mean.values()])
-            covariance = covariance.values
+            covariance = covariance.to_numpy()
         elif (
             isinstance(observed_values, (list, np.ndarray))
             and isinstance(mean, np.ndarray)

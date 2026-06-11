@@ -128,7 +128,7 @@ if __name__ == "__main__":
                 df = df.rename(columns={dataset["anomaly_col"]: "anomaly"})
             elif isinstance(dataset["anomaly_col"], pd.Series):
                 df_y = dataset["anomaly_col"]
-                df["anomaly"] = df_y.rename("anomaly").values
+                df["anomaly"] = df_y.rename("anomaly").to_numpy()
             if dataset["drop"] is not None:
                 df = df.drop(columns=dataset["drop"])
             ds_name = str(dataset["name"])
