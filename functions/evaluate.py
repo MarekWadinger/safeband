@@ -53,7 +53,9 @@ def progressive_val_predict(  # noqa: C901
             start_i = time.time()
         # PREPOCESSING
         if isinstance(t, pd.Timestamp):
-            t = t.tz_localize(None)
+            t_loc = t.tz_localize(None)
+        else:
+            t_loc = t
         x_: dict[str, float] = x.to_dict()
         y = x_.pop("anomaly", "") if "anomaly" in x_ else None
         # PREDICT
@@ -80,7 +82,7 @@ def progressive_val_predict(  # noqa: C901
                 if isinstance(metrics, Metric):
                     metrics = [metrics]
                 for metric in metrics:
-                    metric = metric.update(cast("bool", y), is_anomaly)
+                    metric.update(cast("bool", y), is_anomaly)
                     if (print_every > 0) and (i % print_every == 0):
                         logger.info("%s", metric)
             else:
@@ -112,7 +114,7 @@ def progressive_val_predict(  # noqa: C901
         # DETECT NON-UNIFORM SAMPLING
         if sampling_model is not None and isinstance(t, pd.Timestamp):
             if i > 0:
-                t_ = (t - t_prev).seconds
+                t_ = (t.tz_localize(None) - t_prev).seconds
                 sample_a = sampling_model.predict_one(t_)
                 meta["Sampling Anomaly"].append(sample_a)
 
@@ -120,7 +122,7 @@ def progressive_val_predict(  # noqa: C901
                 sampling_model.learn_one(t_, w=w)
             else:
                 meta["Sampling Anomaly"].append(0)
-            t_prev = t
+            t_prev = t.tz_localize(None)
 
         # DETECT CHANGE POINTS
         if detect_change:
@@ -130,7 +132,7 @@ def progressive_val_predict(  # noqa: C901
         if hasattr(model, "gaussian") and inspect.signature(
             model.gaussian.update,
         ).parameters.get("t"):
-            model.learn_one(x_, t=t)
+            model.learn_one(x_, t=t_loc)
         elif hasattr(model, "_supervised") and model._supervised:
             model_up = model.learn_one(x_, y)
             model = model_up if model_up is not None else model
@@ -245,7 +247,7 @@ def save_evaluate_metrics(
             df_ys[col] = cluster_map(df_ys.anomaly, df_ys[col])
         for y_true, y_pred in zip(df_ys.anomaly, df_ys[col], strict=False):
             for metric in metrics_:
-                metric = metric.update(y_true, y_pred)
+                metric.update(y_true, y_pred)
         if drop_no_support:
             metrics_ = [drop_no_support_labels(metric) for metric in metrics_]
 

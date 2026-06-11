@@ -282,24 +282,28 @@ def plot_anomaly_bars(args, colors, axs) -> None:
     for i, a in enumerate(args, start=1):
         if isinstance(a, pd.Series):
             ax: plt.Axes = axs[-i]
-            a = a.astype(int).diff().fillna(0)
-            if (a != 0).any():
-                if a[a != 0].iloc[0] == -1:
-                    a.iloc[1] = 1
-                elif a[a != 0].iloc[-1] == 1:
-                    a.iloc[-1] = -1
+            a_diff = a.astype(int).diff().fillna(0)
+            if (a_diff != 0).any():
+                if a_diff[a_diff != 0].iloc[0] == -1:
+                    a_diff.iloc[1] = 1
+                elif a_diff[a_diff != 0].iloc[-1] == 1:
+                    a_diff.iloc[-1] = -1
             for s_idx, (x0, x1) in enumerate(
-                zip(a[a == 1].index, a[a == -1].index, strict=False),
+                zip(
+                    a_diff[a_diff == 1].index,
+                    a_diff[a_diff == -1].index,
+                    strict=False,
+                ),
             ):
                 ax.axvspan(
                     x0,
                     x1,
                     color=colors[i],
                     alpha=1,
-                    label="_" * s_idx + str(a.name),
+                    label="_" * s_idx + str(a_diff.name),
                     linewidth=2,
                 )
-            ylabel = "\n".join(textwrap.wrap(str(a.name), 11))
+            ylabel = "\n".join(textwrap.wrap(str(a_diff.name), 11))
             ax.set_ylabel(
                 f"{ylabel}",
                 rotation=0,
@@ -307,9 +311,9 @@ def plot_anomaly_bars(args, colors, axs) -> None:
             )
             ax.yaxis.set_label_position("right")
             ax.set_yticks([])
-            if a.name == "Ground Truth":
-                a = a.astype(int).diff()
-                b = a[a == 1].resample("1d").sum()
+            if a_diff.name == "Ground Truth":
+                a_diff2 = a_diff.astype(int).diff()
+                b = a_diff2[a_diff2 == 1].resample("1d").sum()
                 axs[-1].set_xticks(b[b > 0].index.map(str))
 
 

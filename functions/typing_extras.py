@@ -85,11 +85,13 @@ def istypedinstance(obj, type_):
             or str(type(property_type)) == "<class 'typing._GenericAlias'>"
         ):
             if hasattr(property_type, "__args__"):
-                property_type = Union[property_type.__args__[0], None]
+                resolved_type = Union[property_type.__args__[0], None]
             else:
-                property_type = type(None)
+                resolved_type = type(None)
+        else:
+            resolved_type = property_type
         try:
-            return isinstance(value, property_type)
+            return isinstance(value, resolved_type)
         except TypeError:
             if hasattr(property_type, "__args__"):
                 return isinstance(

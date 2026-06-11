@@ -45,10 +45,10 @@ def convert_to_nested_dict(d):
                 current = current.setdefault(part, {})
                 type_ = eval(parts[-1])
                 if isinstance(value, list):
-                    value = [type_(v) for v in value]
+                    value_t = [type_(v) for v in value]
                 else:
-                    value = type_(value)
-            current[parts[-2]] = value
+                    value_t = type_(value)
+            current[parts[-2]] = value_t
         else:
             msg = f"Up to 3 parts supported. You gave {len(parts)}"
             raise ValueError(msg)

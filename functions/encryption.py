@@ -166,10 +166,12 @@ def encrypt_data(
         data_ = {}
         for x, v in data.items():
             if isinstance(v, bytes):
-                v = v.decode("utf-8")
+                v_s = v.decode("utf-8")
             elif not isinstance(v, str):
-                v = str(v)
-            data_[x] = encrypt_data(v, key)
+                v_s = str(v)
+            else:
+                v_s = v
+            data_[x] = encrypt_data(v_s, key)
         return data_
     if isinstance(data, bytes):
         if len(data) > LEN_LIMIT:

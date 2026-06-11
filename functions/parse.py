@@ -381,8 +381,8 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
     config_dyn: dict[str, Any] = cast("dict[str, Any]", config)
     for section, struct in config_struct.items():
         config_dyn[section] = {}
-        for param, type_ in struct.__annotations__.items():
-            type_ = get_valid_type(type_)
+        for param, type_ann in struct.__annotations__.items():
+            type_ = get_valid_type(type_ann)
             if args_.get(param) is not None:
                 param_value = args_[param]
             elif config_parser.has_option(section, param):

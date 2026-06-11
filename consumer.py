@@ -82,13 +82,12 @@ def query_file(config: FileClient, **kwargs) -> None:
     # Convert the time strings to datetime objects
     for i, item in enumerate(data):
         if "receiver" in kwargs and not item["time"].isascii():
-            item = cast(
+            data[i] = cast(
                 "dict[str, Any]",
                 verify_and_decrypt_data(item, kwargs["receiver"]),
             )
-            data[i] = item
-        item["time"] = dt.datetime.strptime(
-            str(item["time"]),
+        data[i]["time"] = dt.datetime.strptime(
+            str(data[i]["time"]),
             "%Y-%m-%d %H:%M:%S",
         ).replace(tzinfo=dt.UTC)
 
