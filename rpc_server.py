@@ -513,6 +513,9 @@ class RpcOutlierDetector:
             .filter(lambda x: x is not None)
             .map(self.fit_transform, model)
         )
+        # Email alerting branches off the plaintext detector node; after
+        # the sign/encrypt maps the anomaly flags are opaque strings.
+        plain = detector
 
         if key_path:
             sender, _ = init_rsa_security(key_path)
@@ -524,7 +527,7 @@ class RpcOutlierDetector:
         detector = self.get_sink(client, in_topics, detector, out_topics)
         if email is not None and email.get("sender_email") is not None:
             email_client = EmailClient(**email)
-            detector.sliding_window(2).sink(
+            plain.sliding_window(2).sink(
                 self.send_anomaly_email,
                 email_client,
                 model,

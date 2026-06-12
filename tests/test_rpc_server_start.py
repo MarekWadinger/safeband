@@ -73,6 +73,64 @@ class TestStartSkipsBadMessages:
         assert "anomaly" in json.loads(lines[0])
 
 
+class TestStartEmailWithEncryption:
+    """Email alerting must see plaintext results even when encrypting."""
+
+    def test_start_email_branch_receives_plaintext_when_encrypted(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """With key_path set, the email sink gets unencrypted records."""
+        received: list[tuple[dict, ...]] = []
+
+        def capture(
+            _self: RpcOutlierDetector,
+            xs: tuple[dict, ...],
+            _email_client: object,
+            _model: object,
+        ) -> None:
+            received.append(xs)
+
+        def fake_run(
+            _self: RpcOutlierDetector,
+            _config: object,
+            source: Stream,
+            _detector: Stream,
+            _debug: bool,
+        ) -> None:
+            source.emit(b"21.0")
+            source.emit(b"22.0")
+
+        monkeypatch.setattr(RpcOutlierDetector, "send_anomaly_email", capture)
+        monkeypatch.setattr(RpcOutlierDetector, "run", fake_run)
+
+        RpcOutlierDetector().start(
+            {"path": "unused.csv", "output": str(tmp_path / "out.json")},
+            io={"in_topics": ["plant/a"], "out_topics": None},
+            model_params={
+                "threshold": 0.99735,
+                "t_e": Timedelta("1d"),
+                "t_a": Timedelta("1d"),
+                "t_g": Timedelta("1d"),
+            },
+            setup={"debug": True, "key_path": str(tmp_path / "keys")},
+            email={
+                "sender_email": "sender@example.com",
+                "sender_password": "secret",
+                "recipient_email": "ops@example.com",
+            },
+        )
+
+        assert received
+        window = received[-1]
+        assert len(window) == 2
+        for x in window:
+            # Encrypted records carry string payloads; the email branch
+            # must compute on plaintext anomaly flags.
+            assert isinstance(x["anomaly"], int)
+
+
 class TestStartClosesFiles:
     """Output files opened by the sink are closed on any shutdown path."""
 
