@@ -60,11 +60,17 @@ We demonstrate the usage of the service using
 [**paho-mqtt**](https://pypi.org/project/paho-mqtt/) library. The source of data
 is a real coffee machine streaming data to MQTT broker.
 
+The MQTT example requires a config file with an `[mqtt]` section (e.g. the
+provided `example.ini`), while the default `config.ini` is set up for the
+Streamed-DataFrame example.
+
 To start the service, run following line of code in your terminal:
 
+<!-- markdownlint-disable MD013 -->
 ```bash
-uv run python rpc_client.py -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
+uv run python rpc_client.py -f example.ini -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/power"
 ```
+<!-- markdownlint-enable MD013 -->
 
 Note: You can modify the source data stream using attributes:
 
@@ -78,7 +84,7 @@ To start consumer, run following command:
 
 <!-- markdownlint-disable MD013 -->
 ```bash
-uv run python consumer.py -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/dynamic_limits"
+uv run python consumer.py -f example.ini -t "shellies/Shelly3EM-Main-Switchboard-C/emeter/0/dynamic_limits"
 ```
 <!-- markdownlint-enable MD013 -->
 
