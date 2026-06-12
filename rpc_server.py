@@ -231,7 +231,7 @@ class RpcOutlierDetector:
             "level_low": thresh_low,
         }
 
-    def dump_to_file(self, x: dict, f: IO[str]) -> None:  # pragma: no cover
+    def dump_to_file(self, x: dict, f: IO[str]) -> None:
         """Serialize a result dictionary as JSON and append it to a file."""
         print(json.dumps(x), file=f)
 
@@ -322,40 +322,50 @@ class RpcOutlierDetector:
         config: FileClient | MQTTClient | KafkaClient | PulsarClient,
         topics: list,
         detector: Stream,
+        out_topics: list[str] | str | None = None,
     ) -> Stream:
         """Get the data sink based on the provided configuration.
 
         Args:
             config (dict): The configuration dictionary.
-            topics (list): The topics to subscribe to.
+            topics (list): The input topics the detector subscribes to.
             detector (streamz.core.map): Upstream streamz pipeline.
+            out_topics (list | str | None): Configured output topic names.
+                When provided, the first entry names the sink topic and the
+                common prefix of all entries is used as the MQTT topic
+                prefix; otherwise both are derived from ``topics``.
 
         Returns:
             streamz.core.map: streamz pipeline with sink
 
         """
-        prefix: str = common_prefix(topics)
-        topic: str = f"{prefix}dynamic_limits"
+        if isinstance(out_topics, str):
+            out_topics = [out_topics] if out_topics else []
+        out_topics_: list[str] = [t for t in out_topics or [] if t]
+        if out_topics_:
+            prefix: str = common_prefix(list(out_topics_))
+            topic: str = out_topics_[0]
+        else:
+            prefix = common_prefix(topics)
+            topic = f"{prefix}dynamic_limits"
         logger.info("Sinking to '%s'\n", topic)
         if istypedinstance(config, FileClient):
             output_path = Path(config.get("output", ""))
             f = output_path.open("a")
             _exit_stack.callback(f.close)
             detector.sink(self.dump_to_file, f)
-        elif istypedinstance(config, MQTTClient):  # pragma: no cover
+        elif istypedinstance(config, MQTTClient):
             detector.to_mqtt(
                 **config,
                 topic=prefix,
                 publish_kwargs={"retain": True},
             )
-        # TODO(MarekWadinger): add coverage test
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/61
-        elif istypedinstance(config, KafkaClient):  # pragma: no cover
+        elif istypedinstance(config, KafkaClient):
             detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(
                 topic,
                 config,
             )
-        elif istypedinstance(config, PulsarClient):  # pragma: no cover
+        elif istypedinstance(config, PulsarClient):
             if not _PULSAR_AVAILABLE:
                 msg = "pulsar-client is not installed"
                 raise RuntimeError(msg)
@@ -388,10 +398,10 @@ class RpcOutlierDetector:
             source: Streamz source stream.
             detector: Streamz pipeline terminating at a sink.
             debug: When True, replay a small CSV batch instead of streaming.
+                Only valid with a file client; ``start`` rejects the
+                combination of debug mode and a remote broker upfront.
 
         """
-        # TODO(MarekWadinger): handle combination of debug and remote broker
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/62
         if debug and istypedinstance(config, FileClient):
             logger.info("=== Debugging started... ===")
             data = pd.read_csv(cast("FileClient", config)["path"], index_col=0)
@@ -436,15 +446,24 @@ class RpcOutlierDetector:
                 ``recovery_path``.
             email: Optional email alert configuration.
 
+        Raises:
+            ValueError: If debug mode is requested with a remote broker
+                configuration; debug replays a CSV file and therefore
+                requires a file client.
+
         """
         recovery_path = setup.get("recovery_path", "")
         key_path = setup.get("key_path", "")
         debug = setup.get("debug", False)
+        if debug and not istypedinstance(client, FileClient):
+            msg = (
+                "Debug mode replays a CSV file and requires a file "
+                "client; got a remote broker configuration instead."
+            )
+            raise ValueError(msg)
 
         in_topics = io.get("in_topics", [])
-        # TODO(MarekWadinger): use out_topics
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/63
-        _ = io.get("out_topics", None)
+        out_topics = io.get("out_topics", None)
 
         threshold, t_e, t_a, t_g = expand_model_params(model_params)
 
@@ -482,7 +501,7 @@ class RpcOutlierDetector:
                 .map(encrypt_data, sender)
                 .map(decode_data)
             )
-        detector = self.get_sink(client, in_topics, detector)
+        detector = self.get_sink(client, in_topics, detector, out_topics)
         if email is not None and email.get("sender_email") is not None:
             email_client = EmailClient(**email)
             detector.sliding_window(2).sink(
