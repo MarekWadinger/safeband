@@ -328,9 +328,11 @@ class RpcOutlierDetector:
                 topics=topics,
             ).filter(_filt, topics)
         elif istypedinstance(config, KafkaClient):
+            # "detection_service" is only a default: a user-supplied
+            # group.id in the config must win.
             source = Stream.from_kafka(
                 topics,
-                {**config, "group.id": "detection_service"},
+                {"group.id": "detection_service", **config},
             )
             self._raw_source = source
         elif istypedinstance(config, PulsarClient):

@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,6 +12,9 @@ sys.path.insert(1, str(Path(__file__).parent.parent))
 
 import rpc_server
 from rpc_server import RpcOutlierDetector
+
+if TYPE_CHECKING:
+    from functions.typing_extras import KafkaClient
 
 
 class TestGetSourcePulsar:
@@ -54,6 +58,57 @@ class TestGetSourcePulsar:
                 ["topic_a"],
                 debug=False,
             )
+
+
+class TestGetSourceKafka:
+    """The Kafka group.id default must not clobber user configuration."""
+
+    def test_kafka_source_user_group_id_wins(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A user-supplied group.id is passed through unchanged."""
+        sentinel = Stream()
+        from_kafka = MagicMock(return_value=sentinel)
+        monkeypatch.setattr(Stream, "from_kafka", from_kafka)
+
+        # The "group.id" key is extra w.r.t. the KafkaClient TypedDict,
+        # mirroring how confluent-kafka options arrive from config files.
+        config = cast(
+            "KafkaClient",
+            {"bootstrap_servers": "localhost:9092", "group.id": "my_group"},
+        )
+        source = RpcOutlierDetector().get_source(
+            config,
+            ["topic_a"],
+            debug=False,
+        )
+
+        from_kafka.assert_called_once_with(
+            ["topic_a"],
+            {
+                "bootstrap_servers": "localhost:9092",
+                "group.id": "my_group",
+            },
+        )
+        assert source is sentinel
+
+    def test_kafka_source_no_group_id_gets_default(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Without a configured group.id, the service default applies."""
+        from_kafka = MagicMock(return_value=Stream())
+        monkeypatch.setattr(Stream, "from_kafka", from_kafka)
+
+        RpcOutlierDetector().get_source(
+            {"bootstrap_servers": "localhost:9092"},
+            ["topic_a"],
+            debug=False,
+        )
+
+        config = from_kafka.call_args[0][1]
+        assert config["group.id"] == "detection_service"
 
 
 class TestRawSourceStopDetection:
