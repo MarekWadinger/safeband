@@ -1,16 +1,21 @@
 """Tests for the configuration validation in RpcOutlierDetector.start."""
 
+import datetime as dt
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import IO, Any
 
 import pytest
 from pandas import Timedelta
+from river import proba, utils
 from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
+from functions.anomaly import GaussianScorer
+from functions.model_persistence import save_model
 from rpc_server import RpcOutlierDetector
 
 
@@ -129,6 +134,75 @@ class TestStartEmailWithEncryption:
             # Encrypted records carry string payloads; the email branch
             # must compute on plaintext anomaly flags.
             assert isinstance(x["anomaly"], int)
+
+
+class TestStartRecoveredModelParams:
+    """A recovered model must not silently ignore the current config."""
+
+    @staticmethod
+    def _save_recovery_model(recovery: Path, threshold: float) -> None:
+        day = dt.timedelta(days=1)
+        model = GaussianScorer(
+            utils.TimeRolling(proba.Gaussian(), period=day),
+            threshold=threshold,
+            grace_period=day,
+            t_a=day,
+        )
+        save_model(str(recovery), ["plant/a"], model)
+
+    def _start(self, tmp_path: Path, recovery: Path) -> None:
+        RpcOutlierDetector().start(
+            {"path": "unused.csv", "output": str(tmp_path / "out.json")},
+            io={"in_topics": ["plant/a"], "out_topics": None},
+            model_params={
+                "threshold": 0.99735,
+                "t_e": Timedelta("1d"),
+                "t_a": Timedelta("1d"),
+                "t_g": Timedelta("1d"),
+            },
+            setup={"debug": True, "recovery_path": str(recovery)},
+        )
+
+    def test_start_recovered_params_mismatch_warns(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A threshold differing from the config is reported loudly."""
+        recovery = tmp_path / "recovery"
+        self._save_recovery_model(recovery, threshold=0.5)
+        monkeypatch.setattr(
+            RpcOutlierDetector,
+            "run",
+            lambda *_args, **_kwargs: None,
+        )
+
+        with caplog.at_level(logging.WARNING, logger="rpc_server"):
+            self._start(tmp_path, recovery)
+
+        assert "threshold" in caplog.text
+        assert "differs from configured" in caplog.text
+
+    def test_start_recovered_params_match_no_warning(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A recovered model matching the config stays silent."""
+        recovery = tmp_path / "recovery"
+        self._save_recovery_model(recovery, threshold=0.99735)
+        monkeypatch.setattr(
+            RpcOutlierDetector,
+            "run",
+            lambda *_args, **_kwargs: None,
+        )
+
+        with caplog.at_level(logging.WARNING, logger="rpc_server"):
+            self._start(tmp_path, recovery)
+
+        assert "differs from configured" not in caplog.text
 
 
 class TestStartClosesFiles:

@@ -279,6 +279,39 @@ class RpcOutlierDetector:
                 xs[1],
             )
 
+    def _warn_on_param_mismatch(
+        self,
+        model: GaussianScorer,
+        threshold: float,
+        t_e: dt.timedelta,
+        t_a: dt.timedelta,
+        t_g: dt.timedelta,
+    ) -> None:
+        """Warn when a recovered model diverges from the configuration.
+
+        A recovery pickle restores the model exactly as saved, so edits
+        to ``threshold`` / ``t_e`` / ``t_a`` / ``t_g`` in the config are
+        silently ignored while a recovery file exists. Make that
+        visible instead of letting the config lie to the operator.
+        """
+        configured = {
+            "threshold": threshold,
+            "t_e": t_e,
+            "t_a": t_a,
+            "grace_period": t_g,
+        }
+        for name, want in configured.items():
+            have = getattr(model, name, None)
+            if have != want:
+                logger.warning(
+                    "Recovered model %s=%r differs from configured %r; "
+                    "the recovered value stays in effect. Delete the "
+                    "recovery file to apply the new configuration.",
+                    name,
+                    have,
+                    want,
+                )
+
     def get_source(
         self,
         config: FileClient | MQTTClient | KafkaClient | PulsarClient,
@@ -500,6 +533,8 @@ class RpcOutlierDetector:
 
         model = load_model(recovery_path, in_topics)
 
+        if model is not None:
+            self._warn_on_param_mismatch(model, threshold, t_e, t_a, t_g)
         if model is None:
             if len(in_topics) > 1:
                 obj = MultivariateGaussian()

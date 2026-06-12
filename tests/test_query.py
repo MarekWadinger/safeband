@@ -176,3 +176,34 @@ class TestModelPresistence:
 
         assert model == load_model(self.path, self.topics)
         assert load_model(self.path, ["bad_topics"]) is None
+
+    def test_save_model_many_files_prunes_to_keep_last(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Saving keeps only the newest keep_last recovery pickles."""
+        prefix = f"model_{common_prefix(self.topics)}"
+        for i in range(6):
+            (tmp_path / f"{prefix}_20240101-00000{i}.pkl").touch()
+
+        save_model(str(tmp_path), self.topics, {"model": 1}, keep_last=3)
+
+        remaining = sorted(tmp_path.glob(f"{prefix}_*.pkl"))
+        assert len(remaining) == 3
+        # The two newest pre-existing files plus the just-saved one.
+        names = [p.name for p in remaining]
+        assert f"{prefix}_20240101-000004.pkl" in names
+        assert f"{prefix}_20240101-000005.pkl" in names
+
+    def test_save_model_keep_last_zero_disables_pruning(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A non-positive keep_last leaves every recovery file alone."""
+        prefix = f"model_{common_prefix(self.topics)}"
+        for i in range(3):
+            (tmp_path / f"{prefix}_20240101-00000{i}.pkl").touch()
+
+        save_model(str(tmp_path), self.topics, {"model": 1}, keep_last=0)
+
+        assert len(list(tmp_path.glob(f"{prefix}_*.pkl"))) == 4
