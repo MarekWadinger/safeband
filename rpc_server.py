@@ -158,43 +158,59 @@ class RpcOutlierDetector:
             topics: Feature names to extract from the input.
 
         Returns:
-            dict: Normalized record with keys ``time`` and ``data``.
+            dict | None: Normalized record with keys ``time`` and ``data``,
+            or ``None`` when the input type is unrecognized or a value
+            cannot be parsed as a float.
 
         """
+        result: dict | None = None
         if isinstance(x, pd.Series):
             if isinstance(x.name, pd.Timestamp):
                 t = x.name.tz_localize(None)
             else:
                 t = pd.Timestamp.utcnow().tz_localize(None)
-            return {"time": t, "data": x[topics].to_dict()}
-        if isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
-            return {
+            result = {"time": t, "data": x[topics].to_dict()}
+        elif isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
+            result = {
                 "time": cast("pd.Timestamp", x[0]).tz_localize(None),
                 "data": x[1][topics].to_dict(),
             }
-        if isinstance(x, dict):
-            return {
-                "time": dt.datetime.now(dt.UTC).replace(microsecond=0),
-                "data": {
-                    k: float(cast("float | str | bytes", v))
-                    for k, v in x.items()
-                    if k in topics
-                },
-            }
-        if isinstance(x, MQTTMessage):
-            return {
-                "time": dt.datetime.fromtimestamp(
-                    x.timestamp,
-                    tz=dt.UTC,
-                ).replace(microsecond=0),
-                "data": {x.topic.split("/")[-1]: float(x.payload)},
-            }
-        if isinstance(x, bytes):
-            return {
-                "time": dt.datetime.now(dt.UTC).replace(microsecond=0),
-                "data": {topics[0]: float(x.decode("utf-8"))},
-            }
-        return None
+        else:
+            # Timestamps are tz-naive UTC: the rolling model and the
+            # consumer's strptime format both reject tz-aware values.
+            try:
+                if isinstance(x, dict):
+                    result = {
+                        "time": dt.datetime.now(dt.UTC).replace(
+                            microsecond=0,
+                            tzinfo=None,
+                        ),
+                        "data": {
+                            k: float(cast("float | str | bytes", v))
+                            for k, v in x.items()
+                            if k in topics
+                        },
+                    }
+                elif isinstance(x, MQTTMessage):
+                    result = {
+                        "time": dt.datetime.fromtimestamp(
+                            x.timestamp,
+                            tz=dt.UTC,
+                        ).replace(microsecond=0, tzinfo=None),
+                        "data": {x.topic.split("/")[-1]: float(x.payload)},
+                    }
+                elif isinstance(x, bytes):
+                    result = {
+                        "time": dt.datetime.now(dt.UTC).replace(
+                            microsecond=0,
+                            tzinfo=None,
+                        ),
+                        "data": {topics[0]: float(x.decode("utf-8"))},
+                    }
+            except (ValueError, TypeError):
+                logger.warning("Skipping unparsable message: %r", x)
+                result = None
+        return result
 
     def fit_transform(self, x: dict, model: GaussianScorer) -> dict:
         """Apply the anomaly detection model and return a serialisable result.
@@ -489,9 +505,10 @@ class RpcOutlierDetector:
 
         source = self.get_source(client, in_topics, debug)
 
-        detector = source.map(self.preprocess, in_topics).map(
-            self.fit_transform,
-            model,
+        detector = (
+            source.map(self.preprocess, in_topics)
+            .filter(lambda x: x is not None)
+            .map(self.fit_transform, model)
         )
 
         if key_path:

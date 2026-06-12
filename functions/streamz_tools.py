@@ -12,7 +12,17 @@ logger = logging.getLogger(__name__)
 
 @Stream.register_api(attribute_name="map")
 class MapStream(Stream):
-    """Stream operator that applies a function to each upstream element."""
+    """Stream operator that applies a function to each upstream element.
+
+    Args:
+        upstream (Stream): Upstream stream.
+        func (Callable): Function applied to each element.
+        *args: Extra positional arguments passed to ``func``.
+        on_error (str): Either ``"skip"`` (default) to log and drop a
+            message whose processing raised, or ``"raise"`` to stop the
+            stream and re-raise the exception.
+        **kwargs: Extra keyword arguments passed to ``func``.
+    """
 
     def __init__(
         self,
@@ -25,6 +35,11 @@ class MapStream(Stream):
         self.func = func
         # this is one of a few stream specific kwargs
         stream_name = kwargs.pop("stream_name", None)
+        on_error = kwargs.pop("on_error", "skip")
+        if on_error not in ("skip", "raise"):
+            msg = f"on_error must be 'skip' or 'raise', got {on_error!r}"
+            raise ValueError(msg)
+        self.on_error = on_error
         self.kwargs = kwargs
         self.args = args
 
@@ -36,15 +51,23 @@ class MapStream(Stream):
         who: Stream | None = None,
         metadata: list | None = None,
     ) -> object:
-        """Apply func to x and emit the result, stop stream on error."""
+        """Apply func to x and emit the result, handling errors per on_error.
+
+        With ``on_error="skip"`` a failing message is logged and dropped so
+        one bad payload cannot take down the service; with ``"raise"`` the
+        stream is stopped and the exception propagates.
+        """
         del who  # unused; required by the streamz Stream.update API
         try:
             result = self.func(x, *self.args, **self.kwargs)
         except Exception:
-            self.stop()
-            self.destroy()
-            logger.exception("Stream update failed")
-            raise
+            if self.on_error == "raise":
+                self.stop()
+                self.destroy()
+                logger.exception("Stream update failed")
+                raise
+            logger.exception("Stream update failed; dropping message")
+            return None
         else:
             return self._emit(result, metadata=metadata)
 
