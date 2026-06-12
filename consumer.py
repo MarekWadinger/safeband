@@ -85,7 +85,9 @@ def query_file(config: FileClient, **kwargs: HumanRSA | None) -> None:
 
     # Convert the time strings to datetime objects
     for i, item in enumerate(data):
-        if receiver is not None and not item["time"].isascii():
+        # Encrypted entries are detected by their signature field rather
+        # than by guessing from the ciphertext's character set.
+        if receiver is not None and "signature" in item:
             data[i] = cast(
                 "dict[str, Any]",
                 verify_and_decrypt_data(item, receiver),

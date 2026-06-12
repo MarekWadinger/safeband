@@ -305,7 +305,6 @@ def _func(previous_state: dict, new_msg: MQTTMessage, topics: list) -> dict:
     {'foo': b'2.'}
 
     """
-    MQTTMessage()
     if new_msg.topic in topics:
         if not _filt(previous_state, topics):
             previous_state[new_msg.topic] = new_msg.payload

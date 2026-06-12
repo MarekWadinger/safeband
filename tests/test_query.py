@@ -6,6 +6,7 @@ import logging
 import re
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import paho.mqtt.client as mqtt
 import pytest
@@ -120,6 +121,38 @@ class TestConsumerPlaintext:
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(config, receiver=None)
 
+        assert "2022, 1, 1, 0, 0" in caplog.text
+
+    def test_query_file_mixed_lines_decrypts_only_signed_items(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Only items carrying a signature field are decrypted."""
+        output = tmp_path / "out.json"
+        lines = [
+            {"time": "2022-01-01 00:00:00"},
+            {"time": "2022-01-01 00:00:01", "signature": "sig"},
+        ]
+        output.write_text(
+            "\n".join(json.dumps(x) for x in lines) + "\n",
+        )
+        decrypt = MagicMock(
+            return_value={"time": "2022-01-01 00:00:02"},
+        )
+        monkeypatch.setattr("consumer.verify_and_decrypt_data", decrypt)
+        receiver = HumanRSA()
+        receiver.generate()
+
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            query_file(
+                {"path": "", "output": str(output)},
+                receiver=receiver,
+            )
+
+        decrypt.assert_called_once()
+        assert decrypt.call_args[0][0]["signature"] == "sig"
         assert "2022, 1, 1, 0, 0" in caplog.text
 
     def test_on_message_receiver_none_logs_plaintext(
