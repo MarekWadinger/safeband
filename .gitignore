@@ -27,6 +27,11 @@ venv.bak/
 # VSC
 .vscode/
 
+# Secrets / keys — never commit (explicit belt-and-suspenders over the .* rule)
+.security/
+*.pem
+*_pem
+
 # Misc
 paho*
 
