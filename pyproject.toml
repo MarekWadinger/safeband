@@ -1,6 +1,6 @@
 [project]
 name = "adaptive-interpretable-ad"
-version = "0.1.0"
+version = "2.0.0"
 description = "Online outlier detection service for industrial SCADA-based infrastructures for low-latency detection and change-point adaptation."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -23,6 +23,14 @@ dependencies = [
 
 [tool.uv.sources]
 river = { git = "https://github.com/MarekWadinger/river.git" }
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "pep621"
+# Existing tags are bare versions (1.0.0 = PC2023 paper, 2.0.0 = ESwA
+# paper), so future bumps keep the same format.
+tag_format = "$version"
+update_changelog_on_bump = true
 
 [dependency-groups]
 build = [
