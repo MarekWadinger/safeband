@@ -1,3 +1,29 @@
+## 2.3.0 (2026-06-12)
+
+### Feat
+
+- benchmark AID on TSB-AD with VUS-PR protocol
+- classify sensor fault types (bias, drift, accuracy loss, freezing)
+- clip dynamic limits to user-provided physical bounds
+- add Reunanen et al. 2020 online autoencoder baseline
+
+### Fix
+
+- preserve numeric types through the encryption round trip
+- warn when a recovered model ignores current config, prune pickles
+- let a user-supplied Kafka group.id override the service default
+- reconnect and retry once when an MQTT publish reports failure
+- poll the raw source node for shutdown instead of upstream probing
+- attach email alerts to the plaintext node before encryption
+- skip decryption in consumer when no key is configured
+- flush file sink per line and close files on every shutdown
+- survive malformed messages instead of killing the service
+
+### Refactor
+
+- extract detector protection into AdaptiveThresholdFilter
+- expose per-signal scores, drift flag, and limits as public API
+
 ## 2.2.4 (2026-06-12)
 
 ### Fix
