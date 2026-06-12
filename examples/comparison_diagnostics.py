@@ -65,8 +65,7 @@ def demo_fault_diagnosis(
     def sample() -> dict[str, float]:
         latent = rng_demo.standard_normal()
         return {
-            s: 0.6 * latent + 0.8 * rng_demo.standard_normal()
-            for s in signals
+            s: 0.6 * latent + 0.8 * rng_demo.standard_normal() for s in signals
         }
 
     scorer = ConditionalGaussianScorer(
