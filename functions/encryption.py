@@ -346,9 +346,6 @@ def verify_signature(
             signature,
             key,
         )
-    #     return all(
-    #         verify_signature(v, signature, key) for v in data.values()
-    #     )
     if isinstance(data, str):
         return key.verify(data.encode("utf-8"), signature)
     return key.verify(data, signature)

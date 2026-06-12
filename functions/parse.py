@@ -245,8 +245,6 @@ def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
     if isinstance(type_, (type, GenericAlias)):
         return type_
     if hasattr(type_, "__args__"):
-        # if any([t is type(None) for t in type_.__args__]):
-        #     return type(None)
         if "NotRequired" in str(type_):
             return str
         return get_valid_type(cast("tuple[type, ...]", type_.__args__)[0])

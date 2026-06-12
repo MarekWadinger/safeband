@@ -11,9 +11,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# import matplotlib as mpl
-# mpl.use('macOsX')
-
 plt.rcParams.update(
     {
         "text.usetex": False,
@@ -402,10 +399,6 @@ def plot_limits_grid_(
     signal_anomaly: pd.Series | None = None,
     file_name: str | None = None,
     save: bool = True,
-    # anomalies: pd.Series,
-    # changepoints: Union[pd.Series, None] = None,
-    # samplings: Union[pd.Series, None] = None,
-    # ground_truth: Union[pd.Series, None] = None,
     **kwargs: Unpack[GridKwargs],
 ) -> None:
     """Plot a grid of signals with limits, anomalies, and event bars.
@@ -433,7 +426,6 @@ def plot_limits_grid_(
         "#bcbd22",
         "#17becf",
     ]
-    # file_name = make_name(ser.name, window, file_name)
 
     n_rows = len(df.columns)
     # Count number of non nan args for subplots
@@ -529,7 +521,7 @@ def plot_limits_grid_(
         # Kokam module - 1st case study - second
         if a["2023-08-23 16:00":"2023-08-23 18:00"].any():
             axins1 = ax.inset_axes(
-                [0.45, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[]
+                (0.45, 0.1, 0.20, 0.40), xticklabels=[], yticklabels=[]
             )
             axins1.plot(ser_["2023-08-23 16:00":"2023-08-23 18:00"])
             axins1.scatter(
@@ -544,7 +536,7 @@ def plot_limits_grid_(
             ax.indicate_inset_zoom(axins1, edgecolor="black")
         if a["2023-08-24 17:00":"2023-08-24 20:00"].any():
             axins1 = ax.inset_axes(
-                [0.8, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[]
+                (0.8, 0.1, 0.20, 0.40), xticklabels=[], yticklabels=[]
             )
             axins1.plot(ser_["2023-08-24 17:00":"2023-08-24 20:00"])
             axins1.scatter(
@@ -561,7 +553,7 @@ def plot_limits_grid_(
         # Kokam module - 2nd case study - second
         if a["2023-08-27 01:00":"2023-08-27 06:00"].any():
             axins1 = ax.inset_axes(
-                [0.2, 0.6, 0.20, 0.40], xticklabels=[], yticklabels=[]
+                (0.2, 0.6, 0.20, 0.40), xticklabels=[], yticklabels=[]
             )
             axins1.plot(ser_["2023-08-27 01:00":"2023-08-27 06:00"])
             axins1.scatter(
@@ -576,7 +568,7 @@ def plot_limits_grid_(
             ax.indicate_inset_zoom(axins1, edgecolor="black")
         if a["2023-08-28 03:00":"2023-08-28 05:00"].any():
             axins1 = ax.inset_axes(
-                [0.7, 0.6, 0.20, 0.40], xticklabels=[], yticklabels=[]
+                (0.7, 0.6, 0.20, 0.40), xticklabels=[], yticklabels=[]
             )
             axins1.plot(ser_["2023-08-28 03:00":"2023-08-28 05:00"])
             axins1.scatter(
@@ -591,18 +583,6 @@ def plot_limits_grid_(
             ax.indicate_inset_zoom(axins1, edgecolor="black")
 
     plot_anomaly_bars(args, colors, axs)
-
-    # # TERRA - 1st case study
-    # axins1 = axs[0].inset_axes(
-    #     [0.05, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[])
-    # axins1.plot(ser_['2022-03-06 14:00':'2022-03-06 15:00'])
-    # axins1.grid(False)
-    # axs[0].indicate_inset_zoom(axins1, edgecolor="black")
-    # axins1 = axs[0].inset_axes(
-    #     [0.6, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[])
-    # axins1.plot(ser_['2022-03-12 21:00':'2022-03-12 22:00'])
-    # axins1.grid(False)
-    # axs[0].indicate_inset_zoom(axins1, edgecolor="black")
 
     axs[0].legend(
         bbox_to_anchor=(0.0, 1.05, 1.0, 0.102),

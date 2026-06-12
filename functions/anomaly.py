@@ -330,7 +330,6 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     def _drift_detected(self) -> bool:
         len_ = len(self.buffer)  # type: ignore
         if len_ > 0:
-            # return sum(self.buffer) / len_ > 1 - self.alpha
             return sum(self.buffer) / len_ > (self.threshold)  # type: ignore
         return False
 
@@ -430,10 +429,10 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             ]
         # TODO(MarekWadinger): consider strict process boundaries
         # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/56
-        # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
-        # TODO(MarekWadinger): following code changes the limits given by
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/56
-        #  former
+        # A strict variant would take the inverse normal CDF at
+        # sigma / 2 + 0.5 with the fitted location and scale; the code
+        # below instead derives the limits from the (log-)threshold,
+        # which changes them relative to that former behavior.
         if not hasattr(self, "_feature_dim_in"):
             _feature_dim_in = 1
         else:

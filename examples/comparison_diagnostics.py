@@ -103,7 +103,6 @@ for i in range(len(df_meta)):
     df_y.loc[start:end, "rc"] = df_meta.root_cause[i]
     df_y.loc[start:end, "affected"] = ast.literal_eval(df_meta.affected[i])[0]
 
-# df["is_anomaly"] = df_y.category.replace({None: ""})
 df["is_anomaly"] = df_y.rc.replace({None: ""})
 
 datasets = [
