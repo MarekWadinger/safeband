@@ -123,6 +123,126 @@ class TestUnscorableInput:
         assert scorer.get_root_cause() is None
 
 
+class TestScoresOne:
+    """Public per-signal conditional scores keyed by feature name."""
+
+    def test_keys_match_input_features(self) -> None:
+        """scores_one keys follow the input observation's features."""
+        scorer = make_conditional_scorer()
+        x = {"a": 0.9, "b": 0.1}
+        assert list(scorer.scores_one(x)) == list(x)
+
+    def test_values_match_positional_scores(self) -> None:
+        """scores_one values equal _scores_one in positional order."""
+        scorer = make_conditional_scorer()
+        x = {"a": 0.9, "b": 0.1}
+        assert list(scorer.scores_one(x).values()) == scorer._scores_one(x)
+
+    def test_unfitted_scorer_returns_neutral_scores(self) -> None:
+        """Before any learning, every feature scores the neutral 0.5."""
+        scorer = ConditionalGaussianScorer(
+            Rolling(MultivariateGaussian(seed=42), 5),
+            grace_period=2,
+            protect_anomaly_detector=False,
+        )
+        assert scorer.scores_one({"a": 1.0, "b": 2.0}) == {
+            "a": 0.5,
+            "b": 0.5,
+        }
+
+
+class TestRankRootCauses:
+    """Ranked root-cause candidates beyond the argmax diagnostic."""
+
+    def test_ordering_by_deviation_from_center(self) -> None:
+        """Features are sorted by |score - 0.5| in decreasing order."""
+        scorer = make_conditional_scorer()
+        x = {"a": 0.9, "b": 0.1}
+        scores = scorer.scores_one(x)
+        expected = sorted(
+            scores,
+            key=lambda name: abs(scores[name] - 0.5),
+            reverse=True,
+        )
+        assert scorer.rank_root_causes(x) == expected
+
+    def test_top_k_truncates_ranking(self) -> None:
+        """A small k truncates the ranking; oversized k returns all."""
+        scorer = make_conditional_scorer()
+        x = {"a": 0.9, "b": 0.1}
+        full = scorer.rank_root_causes(x)
+        assert scorer.rank_root_causes(x, k=1) == full[:1]
+        assert scorer.rank_root_causes(x, k=10) == full
+
+    def test_first_ranked_matches_get_root_cause(self) -> None:
+        """Top-ranked feature agrees with the argmax-based root cause."""
+        scorer = make_conditional_scorer()
+        x = {"a": 0.4, "b": 5.0}
+        assert scorer.predict_one(x) == 1
+        assert scorer.rank_root_causes(x, k=1) == [scorer.get_root_cause()]
+
+
+class TestDriftDetected:
+    """Public regime-change indicator on the protected scorer."""
+
+    def test_visible_around_changepoint(self) -> None:
+        """drift_detected flips once anomalies dominate the buffer."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2)
+        for value in [1.0, 1.1, 0.9]:
+            scorer.learn_one(value)
+        assert scorer.drift_detected is False
+        for _ in range(3):
+            scorer.learn_one(10.0)
+        assert scorer.drift_detected is True
+
+    def test_matches_internal_signal(self) -> None:
+        """The public property wraps the internal drift method."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2)
+        for value in [1.0, 1.1, 0.9, 10.0, 10.0, 10.0]:
+            scorer.learn_one(value)
+            assert scorer.drift_detected == scorer._drift_detected()
+
+    def test_false_without_protection(self) -> None:
+        """An unprotected scorer keeps no buffer and reports no drift."""
+        scorer = GaussianScorer(
+            Rolling(Gaussian(), 3),
+            grace_period=2,
+            protect_anomaly_detector=False,
+        )
+        scorer.learn_one(1.0)
+        assert scorer.drift_detected is False
+
+
+class TestGetLimits:
+    """Public per-signal dynamic limits keyed by feature name."""
+
+    def test_keys_and_values_match_limit_one(self) -> None:
+        """get_limits regroups limit_one's (upper, lower) per feature."""
+        scorer = make_conditional_scorer()
+        x = {"a": 0.4, "b": 0.5}
+        ths, tls = scorer.limit_one(x)
+        limits = scorer.get_limits(x)
+        assert set(limits) == set(ths) == set(tls)
+        for key, (lower, upper) in limits.items():
+            assert lower == tls[key]
+            assert upper == ths[key]
+            assert lower < upper
+
+    def test_unfitted_scorer_returns_nan_limits(self) -> None:
+        """Before any learning, limits are NaN for every feature."""
+        scorer = ConditionalGaussianScorer(
+            Rolling(MultivariateGaussian(seed=42), 5),
+            grace_period=2,
+            protect_anomaly_detector=False,
+        )
+        limits = scorer.get_limits({"a": 1.0, "b": 2.0})
+        assert set(limits) == {"a", "b"}
+        assert all(
+            math.isnan(lower) and math.isnan(upper)
+            for lower, upper in limits.values()
+        )
+
+
 class TestScorerInPipeline:
     """The scorers keep consistent state inside a river Pipeline."""
 

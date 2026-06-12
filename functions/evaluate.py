@@ -129,7 +129,7 @@ def progressive_val_predict(
 
         # DETECT CHANGE POINTS
         if detect_change:
-            meta["Changepoint"].append(model_._drift_detected())
+            meta["Changepoint"].append(model_.drift_detected)
 
         # UPDATE MODEL
         if hasattr(model, "gaussian") and inspect.signature(

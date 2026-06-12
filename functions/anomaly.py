@@ -345,6 +345,38 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             return sum(self.buffer) / len_ > self.threshold
         return False
 
+    @property
+    def drift_detected(self) -> bool:
+        """Whether the recent anomaly rate indicates a regime change.
+
+        Public wrapper over the internal drift signal — the paper's
+        changepoint ("regime change") diagnostic: ``True`` when the
+        share of anomalies in the protection buffer exceeds the
+        threshold. Always ``False`` when ``protect_anomaly_detector``
+        is disabled, since no buffer is maintained then.
+
+        Examples:
+        --------
+        >>> from river.proba import Gaussian
+        >>> from river.utils import Rolling
+        >>> scorer = GaussianScorer(Rolling(Gaussian(), 3),
+        ...     grace_period=2)
+        >>> for x in [1.0, 1.1, 0.9]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.drift_detected
+        False
+
+        A persistent level shift fills the buffer with anomalies and is
+        reported as drift
+        >>> for x in [10.0, 10.0, 10.0]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.drift_detected
+        True
+        """
+        if not self.protect_anomaly_detector:
+            return False
+        return self._drift_detected()
+
     def n_seen(self) -> timedelta | float:
         """Return the number of observations seen, as count or timedelta."""
         if isinstance(self.grace_period, timedelta) and isinstance(
@@ -703,6 +735,78 @@ class ConditionalGaussianScorer(GaussianScorer):
             return score, idx
         return 0.5, None
 
+    def scores_one(self, x: dict[str, float]) -> dict[str, float]:
+        """Return per-signal conditional CDF scores keyed by feature name.
+
+        Each signal is scored under its Gaussian distribution
+        conditioned on the remaining observed signals — the paper's
+        root-cause isolation diagnostic. Returns the neutral score 0.5
+        for every feature until the covariance estimate is defined.
+
+        Examples:
+        --------
+        >>> from river.utils import Rolling
+        >>> from functions.proba import MultivariateGaussian
+        >>> scorer = ConditionalGaussianScorer(
+        ...     Rolling(MultivariateGaussian(), 3),
+        ...     grace_period=1, protect_anomaly_detector=False)
+        >>> scorer.scores_one({"a": 1., "b": 2.})
+        {'a': 0.5, 'b': 0.5}
+        >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+        ...           {"a": 0.5, "b": 2.}]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.scores_one({"a": 1., "b": 2.})
+        {'a': np.float64(0.841...), 'b': np.float64(0.875...)}
+        """
+        cg = cast("ConditionableDistribution", self.gaussian)
+        if cg.var.shape[0] == 0:
+            return dict.fromkeys(x, 0.5)
+        return dict(zip(x, self._scores_one(x), strict=True))
+
+    def rank_root_causes(
+        self,
+        x: dict[str, float],
+        k: int | None = None,
+    ) -> list[str]:
+        """Return features ranked as root-cause candidates for ``x``.
+
+        Features are sorted by the deviation of their per-signal
+        conditional score from the neutral 0.5 — the same criterion as
+        the internal ``_farthest_from_center`` argmax behind
+        ``get_root_cause`` — extending the paper's root-cause isolation
+        from a single signal to a ranked top-``k``.
+
+        Args:
+            x: Observation keyed by feature name.
+            k: Number of top candidates to return; ``None`` returns
+                all features.
+
+        Returns:
+            Feature names sorted by decreasing deviation from center.
+
+        Examples:
+        --------
+        >>> from river.utils import Rolling
+        >>> from functions.proba import MultivariateGaussian
+        >>> scorer = ConditionalGaussianScorer(
+        ...     Rolling(MultivariateGaussian(), 3),
+        ...     grace_period=1, protect_anomaly_detector=False)
+        >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+        ...           {"a": 0.5, "b": 2.}]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.rank_root_causes({"a": 1., "b": 2.})
+        ['b', 'a']
+        >>> scorer.rank_root_causes({"a": 1., "b": 2.}, k=1)
+        ['b']
+        """
+        scores = self.scores_one(x)
+        ranked = sorted(
+            scores,
+            key=lambda name: abs(scores[name] - 0.5),
+            reverse=True,
+        )
+        return ranked if k is None else ranked[:k]
+
     def get_root_cause(self) -> str | int | None:
         """Return feature name identified as root cause of the last anomaly."""
         return self.root_cause
@@ -781,3 +885,31 @@ class ConditionalGaussianScorer(GaussianScorer):
                 )
 
         return ths, tls
+
+    def get_limits(
+        self,
+        x: dict[str, float] | None = None,
+    ) -> dict[str, tuple[float, float]]:
+        """Return per-signal (lower, upper) limits keyed by feature name.
+
+        Public view of the dynamic operating limits computed from the
+        conditional moments — the paper's dynamic signal limits
+        diagnostic. The values agree with ``limit_one``, which returns
+        the same limits grouped as (upper, lower) dicts instead.
+
+        Examples:
+        --------
+        >>> from river.utils import Rolling
+        >>> from functions.proba import MultivariateGaussian
+        >>> scorer = ConditionalGaussianScorer(
+        ...     Rolling(MultivariateGaussian(), 3),
+        ...     grace_period=1, protect_anomaly_detector=False)
+        >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+        ...           {"a": 0.5, "b": 2.}]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.get_limits({"a": 1., "b": 2.})
+        {'a': (np.float64(-0.001...), np.float64(1.501...)),
+         'b': (np.float64(0.198...), np.float64(2.801...))}
+        """
+        ths, tls = self.limit_one(x)
+        return {key: (tls[key], ths[key]) for key in ths}
