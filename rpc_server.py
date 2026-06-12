@@ -138,6 +138,10 @@ class RpcOutlierDetector:
     def __init__(self) -> None:
         """Initialize the detector in a stopped state."""
         self.stopped = True
+        # Raw broker/source node captured by get_source so run() can
+        # poll its ``stopped`` flag regardless of how the pipeline wraps
+        # the source (e.g. the MQTT accumulate/filter chain).
+        self._raw_source: Stream | None = None
 
     def preprocess(
         self,
@@ -308,11 +312,16 @@ class RpcOutlierDetector:
                 data = pd.read_csv(config.get("path", ""), index_col=0)
                 data.index = pd.to_datetime(data.index, utc=True)
                 source = Stream.from_iterable(data.iterrows())
+            self._raw_source = source
         elif istypedinstance(config, MQTTClient):
             source = Stream.from_mqtt(
                 **config,
                 topic=[(topic, 0) for topic in topics],
             )
+            # Capture the raw broker node before wrapping: run() polls
+            # its ``stopped`` flag, which the accumulate/filter nodes
+            # below do not expose.
+            self._raw_source = source
             source = source.accumulate(
                 _func,
                 start={},
@@ -323,6 +332,7 @@ class RpcOutlierDetector:
                 topics,
                 {**config, "group.id": "detection_service"},
             )
+            self._raw_source = source
         elif istypedinstance(config, PulsarClient):
             if not _PULSAR_AVAILABLE:
                 msg = "pulsar-client is not installed"
@@ -332,6 +342,7 @@ class RpcOutlierDetector:
                 topics,
                 subscription_name="detection_service",
             )
+            self._raw_source = source
         else:
             msg = f"Wrong client: {config}"
             raise RuntimeError(msg)
@@ -429,18 +440,17 @@ class RpcOutlierDetector:
             for row in data.head().iterrows():
                 source.emit(row)
             logger.info("=== Debugging finished with success... ===")
-        else:  # pragma: no cover
+        else:
             detector.start()
             logger.info("=== Service started ===")
 
-            while True:
-                try:
-                    if source.stopped:
-                        break
-                except AttributeError:
-                    if source.upstreams[0].upstreams[0].stopped:
-                        break
-                time.sleep(2)
+            # Poll the raw source node captured by get_source rather
+            # than probing a hardcoded upstream depth of the pipeline.
+            raw_source = (
+                self._raw_source if self._raw_source is not None else source
+            )
+            while not raw_source.stopped:
+                time.sleep(2)  # pragma: no cover
 
     def start(
         self,

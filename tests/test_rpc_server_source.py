@@ -1,4 +1,4 @@
-"""Tests for the Pulsar transport branch of RpcOutlierDetector.get_source."""
+"""Tests for transport wiring and stop detection in RpcOutlierDetector."""
 
 import sys
 from pathlib import Path
@@ -54,3 +54,52 @@ class TestGetSourcePulsar:
                 ["topic_a"],
                 debug=False,
             )
+
+
+class TestRawSourceStopDetection:
+    """run() polls the raw source node captured by get_source."""
+
+    def test_get_source_mqtt_wrapped_keeps_raw_reference(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The raw MQTT node is kept even though the source is wrapped."""
+        raw = Stream()
+        from_mqtt = MagicMock(return_value=raw)
+        monkeypatch.setattr(Stream, "from_mqtt", from_mqtt)
+        detector = RpcOutlierDetector()
+
+        source = detector.get_source(
+            {"host": "broker", "port": 1883},
+            ["topic_a"],
+            debug=False,
+        )
+
+        assert detector._raw_source is raw
+        # The returned pipeline node is the accumulate/filter wrapper.
+        assert source is not raw
+
+    def test_run_raw_source_stopped_returns(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """run() exits via the raw source flag, not upstream probing."""
+        monkeypatch.setattr(
+            rpc_server.time,
+            "sleep",
+            MagicMock(side_effect=AssertionError("should not sleep")),
+        )
+        detector = RpcOutlierDetector()
+        detector._raw_source = MagicMock(stopped=True)
+        pipeline = MagicMock()
+
+        # A bare Stream has no ``stopped`` and no usable upstream chain;
+        # passing it proves run() does not probe the wrapped source.
+        detector.run(
+            {"host": "broker", "port": 1883},
+            Stream(),
+            pipeline,
+            debug=False,
+        )
+
+        pipeline.start.assert_called_once()
