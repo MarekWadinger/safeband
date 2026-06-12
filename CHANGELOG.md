@@ -1,3 +1,9 @@
+## 2.2.4 (2026-06-12)
+
+### Fix
+
+- stop flaky doctest and hanging notebooks from gating CI
+
 ## 2.2.3 (2026-06-12)
 
 ### Fix
