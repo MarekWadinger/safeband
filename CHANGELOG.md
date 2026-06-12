@@ -1,3 +1,17 @@
+## 2.2.2 (2026-06-12)
+
+### Fix
+
+- honor out_topics, reject debug with remote brokers, cover sinks
+- make scorer contracts explicit for edge-case inputs
+- seed multivariate CDF evaluation for reproducible scores
+- confirm MQTT delivery instead of fire-and-forget publishing
+- return first valid type from union type hints
+
+### Refactor
+
+- subclass TimeRolling for buffer length instead of monkey-patching
+
 ## 2.2.1 (2026-06-12)
 
 ### Fix
