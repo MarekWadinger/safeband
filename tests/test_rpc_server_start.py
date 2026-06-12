@@ -5,7 +5,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, ClassVar
 
 import pytest
 from pandas import Timedelta
@@ -15,8 +15,126 @@ from streamz import Stream
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
 from functions.anomaly import GaussianScorer
-from functions.model_persistence import save_model
-from rpc_server import RpcOutlierDetector
+from functions.model_persistence import load_model, save_model
+from functions.typing_extras import ModelConfig
+from rpc_server import RpcOutlierDetector, expand_model_params
+
+
+class TestExpandModelParamsPhysicalLimits:
+    """physical_limits config entries parse into per-signal bounds."""
+
+    BASE: ClassVar[ModelConfig] = {
+        "threshold": 0.99735,
+        "t_e": Timedelta("1d"),
+        "t_a": None,
+        "t_g": None,
+    }
+
+    def test_absent_yields_none(self) -> None:
+        """A configuration without physical_limits parses to None."""
+        *_, limits = expand_model_params(self.BASE)
+        assert limits is None
+
+    def test_json_string_parses_to_bounds(self) -> None:
+        """A JSON object string maps signal names to (low, high) pairs."""
+        *_, limits = expand_model_params(
+            {**self.BASE, "physical_limits": '{"plant/a": [0.0, 100.0]}'},
+        )
+        assert limits == {"plant/a": (0.0, 100.0)}
+
+    def test_mapping_passes_through_coerced(self) -> None:
+        """An already-built mapping is coerced to float tuples."""
+        *_, limits = expand_model_params(
+            {**self.BASE, "physical_limits": {"plant/a": (0, 100)}},
+        )
+        assert limits == {"plant/a": (0.0, 100.0)}
+
+    def test_non_mapping_raises(self) -> None:
+        """A JSON value that is not an object is rejected."""
+        with pytest.raises(TypeError, match="physical_limits"):
+            expand_model_params(
+                {**self.BASE, "physical_limits": "[0.0, 100.0]"},
+            )
+
+    def test_wrong_arity_raises(self) -> None:
+        """Bounds that are not a (low, high) pair are rejected."""
+        with pytest.raises(ValueError, match="physical_limits"):
+            expand_model_params(
+                {**self.BASE, "physical_limits": '{"plant/a": [0.0]}'},
+            )
+
+
+class TestStartWiresPhysicalLimits:
+    """physical_limits from the service config reach the built model."""
+
+    def test_start_univariate_model_receives_bounds(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A single-topic model gets the bounds of its own signal."""
+        recovery = tmp_path / "recovery"
+        monkeypatch.setattr(
+            RpcOutlierDetector,
+            "run",
+            lambda *_args, **_kwargs: None,
+        )
+
+        RpcOutlierDetector().start(
+            {"path": "unused.csv", "output": str(tmp_path / "out.json")},
+            io={"in_topics": ["plant/a"], "out_topics": None},
+            model_params={
+                "threshold": 0.99735,
+                "t_e": Timedelta("1d"),
+                "t_a": Timedelta("1d"),
+                "t_g": Timedelta("1d"),
+                "physical_limits": '{"plant/a": [0.0, 100.0]}',
+            },
+            setup={"debug": True, "recovery_path": str(recovery)},
+        )
+
+        model = load_model(str(recovery), ["plant/a"])
+        assert model is not None
+        assert model.physical_limits == (0.0, 100.0)
+
+    def test_start_recovered_limits_mismatch_warns(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A recovered model without bounds warns when the config has them."""
+        recovery = tmp_path / "recovery"
+        day = dt.timedelta(days=1)
+        model = GaussianScorer(
+            utils.TimeRolling(proba.Gaussian(), period=day),
+            threshold=0.99735,
+            grace_period=day,
+            t_a=day,
+        )
+        save_model(str(recovery), ["plant/a"], model)
+        monkeypatch.setattr(
+            RpcOutlierDetector,
+            "run",
+            lambda *_args, **_kwargs: None,
+        )
+
+        with caplog.at_level(logging.WARNING, logger="rpc_server"):
+            RpcOutlierDetector().start(
+                {"path": "unused.csv", "output": str(tmp_path / "out.json")},
+                io={"in_topics": ["plant/a"], "out_topics": None},
+                model_params={
+                    "threshold": 0.99735,
+                    "t_e": Timedelta("1d"),
+                    "t_a": Timedelta("1d"),
+                    "t_g": Timedelta("1d"),
+                    "physical_limits": '{"plant/a": [0.0, 100.0]}',
+                },
+                setup={"debug": True, "recovery_path": str(recovery)},
+            )
+
+        assert "physical_limits" in caplog.text
+        assert "differs from configured" in caplog.text
 
 
 class TestStartDebugGuard:

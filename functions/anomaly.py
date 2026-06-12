@@ -148,6 +148,13 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         window_size (int or None): Size of the rolling window.
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
+        physical_limits (tuple[float, float] or None): Known static
+        bounds of the modeled signal. Reported dynamic limits are
+        clipped into them, and observations outside them are flagged
+        anomalous even during the grace period.
+        learn_on_physical_violation (bool): Whether physically
+        impossible samples still update the distribution. Defaults to
+        False, excluding them from learning entirely.
 
     Examples:
     --------
@@ -240,7 +247,31 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer.predict_one({"a": -2.160, "b": -1.160})
     0
 
+    Known physical bounds complement the learned envelope, so the
+    dynamic limits "may be used as an addition to static operating
+    limits used by monitoring systems in SCADA" (ESwA 2023). Bounds
+    must satisfy low < high
+    >>> GaussianScorer(Gaussian(), physical_limits=(2.0, 0.0))
+    Traceback (most recent call last):
+    ...
+    ValueError: physical_limits must satisfy low < high; got (2.0, 0.0)
+
+    Physically impossible observations are flagged even during the
+    grace period, and the reported limits are clipped into the bounds
+    >>> scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2,
+    ...     physical_limits=(0.0, 2.0), protect_anomaly_detector=False)
+    >>> scorer.predict_one(5.0)
+    1
+    >>> scorer = scorer.learn_one(1).learn_one(0)
+    >>> scorer.limit_one()
+    (np.float64(2.0), np.float64(0.0))
+
     """
+
+    # The conditional subclass keys the bounds by feature name.
+    physical_limits: (
+        tuple[float, float] | dict[str, tuple[float, float]] | None
+    )
 
     def __init__(
         self,
@@ -253,6 +284,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         grace_period: timedelta | int | None = None,
         t_a: timedelta | int | None = None,
         protect_anomaly_detector: bool = True,
+        physical_limits: tuple[float, float] | None = None,
+        learn_on_physical_violation: bool = False,
     ) -> None:
         """Initialize GaussianScorer, validating the distribution protocol."""
         if not isinstance(gaussian, (Distribution, ConditionableDistribution)):
@@ -308,6 +341,17 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if self.log_threshold is not None:
             self.log_threshold_top = np.log1p(-np.exp(self.log_threshold))
 
+        if physical_limits is not None:
+            phys_low, phys_high = physical_limits
+            if not phys_low < phys_high:
+                msg = (
+                    "physical_limits must satisfy low < high; "
+                    f"got {physical_limits}"
+                )
+                raise ValueError(msg)
+        self.physical_limits = physical_limits
+        self.learn_on_physical_violation = learn_on_physical_violation
+
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
             self.t_a = t_a or self.t_e
@@ -344,6 +388,24 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if len_ > 0:
             return sum(self.buffer) / len_ > self.threshold
         return False
+
+    def _physical_violation(self, x: float | dict[str, float]) -> bool:
+        # getattr keeps models recovered from pre-physical-limits
+        # pickles working; the isinstance guard also excludes the
+        # dict-keyed bounds of the conditional subclass, which
+        # overrides this method.
+        limits = getattr(self, "physical_limits", None)
+        if not isinstance(limits, tuple):
+            return False
+        phys_low, phys_high = limits
+        values = x.values() if isinstance(x, dict) else [x]
+        return any(not phys_low <= v <= phys_high for v in values)
+
+    def _rejects_learning(self, x: float | dict[str, float]) -> bool:
+        return (
+            self._physical_violation(x)
+            and not self.learn_on_physical_violation
+        )
 
     @property
     def drift_detected(self) -> bool:
@@ -400,6 +462,11 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         **learn_kwargs: datetime | float | None,
     ):
         """Update distribution, skipping anomalous samples when protected."""
+        if self._rejects_learning(x):
+            # Physically impossible samples are kept out of both the
+            # distribution and the protection buffer: a sensor fault
+            # must not drive drift adaptation.
+            return self
         if self.protect_anomaly_detector:
             is_anomaly = self.predict_one(x)
             self.buffer.append(is_anomaly)
@@ -425,9 +492,16 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return 0.5**self._feature_dim_in
 
     def predict_one(self, x: float | dict[str, float]) -> int:
-        """Return 1 if x is anomalous under the threshold, else 0."""
+        """Return 1 if x is anomalous under the threshold, else 0.
+
+        Observations outside the configured ``physical_limits`` are
+        flagged unconditionally, even during the grace period.
+        """
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
+
+        if self._physical_violation(x):
+            return 1
 
         score = self.score_one(x)
         if (
@@ -458,10 +532,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         The limits are the normal quantiles of the configured
         (log-)threshold scaled to the input dimensionality, mirroring the
-        decision rule of ``predict_one``. They are informative envelopes
-        around the fitted distribution, not strict process boundaries:
-        observations are never clipped to them and the distribution may
-        drift past previously reported limits as it adapts.
+        decision rule of ``predict_one``. By default they are informative
+        envelopes around the fitted distribution that may drift as it
+        adapts; configuring ``physical_limits`` makes them strict process
+        boundaries by clipping the reported thresholds into the known
+        bounds, so they "may be used as an addition to static operating
+        limits used by monitoring systems in SCADA" (ESwA 2023).
         """
         if len(args) > 0:
             self._get_feature_dim_in(args[0])
@@ -522,6 +598,32 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                     strict=False,
                 ),
             )
+        limits = getattr(self, "physical_limits", None)
+        if isinstance(limits, tuple):
+            phys_low, phys_high = limits
+            if isinstance(thresh_high, dict) and isinstance(
+                thresh_low,
+                dict,
+            ):
+                thresh_high = {
+                    k: np.clip(v, phys_low, phys_high)
+                    for k, v in thresh_high.items()
+                }
+                thresh_low = {
+                    k: np.clip(v, phys_low, phys_high)
+                    for k, v in thresh_low.items()
+                }
+            else:
+                thresh_high = np.clip(
+                    cast("float | np.ndarray", thresh_high),
+                    phys_low,
+                    phys_high,
+                )
+                thresh_low = np.clip(
+                    cast("float | np.ndarray", thresh_low),
+                    phys_low,
+                    phys_high,
+                )
         return thresh_high, thresh_low
 
     def process_one(
@@ -534,7 +636,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         float | np.ndarray | dict[str, float],
     ]:
         """Predict, compute limits, and learn from x in one step."""
-        if self.gaussian.n_samples == 0:
+        if self.gaussian.n_samples == 0 and not self._rejects_learning(x):
             if isinstance(self.gaussian, (Rolling, TimeRolling)):
                 if hasattr(self.gaussian.obj, "_from_state"):
                     self.gaussian.obj = self.gaussian.obj._from_state(  # type: ignore
@@ -573,6 +675,14 @@ class ConditionalGaussianScorer(GaussianScorer):
         window_size (int or None): Size of the rolling window.
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
+        physical_limits (dict[str, tuple[float, float]] or None): Known
+        static (low, high) bounds keyed by feature name. Reported
+        dynamic limits are clipped into them per feature, and a
+        violation forces an anomaly with the violated feature as root
+        cause, even during the grace period.
+        learn_on_physical_violation (bool): Whether physically
+        impossible samples still update the distribution. Defaults to
+        False, excluding them from learning entirely.
 
     Examples:
     --------
@@ -637,6 +747,25 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> scorer.score_one({"a": 1.0, "b": 2.801})
     np.float64(0.99867...)
 
+    Per-feature physical bounds clip the dynamic limits and force
+    anomalies, so the limits "may be used as an addition to static
+    operating limits used by monitoring systems in SCADA" (ESwA 2023).
+    Violations are flagged even during the grace period, with the
+    violated feature as root cause
+    >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 3),
+    ...     grace_period=1, protect_anomaly_detector=False,
+    ...     physical_limits={"b": (0.0, 2.5)})
+    >>> scorer.predict_one({"a": 1.0, "b": 9.9})
+    1
+    >>> scorer.get_root_cause()
+    'b'
+    >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+    ...           {"a": 0.5, "b": 2.}]:
+    ...     scorer = scorer.learn_one(x)
+    >>> scorer.limit_one({"a": 1., "b": 2.})  # doctest: +NORMALIZE_WHITESPACE
+    ({'a': np.float64(1.501...), 'b': np.float64(2.5)},
+     {'a': np.float64(-0.001...), 'b': np.float64(0.198...)})
+
     """
 
     gaussian: ConditionableDistribution | Rolling | TimeRolling
@@ -648,6 +777,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         grace_period: timedelta | int | None = None,
         t_a: timedelta | int | None = None,
         protect_anomaly_detector: bool = True,
+        physical_limits: dict[str, tuple[float, float]] | None = None,
+        learn_on_physical_violation: bool = False,
     ) -> None:
         """Initialize ConditionalGaussianScorer with a conditionable dist."""
         if not isinstance(gaussian, ConditionableDistribution):
@@ -667,10 +798,46 @@ class ConditionalGaussianScorer(GaussianScorer):
             grace_period=grace_period,
             t_a=t_a,
             protect_anomaly_detector=protect_anomaly_detector,
+            learn_on_physical_violation=learn_on_physical_violation,
         )
+        if physical_limits is not None:
+            for name, (phys_low, phys_high) in physical_limits.items():
+                if not phys_low < phys_high:
+                    msg = (
+                        "physical_limits must satisfy low < high; got "
+                        f"{(phys_low, phys_high)} for feature {name!r}"
+                    )
+                    raise ValueError(msg)
+        self.physical_limits = physical_limits
         self.gaussian = gaussian
         self.root_cause = None
         self.alpha = (1 - threshold) / 2
+
+    def _physical_violations(self, x: dict[str, float]) -> list[str]:
+        # Violated features sorted by how far they exceed their bound,
+        # so the worst offender leads. getattr keeps models recovered
+        # from pre-physical-limits pickles working.
+        limits = getattr(self, "physical_limits", None)
+        if not isinstance(limits, dict):
+            return []
+        violated = [
+            name
+            for name, (phys_low, phys_high) in limits.items()
+            if name in x and not phys_low <= x[name] <= phys_high
+        ]
+        violated.sort(
+            key=lambda name: max(
+                limits[name][0] - x[name],
+                x[name] - limits[name][1],
+            ),
+            reverse=True,
+        )
+        return violated
+
+    def _physical_violation(self, x: float | dict[str, float]) -> bool:
+        if not isinstance(x, dict):
+            return False
+        return bool(self._physical_violations(x))
 
     def _farthest_from_center(
         self,
@@ -822,9 +989,20 @@ class ConditionalGaussianScorer(GaussianScorer):
         return score
 
     def predict_one(self, x: float | dict[str, float]) -> int:
-        """Return 1 and set root cause if x is anomalous, else 0."""
+        """Return 1 and set root cause if x is anomalous, else 0.
+
+        A violation of the configured ``physical_limits`` forces an
+        anomaly — even during the grace period — and attributes the
+        most violated feature as root cause.
+        """
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
+
+        if isinstance(x, dict):
+            violations = self._physical_violations(x)
+            if violations:
+                self.root_cause = violations[0]
+                return 1
 
         score, idx = self._score_one(x)
         if (self.alpha > score) or (score > 1 - self.alpha):
@@ -861,7 +1039,9 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         Safe to call before any ``learn_one``/``predict_one``: feature
         names are inferred from ``x`` and NaN limits are returned until
-        the covariance estimate is defined.
+        the covariance estimate is defined. Features with configured
+        ``physical_limits`` have their reported limits clipped into the
+        known static bounds.
         """
         if x is None:
             x = {}
@@ -884,6 +1064,13 @@ class ConditionalGaussianScorer(GaussianScorer):
                     cond_std,
                 )
 
+        limits = getattr(self, "physical_limits", None)
+        if isinstance(limits, dict):
+            for name, (phys_low, phys_high) in limits.items():
+                if name in ths:
+                    ths[name] = np.clip(ths[name], phys_low, phys_high)
+                    tls[name] = np.clip(tls[name], phys_low, phys_high)
+
         return ths, tls
 
     def get_limits(
@@ -895,7 +1082,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         Public view of the dynamic operating limits computed from the
         conditional moments — the paper's dynamic signal limits
         diagnostic. The values agree with ``limit_one``, which returns
-        the same limits grouped as (upper, lower) dicts instead.
+        the same limits grouped as (upper, lower) dicts instead, and
+        are clipped into any configured per-feature ``physical_limits``.
 
         Examples:
         --------

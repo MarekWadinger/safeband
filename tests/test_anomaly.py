@@ -5,6 +5,7 @@ import math
 import sys
 from pathlib import Path
 
+import pytest
 from river import compose, preprocessing
 from river.proba import Gaussian
 from river.utils import Rolling, TimeRolling
@@ -39,12 +40,17 @@ def make_multivariate_scorer(seed: int | None = 42) -> GaussianScorer:
     return scorer
 
 
-def make_conditional_scorer() -> ConditionalGaussianScorer:
+def make_conditional_scorer(
+    physical_limits: dict[str, tuple[float, float]] | None = None,
+    learn_on_physical_violation: bool = False,
+) -> ConditionalGaussianScorer:
     """Build a ConditionalGaussianScorer fitted on the shared samples."""
     scorer = ConditionalGaussianScorer(
         Rolling(MultivariateGaussian(seed=42), 5),
         grace_period=2,
         protect_anomaly_detector=False,
+        physical_limits=physical_limits,
+        learn_on_physical_violation=learn_on_physical_violation,
     )
     for sample in SAMPLES:
         scorer.learn_one(sample)
@@ -285,3 +291,156 @@ class TestScorerInPipeline:
         assert scorer.gaussian.n_samples == n_before + (1 - is_anomaly)
         # The pipeline keeps scoring without errors after process_one.
         assert 0.0 <= pipeline.score_one(x) <= 1.0
+
+
+def make_univariate_scorer(
+    physical_limits: tuple[float, float] | None = None,
+    learn_on_physical_violation: bool = False,
+) -> GaussianScorer:
+    """Build a univariate GaussianScorer fitted on a few samples."""
+    scorer = GaussianScorer(
+        Rolling(Gaussian(), 5),
+        grace_period=2,
+        protect_anomaly_detector=False,
+        physical_limits=physical_limits,
+        learn_on_physical_violation=learn_on_physical_violation,
+    )
+    for value in [1.0, 2.0, 1.5, 1.2]:
+        scorer.learn_one(value)
+    return scorer
+
+
+class TestPhysicalLimitsUnivariate:
+    """Static physical bounds on the univariate scorer."""
+
+    def test_invalid_bounds_raise(self) -> None:
+        """Bounds with low >= high are rejected at construction."""
+        with pytest.raises(ValueError, match="low < high"):
+            GaussianScorer(Gaussian(), physical_limits=(2.0, 1.0))
+
+    def test_limits_clipped_into_physical_bounds(self) -> None:
+        """Reported limits are the learned limits clipped to the bounds."""
+        free = make_univariate_scorer()
+        bounded = make_univariate_scorer(physical_limits=(1.0, 1.6))
+        high_free, low_free = free.limit_one()
+        high, low = bounded.limit_one()
+        assert isinstance(high_free, float)
+        assert isinstance(low_free, float)
+        assert high == min(high_free, 1.6)
+        assert low == max(low_free, 1.0)
+
+    def test_violation_forced_anomaly_during_grace_period(self) -> None:
+        """A physically impossible value is flagged before any learning."""
+        scorer = GaussianScorer(
+            Rolling(Gaussian(), 5),
+            grace_period=100,
+            protect_anomaly_detector=False,
+            physical_limits=(0.0, 10.0),
+        )
+        assert scorer.predict_one(11.0) == 1
+        assert scorer.predict_one(5.0) == 0
+
+    def test_violation_forced_anomaly_after_grace_period(self) -> None:
+        """A statistically unremarkable value is flagged when impossible."""
+        free = make_univariate_scorer()
+        bounded = make_univariate_scorer(physical_limits=(0.0, 1.7))
+        assert free.predict_one(1.8) == 0
+        assert bounded.predict_one(1.8) == 1
+
+    def test_violations_excluded_from_learning_by_default(self) -> None:
+        """Physically impossible samples do not update the distribution."""
+        scorer = make_univariate_scorer(physical_limits=(0.0, 2.5))
+        n = scorer.gaussian.n_samples
+        scorer.learn_one(99.0)
+        assert scorer.gaussian.n_samples == n
+
+    def test_learn_on_physical_violation_keeps_learning(self) -> None:
+        """With the opt-in flag, impossible samples are still learned."""
+        scorer = make_univariate_scorer(
+            physical_limits=(0.0, 2.5),
+            learn_on_physical_violation=True,
+        )
+        n = scorer.gaussian.n_samples
+        scorer.learn_one(99.0)
+        assert scorer.gaussian.n_samples == n + 1
+
+    def test_in_bounds_samples_still_learned(self) -> None:
+        """Samples inside the physical bounds keep updating the model."""
+        scorer = make_univariate_scorer(physical_limits=(0.0, 2.5))
+        n = scorer.gaussian.n_samples
+        scorer.learn_one(1.3)
+        assert scorer.gaussian.n_samples == n + 1
+
+
+class TestPhysicalLimitsConditional:
+    """Per-feature static physical bounds on the conditional scorer."""
+
+    def test_invalid_bounds_raise(self) -> None:
+        """Per-feature bounds with low >= high are rejected."""
+        with pytest.raises(ValueError, match="low < high"):
+            ConditionalGaussianScorer(
+                Rolling(MultivariateGaussian(seed=42), 5),
+                grace_period=2,
+                physical_limits={"a": (1.0, 1.0)},
+            )
+
+    def test_violation_forces_anomaly_during_grace_period(self) -> None:
+        """A violating feature is flagged before any learning."""
+        scorer = ConditionalGaussianScorer(
+            Rolling(MultivariateGaussian(seed=42), 5),
+            grace_period=100,
+            protect_anomaly_detector=False,
+            physical_limits={"b": (0.0, 1.0)},
+        )
+        assert scorer.predict_one({"a": 0.1, "b": 5.0}) == 1
+        assert scorer.get_root_cause() == "b"
+        assert scorer.predict_one({"a": 0.1, "b": 0.5}) == 0
+
+    def test_root_cause_prefers_physically_violated_feature(self) -> None:
+        """The violated feature wins over a statistically worse one."""
+        scorer = make_conditional_scorer(physical_limits={"b": (0.0, 1.0)})
+        # 'a' deviates far more statistically, but only 'b' breaks its
+        # physical bound and must be attributed as root cause.
+        x = {"a": 50.0, "b": 1.1}
+        assert scorer.predict_one(x) == 1
+        assert scorer.get_root_cause() == "b"
+
+    def test_root_cause_picks_most_violated_feature(self) -> None:
+        """With several violations, the worst offender is attributed."""
+        scorer = make_conditional_scorer(
+            physical_limits={"a": (0.0, 1.0), "b": (0.0, 1.0)},
+        )
+        assert scorer.predict_one({"a": 1.2, "b": 9.0}) == 1
+        assert scorer.get_root_cause() == "b"
+
+    def test_limits_clipped_per_feature(self) -> None:
+        """Only features with configured bounds get their limits clipped."""
+        free = make_conditional_scorer()
+        bounded = make_conditional_scorer(
+            physical_limits={"b": (0.3, 0.6)},
+            learn_on_physical_violation=True,
+        )
+        x = {"a": 0.4, "b": 0.5}
+        free_limits = free.get_limits(x)
+        limits = bounded.get_limits(x)
+        assert limits["b"][0] == max(free_limits["b"][0], 0.3)
+        assert limits["b"][1] == min(free_limits["b"][1], 0.6)
+        assert limits["a"] == free_limits["a"]
+
+    def test_learning_exclusion_flag(self) -> None:
+        """Impossible samples are skipped unless learning is opted in."""
+        # The window must be larger than the fitted sample count so a
+        # learned observation is visible as an n_samples increment.
+        scorer = ConditionalGaussianScorer(
+            Rolling(MultivariateGaussian(seed=42), 10),
+            grace_period=2,
+            protect_anomaly_detector=False,
+            physical_limits={"b": (0.0, 1.0)},
+        )
+        for sample in SAMPLES:
+            scorer.learn_one(sample)
+        n = scorer.gaussian.n_samples
+        scorer.learn_one({"a": 0.5, "b": 2.0})
+        assert scorer.gaussian.n_samples == n
+        scorer.learn_one({"a": 0.5, "b": 0.5})
+        assert scorer.gaussian.n_samples == n + 1

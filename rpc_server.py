@@ -54,16 +54,65 @@ _exit_stack: contextlib.ExitStack = contextlib.ExitStack()
 
 
 # DEFINITIONS
+def _parse_physical_limits(
+    value: str | dict[str, tuple[float, float]] | None,
+) -> dict[str, tuple[float, float]] | None:
+    """Parse a physical_limits config entry into per-signal bounds.
+
+    Accepts ``None``, a JSON object string, or an already-built mapping
+    of signal name to a (low, high) pair.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = json.loads(value)
+    if not isinstance(value, dict):
+        msg = (
+            "physical_limits must be a mapping of signal name to "
+            f"(low, high); got {value!r}"
+        )
+        raise TypeError(msg)
+    limits: dict[str, tuple[float, float]] = {}
+    for name, bounds in value.items():
+        try:
+            phys_low, phys_high = bounds
+        except (TypeError, ValueError) as exc:
+            msg = (
+                "physical_limits bounds must be a (low, high) pair; "
+                f"got {bounds!r} for signal {name!r}"
+            )
+            raise ValueError(msg) from exc
+        limits[str(name)] = (float(phys_low), float(phys_high))
+    return limits
+
+
 def expand_model_params(
     model_params: ModelConfig,
-) -> tuple[float, dt.timedelta, dt.timedelta, dt.timedelta]:
+) -> tuple[
+    float,
+    dt.timedelta,
+    dt.timedelta,
+    dt.timedelta,
+    dict[str, tuple[float, float]] | None,
+]:
     """Extract and convert model parameters from the configuration dictionary.
 
     Args:
-        model_params: Mapping containing threshold, t_e, t_a, and t_g values.
+        model_params: Mapping containing threshold, t_e, t_a, t_g, and
+            optional physical_limits values.
 
     Returns:
-        tuple: ``(threshold, t_e, t_a, t_g)`` as a float and three timedeltas.
+        tuple: ``(threshold, t_e, t_a, t_g, physical_limits)`` as a float,
+        three timedeltas, and an optional mapping of signal name to its
+        static (low, high) operating bounds.
+
+    Examples:
+        >>> *_, limits = expand_model_params({
+        ...     "t_e": pd.Timedelta("1d"),
+        ...     "physical_limits": '{"plant/a": [0.0, 100.0]}',
+        ... })
+        >>> limits
+        {'plant/a': (0.0, 100.0)}
 
     """
     threshold = model_params.get("threshold", 0.99735)
@@ -104,7 +153,10 @@ def expand_model_params(
     t_a = period_to_timedelta(t_a)
     t_g = cast("pd.Timedelta", model_params.get("t_g", t_e))
     t_g = period_to_timedelta(t_g)
-    return threshold, t_e, t_a, t_g
+    physical_limits = _parse_physical_limits(
+        model_params.get("physical_limits"),
+    )
+    return threshold, t_e, t_a, t_g, physical_limits
 
 
 def print_summary(df: pd.DataFrame) -> None:
@@ -286,19 +338,24 @@ class RpcOutlierDetector:
         t_e: dt.timedelta,
         t_a: dt.timedelta,
         t_g: dt.timedelta,
+        physical_limits: dict[str, tuple[float, float]]
+        | tuple[float, float]
+        | None,
     ) -> None:
         """Warn when a recovered model diverges from the configuration.
 
         A recovery pickle restores the model exactly as saved, so edits
-        to ``threshold`` / ``t_e`` / ``t_a`` / ``t_g`` in the config are
-        silently ignored while a recovery file exists. Make that
-        visible instead of letting the config lie to the operator.
+        to ``threshold`` / ``t_e`` / ``t_a`` / ``t_g`` /
+        ``physical_limits`` in the config are silently ignored while a
+        recovery file exists. Make that visible instead of letting the
+        config lie to the operator.
         """
         configured = {
             "threshold": threshold,
             "t_e": t_e,
             "t_a": t_a,
             "grace_period": t_g,
+            "physical_limits": physical_limits,
         }
         for name, want in configured.items():
             have = getattr(model, name, None)
@@ -505,7 +562,8 @@ class RpcOutlierDetector:
             client: Transport configuration (file, MQTT, Kafka, or Pulsar).
             io: I/O configuration with ``in_topics`` and ``out_topics``.
             model_params: Model hyper-parameters including ``t_e`` and optional
-                ``t_a``, ``t_g``, and ``threshold``.
+                ``t_a``, ``t_g``, ``threshold``, and ``physical_limits``
+                (static per-signal operating bounds).
             setup: Runtime options such as ``debug``, ``key_path``, and
                 ``recovery_path``.
             email: Optional email alert configuration.
@@ -529,12 +587,31 @@ class RpcOutlierDetector:
         in_topics = io.get("in_topics", [])
         out_topics = io.get("out_topics", None)
 
-        threshold, t_e, t_a, t_g = expand_model_params(model_params)
+        threshold, t_e, t_a, t_g, physical_limits = expand_model_params(
+            model_params,
+        )
+        # The univariate scorer takes the bounds of its single signal;
+        # the conditional scorer keeps the whole per-feature mapping.
+        univariate_limits = (
+            physical_limits.get(in_topics[0])
+            if physical_limits and in_topics
+            else None
+        )
+        scoped_limits: (
+            dict[str, tuple[float, float]] | tuple[float, float] | None
+        ) = physical_limits if len(in_topics) > 1 else univariate_limits
 
         model = load_model(recovery_path, in_topics)
 
         if model is not None:
-            self._warn_on_param_mismatch(model, threshold, t_e, t_a, t_g)
+            self._warn_on_param_mismatch(
+                model,
+                threshold,
+                t_e,
+                t_a,
+                t_g,
+                scoped_limits,
+            )
         if model is None:
             if len(in_topics) > 1:
                 obj = MultivariateGaussian()
@@ -543,6 +620,7 @@ class RpcOutlierDetector:
                     threshold=threshold,
                     grace_period=t_g,
                     t_a=t_a,
+                    physical_limits=physical_limits,
                 )
             else:
                 obj = proba.Gaussian()
@@ -551,6 +629,7 @@ class RpcOutlierDetector:
                     threshold=threshold,
                     grace_period=t_g,
                     t_a=t_a,
+                    physical_limits=univariate_limits,
                 )
 
         source = self.get_source(client, in_topics, debug)
