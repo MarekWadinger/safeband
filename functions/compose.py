@@ -1,9 +1,21 @@
+"""Utilities for building and initializing river pipeline models."""
+
+from collections.abc import Callable
 from functools import partial
+from typing import cast
 
 from river import compose
 
+_TYPE_MAP: dict[str, Callable[..., object]] = {
+    "int": int,
+    "float": float,
+    "round": round,
+    "str": str,
+    "bool": bool,
+}
 
-def convert_to_nested_dict(d):
+
+def convert_to_nested_dict(d: dict) -> dict:
     """Convert flat parameters dict to nested dict.
 
     Examples:
@@ -29,6 +41,7 @@ def convert_to_nested_dict(d):
     >>> convert_to_nested_dict(input_dict)  # doctest: +IGNORE_EXCEPTION_DETAIL
     Traceback (most recent call last):
     ValueError: Up to 3 parts supported. You gave 4
+
     """
     result: dict = {}
     for key, value in d.items():
@@ -42,40 +55,48 @@ def convert_to_nested_dict(d):
             current = result
             for part in parts[:-2]:
                 current = current.setdefault(part, {})
-                type_ = eval(parts[-1])
+                type_ = _TYPE_MAP[parts[-1]]
                 if isinstance(value, list):
-                    value = [type_(v) for v in value]
+                    value_t = [type_(v) for v in value]
                 else:
-                    value = type_(value)
-            current[parts[-2]] = value
+                    value_t = type_(value)
+            current[parts[-2]] = value_t
         else:
-            raise ValueError(f"Up to 3 parts supported. You gave {len(parts)}")
+            msg = f"Up to 3 parts supported. You gave {len(parts)}"
+            raise ValueError(msg)
     return result
 
 
-def init_step(step, params):
-    name = step.func.__name__ if isinstance(step, partial) else step.__name__
+def init_step(step: partial | type, params: dict) -> object:
+    """Instantiate a pipeline step using its name-matched params entry."""
+    name = (
+        cast("type", step.func).__name__
+        if isinstance(step, partial)
+        else step.__name__
+    )
     return step(**params.get(name, {}))
 
 
-def nest_step(steps, params):
+def nest_step(steps: list | partial | type, params: dict) -> object:
+    """Recursively nest a list of steps into a composed river estimator."""
     if not isinstance(steps, list):
         steps = [steps]
     if len(steps) == 1:
         return init_step(steps[0], params)
-    else:
-        first_step = steps[0]
-        remaining_steps = steps[1::].copy()[0]
-        nested_result = nest_step(remaining_steps, params)
-        name = (
-            first_step.func.__name__
-            if isinstance(first_step, partial)
-            else first_step.__name__
-        )
-        return first_step(nested_result, **params.get(name, {}))
+    first_step = steps[0]
+    remaining_steps = steps[1::].copy()[0]
+    nested_result = nest_step(remaining_steps, params)
+    name = (
+        first_step.func.__name__
+        if isinstance(first_step, partial)
+        else first_step.__name__
+    )
+    return first_step(nested_result, **params.get(name, {}))
 
 
-def build_model(steps: list, params: dict):
+# Concrete return types break hasattr-narrowed attribute assignment
+# in callers under ty (e.g. model.seed in examples).
+def build_model(steps: list, params: dict):  # noqa: ANN201
     """Build river model from list of cls and parameters.
 
     Examples:
@@ -111,7 +132,7 @@ def build_model(steps: list, params: dict):
         else:
             model |= nest_step(step, params)
     if len(model.steps) == 1:
-        model = model[list(model.steps.keys())[0]]
+        model = model[next(iter(model.steps.keys()))]
     return model
 
 

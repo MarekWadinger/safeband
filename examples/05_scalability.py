@@ -1,7 +1,8 @@
-"""Scalabiity of Detection Tasks and Detection + Limits Task"""
+"""Scalabiity of Detection Tasks and Detection + Limits Task."""
 # Import
 
 import datetime as dt
+import logging
 import sys
 from pathlib import Path
 
@@ -9,9 +10,12 @@ import pandas as pd
 from river import utils
 
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
-from functions.anomaly import ConditionalGaussianScorer  # noqa: E402
-from functions.evaluate import progressive_val_predict  # noqa: E402
-from functions.proba import MultivariateGaussian  # noqa: E402
+from functions.anomaly import ConditionalGaussianScorer
+from functions.evaluate import progressive_val_predict
+from functions.proba import MultivariateGaussian
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 output_path = Path(__file__).resolve().parent / ".results/scalability/"
 if not Path(output_path).exists():
@@ -56,13 +60,14 @@ for compute_limits in [True, False]:
             )
 
             df_out = pd.DataFrame(
-                {"System Anomaly": system_anomaly, **meta}, index=df_.index
+                {"System Anomaly": system_anomaly, **meta},
+                index=df_.index,
             )
             latencies_df[n_cols] = df_out.Latency
             latencies_desc_df[n_cols] = df_out.Latency.describe()
-            print(f"Done with {n_cols} columns")
-    except Exception as e:
-        print(e)
+            logger.info("Done with %s columns", n_cols)
+    except Exception:
+        logger.exception("Scalability run failed")
     finally:
         file_name = "latencies_detection" + (
             "_limits" if compute_limits else ""

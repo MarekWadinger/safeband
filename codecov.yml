@@ -1,0 +1,17 @@
+# Codecov gate configuration. Codecov reads this file (not pyproject.toml,
+# which only configures coverage.py measurement). Without it Codecov
+# defaults the project status to `auto` — the base commit's coverage —
+# which fails any PR that dips below a stale baseline (main's coverage has
+# been frozen since its CI broke in 2025-09).
+coverage:
+  status:
+    project:
+      default:
+        # Absolute floor matching the project testing standard (80%).
+        target: 80%
+        threshold: 1%
+    patch:
+      default:
+        # New/changed lines must stay covered relative to the diff.
+        target: auto
+        threshold: 0%

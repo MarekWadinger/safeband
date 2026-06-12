@@ -52,7 +52,6 @@
 \newcommand{\ui}[2]{#1 _{\text{#2}}}
 % upright sub-index with variable
 \newcommand{\uis}[3]{#1 _{\text{#2}, #3}}
-\usepackage[authormarkup=none]{changes}
 
 %% The lineno packages adds line numbers. Start line numbering with
 %% \begin{linenumbers}, end it with \end{linenumbers}. Or switch it on
@@ -65,63 +64,63 @@
 
 \begin{frontmatter}
 
-%% Title, authors and addresses
+    %% Title, authors and addresses
 
-%% use the tnoteref command within \title for footnotes;
-%% use the tnotetext command for theassociated footnote;
-%% use the fnref command within \author or \address for footnotes;
-%% use the fntext command for theassociated footnote;
-%% use the corref command within \author for corresponding author footnotes;
-%% use the cortext command for theassociated footnote;
-%% use the ead command for the email address,
-%% and the form \ead[url] for the home page:
-\title{Adaptable and Interpretable Framework for Anomaly Detection in SCADA-based Industrial Systems}
+    %% use the tnoteref command within \title for footnotes;
+    %% use the tnotetext command for theassociated footnote;
+    %% use the fnref command within \author or \address for footnotes;
+    %% use the fntext command for theassociated footnote;
+    %% use the corref command within \author for corresponding author footnotes;
+    %% use the cortext command for theassociated footnote;
+    %% use the ead command for the email address,
+    %% and the form \ead[url] for the home page:
+    \title{Adaptable and Interpretable Framework for Anomaly Detection in SCADA-based Industrial Systems}
 
-\author[aff1]{Marek Wadinger\corref{cor1}}
-\ead{marek.wadinger@stuba.sk}
-\cortext[cor1]{\textit{Phone numbers:} +421 902 810 324 (Marek Wadinger)}
-% TODO: Center the tilde vertically
-% \ead[url]{uiam.sk/~wadinger}
+    \author[aff1]{Marek Wadinger\corref{cor1}}
+    \ead{marek.wadinger@stuba.sk}
+    \cortext[cor1]{\textit{Phone numbers:} +421 902 810 324 (Marek Wadinger)}
+    % TODO: Center the tilde vertically
+    % \ead[url]{uiam.sk/~wadinger}
 
-\author[aff1]{Michal Kvasnica}
-\ead{michal.kvasnica@stuba.sk}
+    \author[aff1]{Michal Kvasnica}
+    \ead{michal.kvasnica@stuba.sk}
 
-\affiliation[aff1]{organization={Institute of Information Engineering, Automation and Mathematics, Slovak University of Technology in Bratislava},
-    addressline={Radlinskeho 9},
-    postcode={812 37},
-    state={Bratislava},
-    country={Slovakia}
-}
-% \affiliation[aff2]{organization={Tesla Labs s.r.o.},
-%     addressline={Pálenica 53/79},
-%     postcode={033 17},
-%     state={Liptovský Hrádok},
-%     country={Slovakia}
-% }
+    \affiliation[aff1]{organization={Institute of Information Engineering, Automation and Mathematics, Slovak University of Technology in Bratislava},
+        addressline={Radlinskeho 9},
+        postcode={812 37},
+        state={Bratislava},
+        country={Slovakia}
+    }
+    % \affiliation[aff2]{organization={Tesla Labs s.r.o.},
+    %     addressline={Pálenica 53/79},
+    %     postcode={033 17},
+    %     state={Liptovský Hrádok},
+    %     country={Slovakia}
+    % }
 
-\begin{abstract}
-%% Text of abstract
-\input{sections/abstract.tex}
-\end{abstract}
+    \begin{abstract}
+        %% Text of abstract
+        \input{sections/abstract.tex}
+    \end{abstract}
 
-%%Graphical abstract
-\begin{graphicalabstract}
-    \includegraphics[width=\linewidth]{figures/ESwA23 - Graphical Abstract - Latex font.pdf}
-\end{graphicalabstract}
+    %%Graphical abstract
+    \begin{graphicalabstract}
+        \includegraphics[width=\linewidth]{figures/ESwA23 - Graphical Abstract - Latex font.pdf}
+    \end{graphicalabstract}
 
-%%Research highlights
-\begin{highlights}
-\item Interpretable anomaly detector with self-supervised adaptation
-\item Demonstrates interpretability by providing dynamic operating limits
-\item Leverages self-learning approach on streamed IoT data
-\item Utilizes existing SCADA-based industrial infrastruture
-\item Offers faster response time to incidents due to root cause isolation
-\end{highlights}
+    %%Research highlights
+    \begin{highlights}
+        \item Interpretable anomaly detector with self-supervised adaptation
+        \item Demonstrates interpretability by providing dynamic operating limits
+        \item Leverages self-learning approach on streamed IoT data
+        \item Utilizes existing SCADA-based industrial infrastruture
+        \item Offers faster response time to incidents due to root cause isolation
+    \end{highlights}
 
-\begin{keyword}
-%% keywords here, in the form: keyword \sep keyword
-Anomaly detection \sep Root cause isolation \sep Iterative learning \sep Statistical learning \sep Self-supervised learning
-\end{keyword}
+    \begin{keyword}
+        %% keywords here, in the form: keyword \sep keyword
+        Anomaly detection \sep Root cause isolation \sep Iterative learning \sep Statistical learning \sep Self-supervised learning
+    \end{keyword}
 
 \end{frontmatter}
 
@@ -160,7 +159,7 @@ Our framework is openly accessible on GitHub at the following URL: \url{https://
 The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
 
 \section*{Acknowledgements}
-This work was supported by the Horizon Europe [101079342]; the Slovak Research and Development Agency [APVV-20-0261]; and the Scientific Grant Agency of the Slovak Republic [1/0490/23].
+The authors gratefully acknowledge the contribution of the Slovak Research and Development Agency under the project APVV-20-0261. The authors gratefully acknowledge the contribution of the Scientific Grant Agency of the Slovak Republic under the grant 1/0490/23. This paper was funded by the European Union under Horizon Europe Grant Agreement number 101079342 (Fostering Opportunities Towards Slovak Excellence in Advanced Control for Smart Industries).
 
 % HORIZON EUROPE
 % Agentúra na Podporu Výskumu a Vývoja

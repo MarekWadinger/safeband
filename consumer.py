@@ -1,115 +1,119 @@
+"""MQTT and file-based consumer for anomaly detection results."""
+
 import datetime as dt
 import json
+import logging
 from argparse import Namespace
-from typing import cast
+from pathlib import Path
+from typing import Any, cast
 
 import paho.mqtt.client as mqtt
+from human_security import HumanRSA
 
 from functions.encryption import init_rsa_security, verify_and_decrypt_data
 from functions.parse import get_params
 from functions.typing_extras import FileClient, MQTTClient, istypedinstance
 
+logger = logging.getLogger(__name__)
+
 PORT = 1883
 
 
 # MQTT callback functions
-def on_connect(self: mqtt.Client, userdata, flags, rc):
-    """MQTT callback function for handling the connect event.
+def on_connect(
+    self: mqtt.Client,
+    userdata: Namespace,
+    _flags: dict[str, int],
+    rc: int,
+) -> None:
+    """Subscribe to configured topics after a successful broker connection.
 
     Args:
+        self: MQTT client instance invoking the callback.
         userdata: User-specific data passed to the callback.
-        flags: Response flags from the broker.
+        _flags: Response flags from the broker (unused).
         rc: The connection result code.
 
-    Examples:
-        >>> obj = mqtt.Client()
-        >>> usr = Namespace(topic=["my_topic"])
-        >>> on_connect(mqtt.Client(), usr, None, 0)
-        Connected with result code 0
     """
-    print("Connected with result code " + str(rc))
+    logger.info("Connected with result code %s", rc)
     self.subscribe([(topic, 0) for topic in userdata.topic])
 
 
-def on_message(self, userdata, msg):
-    """MQTT callback function for handling incoming messages.
+def on_message(
+    _self: mqtt.Client,
+    userdata: Namespace | None,
+    msg: mqtt.MQTTMessage,
+) -> None:
+    """Decrypt and log an incoming MQTT message.
 
     Args:
+        _self: MQTT client instance (unused).
         userdata: User-specific data passed to the callback.
         msg: The message received from the broker.
 
-    Examples:
-        >>> obj = mqtt.Client()
-        >>> usr = Namespace(topic=["my_topic"])
-        >>> msg = mqtt.MQTTMessage(); msg.payload = b'Hello'
-        >>> on_message(obj, usr, msg)
-        Received message at 1970-01-01 ...: Hello
     """
     if isinstance(userdata, Namespace) and "receiver" in userdata:
         item = verify_and_decrypt_data(
-            json.loads(msg.payload.decode()), userdata.receiver
+            json.loads(msg.payload.decode()),
+            userdata.receiver,
         )
         item = json.dumps(item)
     else:
         item = msg.payload.decode()
-    t = dt.datetime.fromtimestamp(msg.timestamp).replace(microsecond=0)
-    print(f"Received message at {t}: {item}")
+    t = dt.datetime.fromtimestamp(msg.timestamp, tz=dt.UTC).replace(
+        microsecond=0,
+    )
+    logger.info("Received message at %s: %s", t, item)
 
 
-def query_file(config: FileClient, **kwargs):
-    """Query a JSON file based on the command-line arguments and print the closest past item.
+def query_file(config: FileClient, **kwargs: HumanRSA) -> None:
+    """Read a JSON output file and log the entry closest to now.
 
     Args:
-        config (dict): The configuration dictionary.
-        args (Namespace): Parsed command-line arguments.
+        config: File client configuration with an ``output`` key pointing
+            to the JSON file to read.
+        **kwargs: Optional keyword arguments. Pass ``receiver`` (RSA key)
+            to decrypt entries before processing.
 
-    Examples:
-        >>> config = {"output": "tests/sample.json"}
-        >>> query_file(config)
-        {'time': datetime.datetime(2023, 1, 1, 0, 0), 'anomaly': 0, ...}
     """
     # Load the JSON file as a list of dictionaries
-    with open(config.get("output", ""), encoding="utf-8") as f:
-        data: list[dict] = [json.loads(line) for line in f]
+    with Path(config.get("output", "")).open(encoding="utf-8") as f:
+        data: list[dict[str, Any]] = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects
-    for item in data:
+    for i, item in enumerate(data):
         if "receiver" in kwargs and not item["time"].isascii():
-            item = verify_and_decrypt_data(item, kwargs["receiver"])
-        item["time"] = dt.datetime.strptime(item["time"], "%Y-%m-%d %H:%M:%S")
+            data[i] = cast(
+                "dict[str, Any]",
+                verify_and_decrypt_data(item, kwargs["receiver"]),
+            )
+        data[i]["time"] = dt.datetime.strptime(
+            str(data[i]["time"]),
+            "%Y-%m-%d %H:%M:%S",
+        ).replace(tzinfo=dt.UTC)
 
     # Sort the data by time in descending order
     data.sort(key=lambda x: x["time"], reverse=True)
 
     # Find the closest past item
+    closest_item = None
     for item in data:
-        if item["time"] <= dt.datetime.strptime(
-            dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-            "%Y-%m-%d %H:%M:%S",
-        ):
+        if item["time"] <= dt.datetime.now(dt.UTC).replace(microsecond=0):
             closest_item = item
             break
 
-    # Print the closest past item
-    print(closest_item)
+    logger.info("%s", closest_item)
 
 
-def query_mqtt(config: MQTTClient):
-    """Create an MQTT client instance and connect to the MQTT broker.
+def query_mqtt(config: MQTTClient) -> mqtt.Client:
+    """Create an MQTT client instance and connect to the configured broker.
 
     Args:
-        config (dict): The configuration dictionary.
-        args (Namespace): Parsed command-line arguments.
+        config: MQTT client configuration with ``host`` and optional port keys.
 
     Returns:
-        mqtt.Client: MQTT client instance.
+        mqtt.Client: Connected MQTT client instance.
 
-    Examples:
-        >>> config = {"host": "mqtt.eclipseprojects.io"}
-        >>> args = Namespace()
-        >>> client = query_mqtt(config)
-        >>> isinstance(client, mqtt.Client)
-        True
     """
     # Create MQTT client instance
     client = mqtt.Client()
@@ -124,14 +128,19 @@ def query_mqtt(config: MQTTClient):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     config = get_params()
 
-    if "key_path" in config["setup"]:
+    receiver: HumanRSA | None = None
+    if config["setup"].get("key_path"):
         _, receiver = init_rsa_security(config["setup"]["key_path"])
 
     client = config["client"]
-    if istypedinstance(client, FileClient):
-        query_file(cast(FileClient, client), receiver=receiver)
-    elif istypedinstance(client, MQTTClient):
-        client = query_mqtt(cast(MQTTClient, client))
+    if istypedinstance(cast("FileClient", client), FileClient):
+        query_file(
+            cast("FileClient", client),
+            **({"receiver": receiver} if receiver else {}),
+        )
+    elif istypedinstance(cast("MQTTClient", client), MQTTClient):
+        client = query_mqtt(cast("MQTTClient", client))
         client.loop_forever()

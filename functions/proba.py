@@ -1,4 +1,6 @@
-from typing import Union
+"""Extended probability distributions with conditional computation support."""
+
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -41,32 +43,34 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     >>> p.mv_conditional(list(x.values()), 0, p.mu, p.var)
     Traceback (most recent call last):
     ...
-    ValueError: Arguments must be either dict, str, dict, pd.DataFrame or
-    np.ndarray, int, np.ndarray, np.ndarray.
+    TypeError: Arguments must be either dict, str, dict, pd.DataFrame ...
+
     """
 
-    def __init__(self, seed=None):
+    def __init__(self, seed: int | None = None) -> None:
+        """Initialize the distribution, forwarding seed to the parent class."""
         super().__init__(seed=seed)
 
     def mv_conditional(
         self,
-        observed_values: Union[dict[str, float], np.ndarray],
-        var_idx: Union[str, int],
-        mean: Union[dict[str, float], np.ndarray],
-        covariance: Union[pd.DataFrame, np.ndarray],
-    ):
+        observed_values: dict[str, float] | np.ndarray,
+        var_idx: str | int,
+        mean: dict[str, float] | np.ndarray,
+        covariance: pd.DataFrame | np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return conditional mean, covariance, and std of var_idx."""
         if (
             isinstance(observed_values, dict)
             and isinstance(mean, dict)
             and isinstance(var_idx, str)
             and isinstance(covariance, pd.DataFrame)
         ):
-            observed_values = np.array(
-                [observed_values[key] for key in mean.keys()]
-            )
+            _ov = cast("dict[str, float]", observed_values)
+            _mn = cast("dict[str, float]", mean)
+            observed_values = np.array([_ov[key] for key in _mn])
             var_idx = list(mean.keys()).index(var_idx)
             mean = np.array([*mean.values()])
-            covariance = covariance.values
+            covariance = covariance.to_numpy()
         elif (
             isinstance(observed_values, (list, np.ndarray))
             and isinstance(mean, np.ndarray)
@@ -75,11 +79,17 @@ class MultivariateGaussian(proba.MultivariateGaussian):
         ):
             pass
         else:
-            raise ValueError(
+            msg = (
                 "Arguments must be either dict, str, dict, pd.DataFrame or "
                 "np.ndarray, int, np.ndarray, np.ndarray."
             )
-        var_idx_: list[int] = [var_idx]
+            raise TypeError(
+                msg,
+            )
+        # After both branches, mean and observed_values are always np.ndarray
+        mean = cast("np.ndarray", mean)
+        observed_values = cast("np.ndarray", observed_values)
+        var_idx_: list[int] = [var_idx]  # type: ignore[list-item]
         if len(mean) == 1:  # Univariate case
             conditional_mean = mean
             conditional_covariance = covariance
@@ -95,10 +105,12 @@ class MultivariateGaussian(proba.MultivariateGaussian):
 
             regression_coefficients = np.dot(cov_XZ.T, np.linalg.pinv(cov_XY))
             conditional_mean = mean[var_idx_] + np.dot(
-                regression_coefficients, (observed_values - mean[obs_idxs])
+                regression_coefficients,
+                (observed_values - mean[obs_idxs]),
             )
             conditional_covariance = cov_ZZ - np.dot(
-                regression_coefficients, cov_XZ
+                regression_coefficients,
+                cov_XZ,
             )
 
             conditional_covariance[conditional_covariance < 0] = 1e-8

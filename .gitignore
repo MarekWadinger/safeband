@@ -39,16 +39,20 @@ plots/
 **/data/*
 !**/data/input/
 !**/data/output/
+# Regenerated service output artifact (purged from history 2026-06-12)
+examples/data/output/dynamic_limits.json
 
 # Misc
 config.ini
+reports/
 tests/*
 !tests/test.csv
 !tests/sample.json
 !tests/test*.py
-!reports/.coveragerc
+!tests/__init__.py
 
 # Allow gitignore
 !*.gitignore
 !*.github
 !*.gitattributes
+!.doc-checks.yaml

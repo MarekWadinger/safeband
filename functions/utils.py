@@ -1,6 +1,8 @@
+"""Utility functions for string and topic manipulation."""
+
+
 def common_prefix(topics: list) -> str:
-    """Find the common prefix among a list of topics and return it, including
-    the last '/' character.
+    """Find common prefix among topics, truncated to the last '/' character.
 
     Args:
         topics (list): A list of string topics.
@@ -31,6 +33,7 @@ def common_prefix(topics: list) -> str:
     >>> topics = None
     >>> common_prefix(topics)
     ''
+
     """
     if not topics:
         return ""

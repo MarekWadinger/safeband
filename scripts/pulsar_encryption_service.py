@@ -1,3 +1,6 @@
+"""Pulsar consumer that RSA-encrypts messages before forwarding them."""
+
+import logging
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -6,21 +9,38 @@ import pulsar
 from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from functions.encryption import (  # noqa: E402
+from functions.encryption import (
     decode_data,
     encrypt_data,
     init_rsa_security,
 )
-from functions.streamz_tools import map  # noqa: E402, F401
+from functions.streamz_tools import MapStream  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 def encryption_service(
-    in_topic: list, out_topic: str, subscription_name: str, service_url: str
-):
+    in_topic: list,
+    out_topic: str,
+    subscription_name: str,
+    service_url: str,
+) -> None:
+    """Subscribe to a Pulsar topic, encrypt messages, and forward them.
+
+    Args:
+        in_topic: Pulsar topics to consume from.
+        out_topic: Pulsar topic to publish encrypted messages to, or None to
+            print to stdout.
+        subscription_name: Consumer subscription name.
+        service_url: Pulsar broker URL.
+
+    """
     sender, _ = init_rsa_security(".security")
 
     source = Stream.from_pulsar(
-        service_url, in_topic, subscription_name=subscription_name
+        service_url,
+        in_topic,
+        subscription_name=subscription_name,
     )
 
     encrypter = source.map(decode_data).map(encrypt_data, sender)
@@ -35,18 +55,18 @@ def encryption_service(
     while True:
         try:
             if source.stopped:
-                print("Stopping encryption...")
+                logger.info("Stopping encryption...")
                 break
             if L:
-                print(L.pop(0))
+                logger.info("%s", L.pop(0))
         except pulsar.Interrupted:
-            print("Stop receiving messages")
+            logger.info("Stop receiving messages")
             if args.out_topic is not None:
                 producer.stop()
                 producer.flush()
             break
-        except Exception as e:
-            raise e
+        except Exception:
+            raise
 
 
 if __name__ == "__main__":
@@ -78,8 +98,12 @@ if __name__ == "__main__":
         help="The scheme and broker as 'scheme://IP:port.",
         type=str,
     )
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     args = parser.parse_args()
 
     encryption_service(
-        args.in_topic, args.out_topic, args.subscription_name, args.service_url
+        args.in_topic,
+        args.out_topic,
+        args.subscription_name,
+        args.service_url,
     )

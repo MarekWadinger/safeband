@@ -1,5 +1,8 @@
+"""Streamz stream operators and MQTT sink for real-time data pipelines."""
+
 import logging
-from typing import Union
+from collections.abc import Callable
+from typing import Never
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import MQTTMessage
@@ -8,9 +11,18 @@ from streamz import Sink, Stream
 logger = logging.getLogger(__name__)
 
 
-@Stream.register_api()
-class map(Stream):
-    def __init__(self, upstream, func, *args, **kwargs):
+@Stream.register_api(attribute_name="map")
+class MapStream(Stream):
+    """Stream operator that applies a function to each upstream element."""
+
+    def __init__(
+        self,
+        upstream: Stream | None,
+        func: Callable,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        """Store func and extra args, then initialize the parent Stream."""
         self.func = func
         # this is one of a few stream specific kwargs
         stream_name = kwargs.pop("stream_name", None)
@@ -19,21 +31,28 @@ class map(Stream):
 
         Stream.__init__(self, upstream, stream_name=stream_name)
 
-    def update(self, x, who=None, metadata=None):
+    def update(
+        self,
+        x: object,
+        who: Stream | None = None,
+        metadata: list | None = None,
+    ) -> object:
+        """Apply func to x and emit the result, stop stream on error."""
+        del who  # unused; required by the streamz Stream.update API
         try:
             result = self.func(x, *self.args, **self.kwargs)
-        except Exception as e:
+        except Exception:
             self.stop()
             self.destroy()
-            logger.exception(e)
-            raise e
+            logger.exception("Stream update failed")
+            raise
         else:
             return self._emit(result, metadata=metadata)
 
 
 @Stream.register_api()
 class to_mqtt(Sink):
-    """Initialize the to_mqtt instance.
+    """Streamz Sink that publishes upstream messages to an MQTT broker.
 
     Args:
         upstream (Stream): Upstream stream.
@@ -49,14 +68,15 @@ class to_mqtt(Sink):
     >>> import datetime as dt
     >>> out_msg = bytes(str(dt.datetime.utcnow()), encoding='utf-8')
     >>> mqtt_sink = to_mqtt(
-    ...     Stream(), host="mqtt.eclipseprojects.io",
-    ...     port=1883, topic='test', publish_kwargs={"retain":True})
+    ...     Stream(), host="test.mosquitto.org",
+    ...     port=1883, topic='adaptive-interpretable-ad/test',
+    ...     publish_kwargs={"retain":True})
     >>> mqtt_sink.update(out_msg)
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
-    ...                        topics="test")
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
+    ...                        topics="adaptive-interpretable-ad/test")
     >>> msg.payload == out_msg
     True
 
@@ -70,8 +90,8 @@ class to_mqtt(Sink):
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
-    ...                        topics="testanomaly")
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
+    ...                        topics="adaptive-interpretable-ad/testanomaly")
     >>> int(msg.payload) == out_msg['anomaly']
     True
 
@@ -86,56 +106,72 @@ class to_mqtt(Sink):
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
     ...                        topics="b_DOL_high")
     >>> float(msg.payload) == out_msg['level_high']['b']
     True
 
     >>> mqtt_sink.destroy()
+
     """
 
     def __init__(
         self,
-        upstream,
-        host,
-        port,
-        topic,
-        keepalive=60,
-        client_kwargs=None,
-        publish_kwargs=None,
-        **kwargs,
-    ):
+        upstream: Stream,
+        host: str,
+        port: int,
+        topic: str,
+        keepalive: int = 60,
+        client_kwargs: dict | None = None,
+        publish_kwargs: dict | None = None,
+        **kwargs: object,
+    ) -> None:
+        """Store connection parameters and initialize the Sink."""
         self.host = host
         self.port = port
         self.c_kw = client_kwargs or {}
         self.p_kw = publish_kwargs or {}
-        self.client: Union[mqtt.Client, None] = None
+        self.client: mqtt.Client | None = None
         self.topic = topic
         self.keepalive = keepalive
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
-    def update(self, x, who=None, metadata=None):
+    def update(
+        self,
+        x: bytes | dict,
+        who: Stream | None = None,
+        metadata: list | None = None,
+    ) -> None:
+        """Publish x to the MQTT broker, connecting lazily on first call."""
+        del who, metadata  # unused; required by the streamz Sink.update API
+
         def publish_many(
             client: mqtt.Client,
             topics: list[str],
             payloads: list,
-            *args,
-            **kwargs,
-        ):
-            for topic, payload in zip(topics, payloads):
+            *args: Never,
+            **kwargs: Never,
+        ) -> None:
+            for topic, payload in zip(topics, payloads, strict=False):
                 client.publish(topic, payload, *args, **kwargs)
 
         if self.client is None:
             self.client = mqtt.Client(clean_session=True)
             self.client.connect(
-                self.host, self.port, self.keepalive, **self.c_kw
+                self.host,
+                self.port,
+                self.keepalive,
+                **self.c_kw,
             )
-        # TODO: wait on successful delivery
+        # TODO(MarekWadinger): wait on successful delivery
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/60
         if isinstance(x, bytes):
             self.client.publish(self.topic, x, **self.p_kw)
         else:
             self.client.publish(
-                f"{self.topic}anomaly", x["anomaly"], **self.p_kw
+                f"{self.topic}anomaly",
+                x["anomaly"],
+                **self.p_kw,
             )
             if isinstance(x["level_high"], dict):
                 for key in x["level_high"]:
@@ -161,7 +197,8 @@ class to_mqtt(Sink):
                     **self.p_kw,
                 )
 
-    def destroy(self):
+    def destroy(self) -> None:
+        """Disconnect the MQTT client and destroy the sink."""
         if self.client is not None:
             self.client.disconnect()
             self.client = None
@@ -186,6 +223,7 @@ def _filt(msgs: dict, topics: list) -> bool:
     >>> topics = ['a', 'b', 'c']
     >>> _filt(msgs, topics)
     False
+
     """
     return all(topic in msgs for topic in topics)
 
@@ -218,6 +256,7 @@ def _func(previous_state: dict, new_msg: MQTTMessage, topics: list) -> dict:
     >>> new_msg.payload = b'2.'
     >>> _func(previous_state, new_msg, topics)
     {'foo': b'2.'}
+
     """
     MQTTMessage()
     if new_msg.topic in topics:

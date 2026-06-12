@@ -1,6 +1,6 @@
 [project]
 name = "adaptive-interpretable-ad"
-version = "0.1.0"
+version = "2.2.0"
 description = "Online outlier detection service for industrial SCADA-based infrastructures for low-latency detection and change-point adaptation."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -24,6 +24,14 @@ dependencies = [
 [tool.uv.sources]
 river = { git = "https://github.com/MarekWadinger/river.git" }
 
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "pep621"
+# Existing tags are bare versions (1.0.0 = PC2023 paper, 2.0.0 = ESwA
+# paper), so future bumps keep the same format.
+tag_format = "$version"
+update_changelog_on_bump = true
+
 [dependency-groups]
 build = [
     "setuptools>=80.9.0",
@@ -31,20 +39,61 @@ build = [
     "wheel>=0.45.1",
 ]
 dev = [
-    "flake8>=7.3.0",
-    "flake8-html>=0.4.3",
+    "commitizen>=4.16.3",
     "jupyter<2.0.0",
-    "pre-commit>=4.3.0",
-    "pytest>=8.4.1",
-    "pytest-cov>=6.2.1",
-    "pytest-html>=4.1.1",
-    "ruff>=0.12.11",
-    "ty>=0.0.1a19",
+    "pre-commit>=4.6.0",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "pytest-html>=4.2.0",
+    "ruff>=0.15.16",
+    "ty>=0.0.48",
 ]
 example = [
     "bayesian-optimization>=2.0.4",
     "numpy>=2.3.2",
 ]
+
+[tool.ruff]
+line-length = 79
+# Script collections, not importable packages
+namespace-packages = [
+    "examples",
+    "examples/models",
+    "publications/ilustrate/pc2023",
+    "scripts",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+# Explicitly permitted ignores (decision 2026-06-11). Everything else is
+# enforced; do not extend this list without an explicit decision.
+ignore = [
+    # -- user-permitted classes ------------------------------------------
+    "S101",    # asserts: pytest tests + type-narrowing asserts
+    "FBT001",  # boolean positional args: fixing changes public signatures
+    "FBT002",
+    "FBT003",
+    "N801",    # naming: math notation (X, df_A) and numbered examples
+    "N802",
+    "N803",
+    "N806",
+    "N999",
+    "SLF001",  # private access into river/matplotlib internals
+    "PGH003",  # blanket type: ignore where rule codes differ ruff/ty
+    "PLR2004", # magic-value comparisons in research evaluation code
+    "PLR0913", # complexity: research evaluation loops
+    "PLR0912",
+    "PLR0915",
+    "C901",
+    "FIX002",  # TODOs are kept, tracked via linked GitHub issues (TD003)
+    # -- tooling ----------------------------------------------------------
+    "ERA001",  # commented-out code: enforced by dedicated pre-push hook
+    "COM812",  # conflicts with ruff format (trailing commas)
+    "ISC001",  # conflicts with ruff format (implicit str concat)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.markdownlint]
 no-duplicate-heading = { siblings_only = true, allow_different_nesting = true }
@@ -63,12 +112,32 @@ addopts = [
     "--cov=.",
     "--cov-report=xml:reports/coverage/coverage.xml",
     "--cov-report=html:reports/coverage/report",
-    "--cov-config=reports/.coveragerc"
 ]
 
 norecursedirs = [".*", "examples", "publications", "scripts"]
 doctest_optionflags = ["NORMALIZE_WHITESPACE", "NUMBER", "ELLIPSIS", "IGNORE_EXCEPTION_DETAIL"]
 
-[tool.flake8]
-exclude = ".*"
-extend-ignore = ["E203"]
+[tool.coverage.report]
+omit = [
+    # Non-library trees that pollute the `--cov=.` report
+    "examples/*",
+    "publications/*",
+    "scripts/*",
+    "dist_linux/*",
+    "tests/*",
+    # Plotting/evaluation helpers excluded from coverage
+    "functions/evaluate.py",
+    "functions/plot.py",
+]
+exclude_also = [
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

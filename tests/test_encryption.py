@@ -1,4 +1,5 @@
-import os
+"""Tests for RSA encryption, signing, and key management utilities."""
+
 import sys
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from cryptography.exceptions import InvalidSignature
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from functions.encryption import (  # noqa: E402
+from functions.encryption import (
     decode_data,
     decrypt_data,
     encrypt_data,
@@ -23,35 +24,45 @@ from functions.encryption import (  # noqa: E402
 
 
 class TestSecurity:
-    def setup_class(self):
+    """End-to-end security tests: key generation, persistence, crypto ops."""
+
+    def setup_class(self) -> None:
+        """Generate sender/receiver key pairs and exchange public keys."""
         self.parent_path = Path(__file__).parent
         self.security_dir = self.parent_path / ".security"
-        os.makedirs(self.security_dir, exist_ok=True)
+        self.security_dir.mkdir(parents=True, exist_ok=True)
         self.sender, self.receiver = generate_keys()
         sender_pub = self.sender.public_pem()
         receiver_pub = self.receiver.public_pem()
         self.receiver.load_public_pem(sender_pub)
         self.sender.load_public_pem(receiver_pub)
 
-    def teardown_class(self):
+    def teardown_class(self) -> None:
+        """Remove PEM key files written during tests."""
         # Delete files if created
-        if os.path.exists(self.security_dir / "s_pem.pub"):
-            os.remove(self.security_dir / "s_pem.pub")
+        s_pem_pub = self.security_dir / "s_pem.pub"
+        if s_pem_pub.exists():
+            s_pem_pub.unlink()
 
-        if os.path.exists(self.security_dir / "s_pem"):
-            os.remove(self.security_dir / "s_pem")
+        s_pem = self.security_dir / "s_pem"
+        if s_pem.exists():
+            s_pem.unlink()
 
-        if os.path.exists(self.security_dir / "r_pem.pub"):
-            os.remove(self.security_dir / "r_pem.pub")
+        r_pem_pub = self.security_dir / "r_pem.pub"
+        if r_pem_pub.exists():
+            r_pem_pub.unlink()
 
-        if os.path.exists(self.security_dir / "r_pem"):
-            os.remove(self.security_dir / "r_pem")
+        r_pem = self.security_dir / "r_pem"
+        if r_pem.exists():
+            r_pem.unlink()
 
-    def test_key_generation(self):
+    def test_key_generation(self) -> None:
+        """Generating sender and receiver key pairs yields non-None objects."""
         assert self.sender is not None
         assert self.receiver is not None
 
-    def test_key_saving_and_loading(self):
+    def test_key_saving_and_loading(self) -> None:
+        """Saving and loading public PEM files preserves the key material."""
         save_public_key(self.security_dir / "s_pem.pub", self.sender)
         save_private_key(self.security_dir / "s_pem", self.sender)
         save_public_key(self.security_dir / "r_pem.pub", self.receiver)
@@ -64,7 +75,8 @@ class TestSecurity:
         assert self.sender.public_pem() == remote_receiver.public_pem()
         assert self.receiver.public_pem() == remote_sender.public_pem()
 
-    def test_key_retaining(self):
+    def test_key_retaining(self) -> None:
+        """Saving and loading private PEM files preserves the key material."""
         save_public_key(self.security_dir / "s_pem.pub", self.sender)
         save_private_key(self.security_dir / "s_pem", self.sender)
         save_public_key(self.security_dir / "r_pem.pub", self.receiver)
@@ -77,35 +89,44 @@ class TestSecurity:
         assert self.sender.private_pem() == remote_receiver.private_pem()
         assert self.receiver.private_pem() == remote_sender.private_pem()
 
-    def test_bytes_encryption_and_decryption(self):
+    def test_bytes_encryption_and_decryption(self) -> None:
+        """Encrypting then decrypting bytes round-trips to original value."""
         control_action = b"4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
         assert control_action == decrypted_c_a
 
-    def test_bytes_signing_and_verification(self):
+    def test_bytes_signing_and_verification(self) -> None:
+        """Signing bytes and verifying against sender's public key succeeds."""
         control_action = b"4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(control_action, signature, self.receiver)
         assert verified is True
 
-    def test_str_encryption_and_decryption(self):
+    def test_str_encryption_and_decryption(self) -> None:
+        """Encrypting a str round-trips as bytes; decrypt(str) raises error."""
         control_action = "4.20"
         encrypted_c_a = encrypt_data(control_action, self.sender)
         decrypted_c_a = decrypt_data(encrypted_c_a, self.receiver)
         assert control_action.encode("utf-8") == decrypted_c_a
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             decrypted_c_a = decrypt_data(control_action, self.receiver)  # type: ignore
 
-    def test_str_signing_and_verification(self):
+    def test_str_signing_and_verification(self) -> None:
+        """Signing a str and verifying its UTF-8 bytes against sender's key."""
         control_action = "4.20"
         signature = sign_data(control_action, self.sender)
         verified = verify_signature(
-            control_action.encode("utf-8"), signature, self.receiver
+            control_action.encode("utf-8"),
+            signature,
+            self.receiver,
         )
         assert verified is True
 
-    def test_message_signing_encryption_decryption_and_verification(self):
+    def test_message_signing_encryption_decryption_and_verification(
+        self,
+    ) -> None:
+        """Signing, encrypting, decrypting, and verifying a dict succeeds."""
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
@@ -114,7 +135,8 @@ class TestSecurity:
         verify = verify_signature(plaintext, sign, self.receiver)
         assert verify is True
 
-    def test_message_signing_encryption_dump_verify_and_decrypt(self):
+    def test_message_signing_encryption_dump_verify_and_decrypt(self) -> None:
+        """Encoding to base64, verifying, and decrypting recovers payload."""
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
@@ -122,12 +144,13 @@ class TestSecurity:
         item = verify_and_decrypt_data(ciphertext_dec, self.receiver)
         assert msg["a"] == item["a"]
 
-    def test_message_signing_encryption_dump_fail_verify(self):
+    def test_message_signing_encryption_dump_fail_verify(self) -> None:
+        """Swapping the signature before decoding raises InvalidSignature."""
         msg = {"a": "1"}
         signed_msg = sign_data(msg, self.sender)
         other_msg = sign_data({"a": "2"}, self.sender)
         signed_msg["signature"] = other_msg["signature"]
         ciphertext = encrypt_data(signed_msg, self.sender)
-        ciphertext = decode_data(ciphertext)
+        ciphertext_str = decode_data(ciphertext)
         with pytest.raises(InvalidSignature):
-            verify_and_decrypt_data(ciphertext, self.receiver)  # type: ignore
+            verify_and_decrypt_data(ciphertext_str, self.receiver)

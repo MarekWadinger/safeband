@@ -1,34 +1,41 @@
+"""Progressive evaluation and metric utilities for river anomaly models."""
+
 import inspect
-import os
+import logging
 import time
 from collections import defaultdict
-from typing import Literal, Union
+from collections.abc import Iterable, Sequence
+from pathlib import Path
+from typing import Literal, cast
 
 import pandas as pd
 from river.compose import Pipeline
-from river.metrics.base import BinaryMetric, Metric, MultiClassMetric
+from river.metrics.base import Metric, MultiClassMetric
 
-from functions.compose import build_model, convert_to_nested_dict  # noqa: E402
+from functions.anomaly import GaussianScorer
+from functions.compose import build_model, convert_to_nested_dict
+
+logger = logging.getLogger(__name__)
 
 
-def progressive_val_predict(  # noqa: C901
-    model,
+def progressive_val_predict(
+    # model is duck-typed across river scorers/pipelines/forecasters;
+    # no protocol covers all call sites without breaking ty
+    model,  # noqa: ANN001
     dataset: pd.DataFrame,
-    metrics: Union[list[Union[BinaryMetric, MultiClassMetric]], None] = None,
+    metrics: Sequence[Metric] | None = None,
     print_every: int = 0,
     print_final: bool = True,
     compute_limits: bool = False,
     detect_signal: bool = False,
     detect_change: bool = False,
-    sampling_model=None,
+    sampling_model: GaussianScorer | None = None,
     compute_latency: bool = False,
-    **kwargs,
-):
+    **kwargs: int,
+) -> tuple[list, dict[str, list]]:
+    """Run prequential evaluation and return predictions and metadata."""
     # CREATE REFERENCE TO LAST STEP OF PIPELINE (TRACK STATE OF MDOEL)
-    if isinstance(model, Pipeline):
-        model_ = model[-1]
-    else:
-        model_ = model
+    model_ = model[-1] if isinstance(model, Pipeline) else model
     y_pred = []
     meta: dict[str, list] = {}
     if compute_limits:
@@ -51,19 +58,13 @@ def progressive_val_predict(  # noqa: C901
         if compute_latency:
             start_i = time.time()
         # PREPOCESSING
-        if isinstance(t, pd.Timestamp):
-            t = t.tz_localize(None)
+        t_loc = t.tz_localize(None) if isinstance(t, pd.Timestamp) else t
         x_: dict[str, float] = x.to_dict()
-        if "anomaly" in x_:
-            y = x_.pop("anomaly", "")
-        else:
-            y = None
+        y = x_.pop("anomaly", "") if "anomaly" in x_ else None
         # PREDICT
         if (
             metrics is not None
-            and all(
-                [isinstance(metric, MultiClassMetric) for metric in metrics]
-            )
+            and all(isinstance(metric, MultiClassMetric) for metric in metrics)
             and hasattr(model_, "get_root_cause")
         ):
             is_anomaly = model_.get_root_cause()
@@ -81,15 +82,16 @@ def progressive_val_predict(  # noqa: C901
         # EVALUATE
         if metrics is not None:
             if y is not None:
-                if not isinstance(metrics, list):
+                if isinstance(metrics, Metric):
                     metrics = [metrics]
                 for metric in metrics:
-                    metric = metric.update(y, is_anomaly)
+                    metric.update(cast("bool", y), is_anomaly)
                     if (print_every > 0) and (i % print_every == 0):
-                        print(metric)
+                        logger.info("%s", metric)
             else:
+                msg = "Dataset must contain column 'anomaly' to use metrics."
                 raise ValueError(
-                    "Dataset must contain column 'anomaly' to use metrics."
+                    msg,
                 )
 
         # DYNAMIC OPERATING LIMITS
@@ -107,15 +109,15 @@ def progressive_val_predict(  # noqa: C901
                 }
                 meta["Signal Anomaly"].append(
                     {
-                        k: not ((thresh_low[k] < v) and (v < thresh_high[k]))
+                        k: not (thresh_low[k] < v < thresh_high[k])
                         for k, v in x_in.items()
-                    }
+                    },
                 )
 
         # DETECT NON-UNIFORM SAMPLING
         if sampling_model is not None and isinstance(t, pd.Timestamp):
             if i > 0:
-                t_ = (t - t_prev).seconds  # noqa: F821
+                t_ = (t.tz_localize(None) - t_prev).seconds
                 sample_a = sampling_model.predict_one(t_)
                 meta["Sampling Anomaly"].append(sample_a)
 
@@ -123,7 +125,7 @@ def progressive_val_predict(  # noqa: C901
                 sampling_model.learn_one(t_, w=w)
             else:
                 meta["Sampling Anomaly"].append(0)
-            t_prev = t  # noqa: F841
+            t_prev = t.tz_localize(None)
 
         # DETECT CHANGE POINTS
         if detect_change:
@@ -131,9 +133,9 @@ def progressive_val_predict(  # noqa: C901
 
         # UPDATE MODEL
         if hasattr(model, "gaussian") and inspect.signature(
-            model.gaussian.update
+            model.gaussian.update,
         ).parameters.get("t"):
-            model.learn_one(x_, **{"t": t})
+            model.learn_one(x_, t=t_loc)
         elif hasattr(model, "_supervised") and model._supervised:
             model_up = model.learn_one(x_, y)
             model = model_up if model_up is not None else model
@@ -156,47 +158,58 @@ def progressive_val_predict(  # noqa: C901
     end = time.time()
 
     if print_final:
-        print(
-            f"Avg. latency per sample: {(end - start) * 1000 / len(dataset)}ms"
+        logger.info(
+            "Avg. latency per sample: %sms",
+            (end - start) * 1000 / len(dataset),
         )
         if metrics is not None:
             for metric in metrics:
-                print(metric)
+                logger.info("%s", metric)
 
     return y_pred, meta
 
 
-def print_stats(df, y_pred):
+def print_stats(df: pd.DataFrame, y_pred: list) -> None:
+    """Log predicted vs actual anomaly sample counts and event proportions."""
     df_y_pred = pd.Series(y_pred, index=df.anomaly.index)
     res = pd.concat([df.anomaly, df_y_pred], axis=1)
     real = res[res["anomaly"] == 1]
     sum_ = sum(real.apply(lambda x: x["anomaly"] == x[0], axis=1))
-    len_real = len(real) if not len(real) == 0 else float("nan")
-    print(
-        f"{'Pred anomalous samples | events | proportion:':<55} "
-        f"{sum(df_y_pred):<8} | {sum(df_y_pred.diff().dropna() == 1):<5} | "
-        f"{sum(df_y_pred) / len(df_y_pred):.02%}\n"
-        f"{'Found samples | events | proportion:':<55} "
-        f"{sum_:<8} | {' ':<5} | {sum_ / len_real:.02%}"
+    len_real = len(real) if len(real) != 0 else float("nan")
+    logger.info(
+        "%s %s | %s | %s\n%s %s | %s | %s",
+        "Pred anomalous samples | events | proportion:".ljust(55),
+        str(sum(df_y_pred)).ljust(8),
+        str(sum(df_y_pred.diff().dropna() == 1)).ljust(5),
+        f"{sum(df_y_pred) / len(df_y_pred):.02%}",
+        "Found samples | events | proportion:".ljust(55),
+        str(sum_).ljust(8),
+        " ".ljust(5),
+        f"{sum_ / len_real:.02%}",
     )
 
 
-def cluster_map(y_true, y_pred):
+def cluster_map(y_true: Iterable, y_pred: Iterable) -> list:
+    """Remap cluster labels in y_pred to true labels by maximum overlap."""
     # Create a dictionary to store the counts of overlaps
     overlap_counts = defaultdict(lambda: defaultdict(int))
 
     # Iterate over y_true and y_pred to count overlaps
-    for true_val, pred_val in zip(y_true, y_pred):
+    for true_val, pred_val in zip(y_true, y_pred, strict=False):
         overlap_counts[pred_val][true_val] += 1
 
     # Map values in y_pred to values in y_true based on maximum overlap count
     return [
-        max(overlap_counts[pred_val], key=overlap_counts[pred_val].get)
+        max(
+            overlap_counts[pred_val],
+            key=lambda k, pv=pred_val: overlap_counts[pv][k],
+        )
         for pred_val in y_pred
     ]
 
 
-def drop_no_support_labels(metric):
+def drop_no_support_labels[M: MultiClassMetric](metric: M) -> M:
+    """Remove zero-support labels from the confusion matrix in-place."""
     for c in metric.cm.classes:
         if metric.cm.support(c) == 0.0:
             if c in metric.cm.data:
@@ -215,7 +228,8 @@ def save_evaluate_metrics(
     task: Literal["classification", "clustering"],
     map_cluster_to_rc: bool,
     drop_no_support: bool,
-):
+) -> None:
+    """Compute and save per-column metric results to a CSV in path."""
     col_names = [metric.__class__.__name__ for metric in metrics]
     report_in_metrics = "ClassificationReport" in col_names
     if report_in_metrics:
@@ -238,9 +252,9 @@ def save_evaluate_metrics(
         metrics_ = [metric.clone() for metric in metrics]
         if map_cluster_to_rc and df_ys[col].dtypes == "int64":
             df_ys[col] = cluster_map(df_ys.anomaly, df_ys[col])
-        for y_true, y_pred in zip(df_ys.anomaly, df_ys[col]):
+        for y_true, y_pred in zip(df_ys.anomaly, df_ys[col], strict=False):
             for metric in metrics_:
-                metric = metric.update(y_true, y_pred)
+                metric.update(y_true, y_pred)
         if drop_no_support:
             metrics_ = [drop_no_support_labels(metric) for metric in metrics_]
 
@@ -257,7 +271,7 @@ def save_evaluate_metrics(
                 cm.total_false_positives
                 / (cm.total_false_positives + cm.total_true_negatives),
             ]
-            with open(f"{path}/{col.split('__', 1)[0]}.txt", "w") as f:
+            with (Path(path) / f"{col.split('__', 1)[0]}.txt").open("w") as f:
                 f.write(str(cr))
         else:
             result = [metric.get() for metric in metrics_]
@@ -273,18 +287,17 @@ def batch_save_evaluate_metrics(
     task: Literal["classification", "clustering"] = "classification",
     map_cluster_to_rc: bool = False,
     drop_no_support: bool = False,
-):
-    for folder in os.listdir(path):
+) -> None:
+    """Call save_evaluate_metrics for every subdirectory containing ys.csv."""
+    for folder in Path(path).iterdir():
         # check if listed object is a folder and does not start with a period
-        if os.path.isdir(os.path.join(path, folder)) and not folder.startswith(
-            "."
-        ):
+        if folder.is_dir() and not folder.name.startswith("."):
             # loop through the files in the folder
-            for file in os.listdir(os.path.join(path, folder)):
-                if file == "ys.csv":
+            for file in folder.iterdir():
+                if file.name == "ys.csv":
                     save_evaluate_metrics(
                         metrics,
-                        os.path.join(path, folder),
+                        str(folder),
                         task,
                         map_cluster_to_rc,
                         drop_no_support,
@@ -292,27 +305,34 @@ def batch_save_evaluate_metrics(
 
 
 def build_fit_evaluate(
-    steps,
-    df,
+    steps: list,
+    df: pd.DataFrame,
     metric: Metric,
     map_cluster_to_rc: bool = False,  # 2023-10-30 - ADD: DBStream comparison
     drop_no_support: bool = False,  # 2023-10-30 - ADD: DBStream comparison
-    **params,
-):
+    **params: float,
+) -> float:
+    """Build, fit, and evaluate a model; return the scalar metric value."""
     params = convert_to_nested_dict(params)
     model = build_model(steps, params)
     metric = metric.__class__()  # Make sure metric is fresh
     try:
         y_pred, _ = progressive_val_predict(
-            model, df, [], print_every=0, print_final=False
+            model,
+            df,
+            [],
+            print_every=0,
+            print_final=False,
         )
         if map_cluster_to_rc:
             y_pred = cluster_map(df.anomaly, y_pred)
-        for yt, yp in zip(df.anomaly, y_pred):
+        for yt, yp in zip(df.anomaly, y_pred, strict=False):
             metric.update(yt, yp)
         if drop_no_support:
-            metric = drop_no_support_labels(metric)
+            metric = drop_no_support_labels(
+                cast("MultiClassMetric", metric),
+            )
         return metric.get() if metric.bigger_is_better else -metric.get()
-    except Exception as e:
-        print(e)
+    except Exception:
+        logger.exception("build_fit_evaluate failed")
         return 0 if metric.bigger_is_better else -float("inf")

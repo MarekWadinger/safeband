@@ -1,52 +1,71 @@
-from typing import Union
+"""TypedDict definitions and instance-checking utilities for config types."""
+
+from collections.abc import Mapping
+from typing import NotRequired
 
 from pandas import Timedelta
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 
 class EmailConfig(TypedDict):
+    """SMTP credentials and recipient for outgoing alert emails."""
+
     sender_email: str
     sender_password: str
     recipient_email: str
 
 
 class FileClient(TypedDict):
+    """File-based client configuration with input path and output path."""
+
     path: str
     output: str
 
 
 class MQTTClient(TypedDict):
+    """MQTT broker connection parameters."""
+
     host: str
     port: int
 
 
 class KafkaClient(TypedDict):
+    """Kafka consumer/producer connection parameters."""
+
     bootstrap_servers: str
 
 
 class PulsarClient(TypedDict):
+    """Apache Pulsar client connection parameters."""
+
     service_url: str
 
 
 class IOConfig(TypedDict):
+    """Input and output topic names for the messaging pipeline."""
+
     in_topics: list[str]
-    out_topics: Union[list[str], str, None]
+    out_topics: list[str] | str | None
 
 
 class ModelConfig(TypedDict):
+    """Anomaly model hyper-parameters: thresholds and time windows."""
+
     threshold: float
     t_e: Timedelta
-    t_a: Union[Timedelta, None]
-    t_g: Union[Timedelta, None]
+    t_a: Timedelta | None
+    t_g: Timedelta | None
 
 
 class SetupConfig(TypedDict):
+    """Optional infrastructure paths and debug flag for the consumer setup."""
+
     recovery_path: NotRequired[str]
     key_path: NotRequired[str]
     debug: NotRequired[bool]
 
 
-def istypedinstance(obj, type_):
+def istypedinstance(obj: Mapping[str, object], type_: type) -> bool:
     """Check if the given object matches the provided type annotation.
 
     This function checks if the object `obj` is an instance that conforms
@@ -76,6 +95,7 @@ def istypedinstance(obj, type_):
     ...     'recovery_path': 5}
     >>> istypedinstance(setup_config, SetupConfig)
     False
+
     """
     for property_name, property_type in type_.__annotations__.items():
         value = obj.get(property_name, None)
@@ -84,16 +104,18 @@ def istypedinstance(obj, type_):
             or str(type(property_type)) == "<class 'typing._GenericAlias'>"
         ):
             if hasattr(property_type, "__args__"):
-                property_type = Union[property_type.__args__[0], None]
+                resolved_type = property_type.__args__[0] | None
             else:
-                property_type = type(None)
+                resolved_type = type(None)
+        else:
+            resolved_type = property_type
         try:
-            return isinstance(value, property_type)
+            return isinstance(value, resolved_type)
         except TypeError:
             if hasattr(property_type, "__args__"):
                 return isinstance(
-                    value, (property_type.__args__[0], type(None))
+                    value,
+                    (property_type.__args__[0], type(None)),
                 )
-            else:
-                return False
+            return False
     return True

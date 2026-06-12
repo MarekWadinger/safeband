@@ -1,0 +1,3 @@
+# Per-repo configuration for https://github.com/MarekWadinger/doc-checks
+py_imports:
+  project_packages: [functions, scripts]

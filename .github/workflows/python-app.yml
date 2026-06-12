@@ -1,5 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# This workflow installs dependencies with uv, lints with ruff, type-checks
+# with ty, and runs the test suite with coverage on a Python/OS matrix.
 
 name: Python application
 
@@ -10,83 +10,84 @@ on:
     branches: ["main"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
-    permissions: write-all
     name: ${{ matrix.os }} / ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false # allow other jobs in matrix if one fails
       matrix:
         os: [Ubuntu, macOS]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
         with:
-          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
-          cache: "pip" # caching pip dependencies
       - name: Install Rust on ubuntu
         if: matrix.os == 'Ubuntu'
+        # river is built from a git fork (see [tool.uv.sources]) and needs a
+        # Rust toolchain on Linux.
         run: |
           curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y && rustup show
       - name: Install dependencies
+        run: uv sync --all-groups
+      - name: Lint with ruff
         run: |
-          python -m pip install --upgrade pip
-          pip install flake8 pytest pytest-html pytest-cov setuptools-rust "genbadge[all]"
-          pip install -r requirements.txt
-      - name: Check with ruff
-        uses: chartboost/ruff-action@v1
-        with:
-          args: --line-length=79
-          version: 0.4.10
-      - name: Lint with flake8
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          mkdir -p reports/flake8/report
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --output-file=reports/flake8/flake8stats.txt --format=html --htmldir=reports/flake8/report/
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Type-check with ty
+        run: uv run ty check . --ignore unresolved-import
       - name: Test with pytest
+        # Coverage flags live in [tool.pytest.ini_options] addopts.
+        run: uv run pytest .
+      - name: Publish coverage summary
+        # Guarded so a missing .coverage (early test abort) does not replace
+        # the pytest failure with a confusing coverage error.
+        if: always()
         run: |
-          # Configurations in pytest.ini and reports/.coveragerc
-          pytest .
-      - name: Update Coverage Badges
-        run: |
-          genbadge flake8 -o reports/flake8-badge.svg
-          genbadge tests -o reports/test-badge.svg
-          genbadge coverage -o reports/coverage-badge.svg
+          if [ -f .coverage ]; then
+            uv run coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No .coverage file found; skipping coverage summary." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload coverage report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.os }}-${{ matrix.python-version }}
+          path: reports/coverage/coverage.xml
+          if-no-files-found: ignore
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7
         with:
           files: reports/coverage/coverage.xml
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-  pull_coverage_results:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  notebooks:
+    name: Execute notebooks
+    # Notebook execution is too slow for a local pre-push hook; PRs to
+    # main are the gate instead (make verify-notebooks, worktree untouched).
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    needs: build
+    timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
         with:
-          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
-          fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository.
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          title: "UPDATE: Coverage Badges"
-          body: "Automated update of coverage badges"
-          add-paths: |
-            reports/*.svg
-            reports/**/report/**
-        if: ${{ github.event_name == 'push' }}
-      - name: Enable Pull Request Automerge
-        run: gh pr merge -d --merge --auto "1"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ github.event_name == 'push' }}
+          enable-cache: true
+      - name: Install Rust
+        # river is built from a git fork (see [tool.uv.sources]) and needs a
+        # Rust toolchain on Linux.
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=nightly --profile=minimal -y && rustup show
+      - name: Install dependencies
+        run: uv sync --all-groups
+      - name: Execute all example notebooks
+        run: make verify-notebooks

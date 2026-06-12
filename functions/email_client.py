@@ -1,8 +1,12 @@
+"""SMTP email client for sending anomaly notification messages."""
+
 import json
+import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Union
+
+logger = logging.getLogger(__name__)
 
 
 class EmailClient:  # pragma: no cover
@@ -19,16 +23,18 @@ class EmailClient:  # pragma: no cover
         ...     sender_password="password",
         ...     recipient_email="recipient@example.com"
         ... )
-        >>> email_client.send_email(
-        ...     subject="Test",
-        ...     msg="Hello, world!"
-        ... )
-        Email sent successfully!
+        >>> email_client.sender_email
+        'test@example.com'
+
     """
 
     def __init__(
-        self, sender_email: str, sender_password: str, recipient_email: str
-    ):
+        self,
+        sender_email: str,
+        sender_password: str,
+        recipient_email: str,
+    ) -> None:
+        """Store sender credentials and recipient address."""
         self.sender_email = sender_email
         self.sender_password = sender_password
         self.recipient_email = recipient_email
@@ -36,8 +42,9 @@ class EmailClient:  # pragma: no cover
     def send_email(
         self,
         subject: str,
-        msg: Union[str, dict],
-    ):
+        msg: str | dict,
+    ) -> None:
+        """Send an email with the given subject and message body."""
         # Create the email message
         body = MIMEMultipart()
         body["From"] = self.sender_email
@@ -64,7 +71,8 @@ class EmailClient:  # pragma: no cover
         }
         # Create an SMTP connection
         smtp_server = smtps.get(
-            self.sender_email.split("@")[1], "smtp.mail.com"
+            self.sender_email.split("@")[1],
+            "smtp.mail.com",
         )
         with smtplib.SMTP(smtp_server, 587) as server:
             server.starttls()  # Enable TLS encryption
@@ -72,7 +80,9 @@ class EmailClient:  # pragma: no cover
 
             # Send the email
             server.sendmail(
-                self.sender_email, self.recipient_email, body.as_string()
+                self.sender_email,
+                self.recipient_email,
+                body.as_string(),
             )
 
-        print("Email sent successfully!")
+        logger.info("Email sent successfully!")

@@ -1,39 +1,46 @@
+"""Plotly-based visualization helpers for anomaly detection results."""
+
 # IMPORTS
 import textwrap
 from datetime import timedelta
-from typing import Union
+from typing import cast
 
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # CONSTANTS
-FIG_LAYOUT = dict(
-    height=90 * 3,
-    width=120 * 3,
-    yaxis_title_standoff=0,
-    xaxis_tickfont_size=9,
-    font_family="cmr10",
-    font_size=9,
-    autosize=True,
-    margin=dict(l=40, r=15, t=5, b=0),
-    bargap=0,
-    legend=dict(
-        orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-    ),
-)
+FIG_LAYOUT = {
+    "height": 90 * 3,
+    "width": 120 * 3,
+    "yaxis_title_standoff": 0,
+    "xaxis_tickfont_size": 9,
+    "font_family": "cmr10",
+    "font_size": 9,
+    "autosize": True,
+    "margin": {"l": 40, "r": 15, "t": 5, "b": 0},
+    "bargap": 0,
+    "legend": {
+        "orientation": "h",
+        "yanchor": "bottom",
+        "y": 1.02,
+        "xanchor": "right",
+        "x": 1,
+    },
+}
 
 
 def plot_limits(
     ser: pd.Series,
     anomalies: pd.Series,
-    ser_high: Union[pd.Series, None] = None,
-    ser_low: Union[pd.Series, None] = None,
-    window: Union[timedelta, None] = None,
-    file_name: Union[str, None] = None,
+    ser_high: pd.Series | None = None,
+    ser_low: pd.Series | None = None,
+    window: timedelta | None = None,
+    file_name: str | None = None,
     save: bool = True,
-    **kwargs,
-):
+    **kwargs: pd.Series,
+) -> None:
+    """Plot signal with anomaly markers and optional DOL bands."""
     if not file_name:
         file_name = get_file_name(ser, window)
 
@@ -43,17 +50,16 @@ def plot_limits(
 
     fig = go.Figure()
 
-    fig.update_layout(
-        FIG_LAYOUT.update(
-            dict(
-                yaxis_title=ser.name,
-                yaxis_range=[ser.min(), ser.max()],
-                xaxis_tickangle=60,
-                xaxis_tickfont_size=9,
-                xaxis_tickvals=b[b > 0].index,
-            )
-        )
+    FIG_LAYOUT.update(  # ty: ignore[no-matching-overload]
+        {
+            "yaxis_title": ser.name,
+            "yaxis_range": [ser.min(), ser.max()],
+            "xaxis_tickangle": 60,
+            "xaxis_tickfont_size": 9,
+            "xaxis_tickvals": b[b > 0].index,
+        },
     )
+    fig.update_layout(FIG_LAYOUT)
 
     plot_add_signal(fig, ser)
 
@@ -67,7 +73,7 @@ def plot_limits(
             fig.write_image(f"{file_name}_mean.pdf")
         set_invisible(fig, [-1, -2])
 
-    for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
+    for x0, x1 in zip(a[a == 1].index, a[a == -1].index, strict=False):
         fig.add_vrect(
             x0=x0,
             x1=x1,
@@ -83,7 +89,12 @@ def plot_limits(
     if (ser_high is not None) and (ser_low is not None):
         yaxis_range = [ser.min(), ser.max()]
         add_thresholds(
-            fig, ser_high, ser_low, row=None, col=None, yaxis_range=yaxis_range
+            fig,
+            ser_high,
+            ser_low,
+            row=None,
+            col=None,
+            yaxis_range=yaxis_range,
         )
 
         if save:
@@ -99,18 +110,21 @@ def plot_limits(
     fig.show()
 
 
-def get_file_name(ser, window=None):
+def get_file_name(ser: pd.Series, window: timedelta | None = None) -> str:
+    """Build a file-name stem from the series name and optional window."""
+    ser_name = cast("str", ser.name)
     if window is not None:
         file_name = (
-            f"{ser.name.replace(' ', '_')}_"
+            f"{ser_name.replace(' ', '_')}_"
             f"{int(window.total_seconds() / 60 / 60)}_hours_sliding"
         )
     else:
-        file_name = f"{ser.name.replace(' ', '_')}_sliding"
+        file_name = f"{ser_name.replace(' ', '_')}_sliding"
     return file_name
 
 
-def plot_add_signal(fig, ser):
+def plot_add_signal(fig: go.Figure, ser: pd.Series) -> None:
+    """Add a signal scatter trace to fig."""
     fig.add_trace(
         go.Scatter(
             x=ser.index,
@@ -120,11 +134,16 @@ def plot_add_signal(fig, ser):
             name=ser.name,
             showlegend=True,
             line_width=0.7,
-        )
+        ),
     )
 
 
-def plot_add_mean_std(fig, ser, kwargs):
+def plot_add_mean_std(
+    fig: go.Figure,
+    ser: pd.Series,
+    kwargs: dict[str, pd.Series],
+) -> None:
+    """Add a shaded moving-mean ± std band and mean line trace to fig."""
     fig.add_trace(
         go.Scatter(
             x=kwargs["ser_pos"].index.append(kwargs["ser_pos"].index[::-1]),
@@ -135,7 +154,7 @@ def plot_add_mean_std(fig, ser, kwargs):
             showlegend=False,
             name=f"Mov Mean {ser.name}",
             line_width=0.7,
-        )
+        ),
     )
 
     fig.add_trace(
@@ -145,11 +164,12 @@ def plot_add_mean_std(fig, ser, kwargs):
             line_color="rgb(100,0,80)",
             name=f"Mov Mean {ser.name}",
             line_width=0.7,
-        )
+        ),
     )
 
 
-def set_invisible(fig, inv_lines: list):
+def set_invisible(fig: go.Figure, inv_lines: list) -> None:
+    """Hide the traces at the given indices in fig."""
     for trace in inv_lines:
         fig.data[trace].visible = False
 
@@ -159,15 +179,11 @@ def plot_limits_3d(
     anomalies: pd.Series,
     ser_high: pd.Series,
     ser_low: pd.Series,
-    signal_anomalies: Union[pd.Series, None] = None,
-    y: Union[str, None] = None,
-    z: Union[str, None] = None,
-    file_name: Union[str, None] = None,
+    y: str | None = None,
+    z: str | None = None,
     save: bool = False,
-    **kwargs,
-):
-    from plotly.subplots import make_subplots
-
+) -> go.Figure:
+    """Render a 3D scatter of two signals with anomaly markers and DOL."""
     col1 = df.columns.get_loc(y)
     col2 = df.columns.get_loc(z)
     fig = make_subplots(
@@ -238,7 +254,12 @@ def plot_limits_3d(
     thresh_high = ser_high.apply(lambda x: x[col1][col1])
     thresh_low = ser_low.apply(lambda x: x[col1][col1])
     add_thresholds(
-        fig, thresh_high, thresh_low, row=4, col=2, yaxis_range=yaxis_range
+        fig,
+        thresh_high,
+        thresh_low,
+        row=4,
+        col=2,
+        yaxis_range=yaxis_range,
     )
     # THIRD
     fig.add_trace(
@@ -261,7 +282,12 @@ def plot_limits_3d(
     thresh_high = ser_high.apply(lambda x: x[col2][col2])
     thresh_low = ser_low.apply(lambda x: x[col2][col2])
     add_thresholds(
-        fig, thresh_high, thresh_low, row=4, col=2, yaxis_range=yaxis_range
+        fig,
+        thresh_high,
+        thresh_low,
+        row=4,
+        col=2,
+        yaxis_range=yaxis_range,
     )
 
     fig.update_layout(
@@ -276,13 +302,14 @@ def plot_limits_3d(
 
 
 def add_thresholds(
-    fig,
-    thresh_high,
-    thresh_low,
-    row: Union[int, None],
-    col: Union[int, None],
-    yaxis_range: list[int],
-):
+    fig: go.Figure,
+    thresh_high: pd.Series,
+    thresh_low: pd.Series,
+    row: int | None,
+    col: int | None,
+    yaxis_range: list,
+) -> None:
+    """Add shaded upper- and lower-threshold fill traces to a subplot cell."""
     fig.add_trace(
         go.Scatter(
             x=thresh_high.index,
@@ -347,28 +374,30 @@ def add_thresholds(
 def plot_compare_anomalies(
     ser: pd.Series,
     anomalies: pd.DataFrame,
-    window: Union[timedelta, None] = None,
-    file_name: Union[str, None] = None,
+    window: timedelta | None = None,
+    file_name: str | None = None,
     save: bool = True,
-    **kwargs,
-):
+) -> None:
+    """Plot one subplot per anomaly column with vrect highlights."""
     if not file_name:
         file_name = get_file_name(ser, window)
 
     n_rows = len(anomalies.columns)
     fig = make_subplots(
-        rows=n_rows, cols=1, shared_xaxes=True, vertical_spacing=0.05
+        rows=n_rows,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.05,
     )
 
-    fig.update_layout(
-        FIG_LAYOUT.update(
-            dict(
-                yaxis_title=ser.name,
-                yaxis_range=[ser.min(), ser.max()],
-                showlegend=True,
-            )
-        )
+    FIG_LAYOUT.update(  # ty: ignore[no-matching-overload]
+        {
+            "yaxis_title": ser.name,
+            "yaxis_range": [ser.min(), ser.max()],
+            "showlegend": True,
+        },
     )
+    fig.update_layout(FIG_LAYOUT)
 
     for row, anomaly in enumerate(anomalies, start=1):
         a = anomalies[anomaly].astype(int).diff()
@@ -390,7 +419,7 @@ def plot_compare_anomalies(
             col=1,
         )
 
-        for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
+        for x0, x1 in zip(a[a == 1].index, a[a == -1].index, strict=False):
             fig.add_vrect(
                 x0=x0,
                 x1=x1,
@@ -428,33 +457,35 @@ def plot_limits_grid(
     anomalies: pd.Series,
     ser_high: pd.Series,
     ser_low: pd.Series,
-    file_name: Union[str, None] = None,
+    file_name: str | None = None,
     save: bool = True,
-    changepoints: Union[pd.Series, None] = None,
-    samplings: Union[pd.Series, None] = None,
-    **kwargs,
-):
+    changepoints: pd.Series | None = None,
+    samplings: pd.Series | None = None,
+) -> None:
+    """Plot all DataFrame columns with DOL bands in a stacked grid."""
     a = anomalies.astype(int).diff()
     # Show dates of anomalous events
     b = a[a == 1].resample("1d").sum()
 
     n_rows = len(df.columns)
     fig = make_subplots(
-        rows=n_rows, cols=1, shared_xaxes=True, vertical_spacing=0.05
+        rows=n_rows,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.05,
     )
-    fig.update_layout(
-        FIG_LAYOUT.update(
-            dict(
-                height=180 * 3,
-                width=60 * 3,
-            )
-        )
+    FIG_LAYOUT.update(
+        {
+            "height": 180 * 3,
+            "width": 60 * 3,
+        },
     )
+    fig.update_layout(FIG_LAYOUT)
 
     for row, col_name in enumerate(df.columns, start=1):
         ser = df[col_name]
-        ser_high_ = ser_high.apply(lambda x: x[col_name])
-        ser_low_ = ser_low.apply(lambda x: x[col_name])
+        ser_high_ = ser_high.apply(lambda x, c=col_name: x[c])
+        ser_low_ = ser_low.apply(lambda x, c=col_name: x[c])
 
         text = "<br>".join(textwrap.wrap(f"{ser.name} [-]", 15))
         fig.update_yaxes(
@@ -472,7 +503,7 @@ def plot_limits_grid(
                 connectgaps=False,
                 line_color="rgb(0,140,120)",
                 name="Signal",
-                showlegend=True if row == 1 else False,
+                showlegend=row == 1,
                 line_width=0.7,
             ),
             row=row,
@@ -486,7 +517,7 @@ def plot_limits_grid(
                 connectgaps=False,
                 name="System Anomalies",
                 line_color="rgb(150,0,0)",
-                showlegend=True if row == 1 else False,
+                showlegend=row == 1,
                 line_width=0.7,
                 mode="markers",
                 marker_size=3,
@@ -503,7 +534,7 @@ def plot_limits_grid(
                     connectgaps=False,
                     name="Sampling Anomalies",
                     line_color="rgb(0,0,150)",
-                    showlegend=True if row == 1 else False,
+                    showlegend=row == 1,
                     line_width=0.7,
                     mode="markers",
                     marker_size=2,
@@ -514,7 +545,11 @@ def plot_limits_grid(
 
             if samplings is not None:
                 a = samplings.astype(int).diff()
-                for x0, x1 in zip(a[a == 1].index, a[a == -1].index):
+                for x0, x1 in zip(
+                    a[a == 1].index,
+                    a[a == -1].index,
+                    strict=False,
+                ):
                     fig.add_vrect(
                         x0=x0,
                         x1=x1,
@@ -524,7 +559,7 @@ def plot_limits_grid(
                         layer="below",
                         row=row,
                         col=1,
-                    )  # type: ignore
+                    )
 
         if isinstance(changepoints, pd.Series):
             c = changepoints.astype(int).diff()
@@ -535,7 +570,7 @@ def plot_limits_grid(
                     connectgaps=False,
                     name="Changepoint",
                     line_color="rgb(255,255,0)",
-                    showlegend=True if row == 1 else False,
+                    showlegend=row == 1,
                     line_width=0.7,
                     mode="markers",
                     marker_size=2,
@@ -545,7 +580,7 @@ def plot_limits_grid(
             )
 
             for x0 in c[c == 1].index:
-                x1 = c.index[c.index.get_loc(x0) + 1]
+                x1 = c.index[cast("int", c.index.get_loc(x0)) + 1]
                 fig.add_vrect(
                     x0=x0,
                     x1=x1,
@@ -571,43 +606,46 @@ def plot_limits_grid(
         fig.update_yaxes(tickfont_size=9, row=row, col=1)
 
     fig.update_xaxes(
-        tickangle=60, tickfont_size=9, tickvals=b[b > 0].index, row=row, col=1
+        tickangle=60,
+        tickfont_size=9,
+        tickvals=b[b > 0].index,
+        row=row,
+        col=1,
     )
 
-    fig.update_layout(
-        FIG_LAYOUT.update(
-            dict(
-                height=180 * 3,
-                width=60 * 3,
-                yaxis_title=ser.name,
-                yaxis_range=[ser.min(), ser.max()],
-                xaxis_tickangle=60,
-                xaxis_tickfont_size=9,
-                xaxis_tickvals=b[b > 0].index,
-            )
-        )
+    FIG_LAYOUT.update(  # ty: ignore[no-matching-overload]
+        {
+            "height": 180 * 3,
+            "width": 60 * 3,
+            "yaxis_title": ser.name,
+            "yaxis_range": [ser.min(), ser.max()],
+            "xaxis_tickangle": 60,
+            "xaxis_tickfont_size": 9,
+            "xaxis_tickvals": b[b > 0].index,
+        },
     )
+    fig.update_layout(FIG_LAYOUT)
 
     if save:
-        FIG_LAYOUT_SAVE = dict(
-            height=160 * 3,
-            width=90 * 3,
-            yaxis_title_standoff=0,
-            xaxis_tickfont_size=9,
-            font_family="cmr10",
-            font_size=9,
-            autosize=False,
-            margin=dict(l=0, r=0, t=0, b=0),
-            bargap=0,
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                font_size=9,
-            ),
-        )
+        FIG_LAYOUT_SAVE = {
+            "height": 160 * 3,
+            "width": 90 * 3,
+            "yaxis_title_standoff": 0,
+            "xaxis_tickfont_size": 9,
+            "font_family": "cmr10",
+            "font_size": 9,
+            "autosize": False,
+            "margin": {"l": 0, "r": 0, "t": 0, "b": 0},
+            "bargap": 0,
+            "legend": {
+                "orientation": "h",
+                "yanchor": "bottom",
+                "y": 1.02,
+                "xanchor": "right",
+                "x": 1,
+                "font_size": 9,
+            },
+        }
         fig.update_layout(FIG_LAYOUT_SAVE)
         fig.write_image(f"plots/{file_name}_thresh.pdf")
 

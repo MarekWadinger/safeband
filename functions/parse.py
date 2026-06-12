@@ -1,10 +1,18 @@
-from argparse import ArgumentParser, FileType, Namespace
+"""Argument parsing and configuration building for the consumer pipeline."""
+
+from argparse import (
+    ArgumentParser,
+    FileType,  # ty: ignore[deprecated]
+    Namespace,
+)
 from configparser import ConfigParser
-from os import getenv, path
-from typing import Union
+from os import getenv
+from pathlib import Path
+from types import GenericAlias
+from typing import IO, Any, NotRequired, cast
 
 from pandas import Timedelta
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from functions.typing_extras import (
     EmailConfig,
@@ -19,6 +27,8 @@ from functions.typing_extras import (
 
 
 class Config(TypedDict):
+    """Top-level configuration dictionary for the consumer application."""
+
     setup: SetupConfig
     email: NotRequired[EmailConfig]
     model: ModelConfig
@@ -27,7 +37,7 @@ class Config(TypedDict):
     mqtt: NotRequired[MQTTClient]
     kafka: NotRequired[KafkaClient]
     pulsar: NotRequired[PulsarClient]
-    client: Union[FileClient, MQTTClient, KafkaClient, PulsarClient, None]
+    client: FileClient | MQTTClient | KafkaClient | PulsarClient | None
 
 
 def get_args() -> Namespace:
@@ -45,7 +55,7 @@ def get_args() -> Namespace:
     ...             '--out-topics', 'output1', 'output2', '--path', '/data',
     ...             '--output', '/outs', '--host', 'localhost',
     ...             '--port', '12345', '--bootstrap-servers', 'kafka-server',
-    ...             '--service-url', 'pulsar-service', '--debug', 'True']
+    ...             '--service-url', 'pulsar-service', '--debug']
     >>> args = get_args()
     >>> args.config_file.name
     'example.ini'
@@ -79,31 +89,38 @@ def get_args() -> Namespace:
     'kafka-server'
     >>> args.service_url
     'pulsar-service'
+
     """
     parser = ArgumentParser()
 
     setup_arg_grp = parser.add_argument_group(
-        "setup", "setup related parameters"
+        "setup",
+        "setup related parameters",
     )
 
-    def file_or_none(value):
-        if value is not None and path.isfile(value):
-            return FileType("r")(value)
+    def file_or_none(value: str | None) -> IO[str] | None:
+        if value is not None and Path(value).is_file():
+            return FileType("r")(value)  # ty: ignore[deprecated]
         return None
 
     setup_arg_grp.add_argument(
-        "-f", "--config-file", type=file_or_none, default="config.ini"
+        "-f",
+        "--config-file",
+        type=file_or_none,
+        default="config.ini",
     )
     setup_arg_grp.add_argument(
-        "-r", "--recovery-path", help="Path to store recovery models"
+        "-r",
+        "--recovery-path",
+        help="Path to store recovery models",
     )
     setup_arg_grp.add_argument("-k", "--key-path", help="Path to RSA keys")
     setup_arg_grp.add_argument(
         "-d",
         "--debug",
         help="Debug the file using loop as source",
-        default=False,
-        type=bool,
+        action="store_true",
+        default=None,
     )
 
     mail_arg_grp = parser.add_argument_group("mail")
@@ -127,7 +144,8 @@ def get_args() -> Namespace:
     )
 
     model_arg_grp = parser.add_argument_group(
-        "model", "Model related parameters"
+        "model",
+        "Model related parameters",
     )
     model_arg_grp.add_argument("--threshold", type=float)
     model_arg_grp.add_argument("--t-e", type=Timedelta)
@@ -145,33 +163,35 @@ def get_args() -> Namespace:
     io_arg_grp.add_argument("--out-topics", nargs="*", type=str)
 
     file_arg_grp = parser.add_argument_group(
-        "file client", "File source related parameters"
+        "file client",
+        "File source related parameters",
     )
     file_arg_grp.add_argument("--path", type=str)
     file_arg_grp.add_argument("--output", type=str)
 
     mqtt_arg_grp = parser.add_argument_group(
-        "mqtt client", "MQTT source related parameters"
+        "mqtt client",
+        "MQTT source related parameters",
     )
     mqtt_arg_grp.add_argument("--host", type=str)
     mqtt_arg_grp.add_argument("--port", type=int)
 
     kafka_arg_grp = parser.add_argument_group(
-        "kafka client", "Kafka source related parameters"
+        "kafka client",
+        "Kafka source related parameters",
     )
     kafka_arg_grp.add_argument("--bootstrap-servers", type=str)
 
     pulsar_arg_grp = parser.add_argument_group(
-        "pulsar client", "Pulsar source related parameters"
+        "pulsar client",
+        "Pulsar source related parameters",
     )
     pulsar_arg_grp.add_argument("--service-url", type=str)
 
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
-def get_valid_type(type_) -> type:
+def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
     """Return a valid type from a given type hint.
 
     This function takes a type hint and returns a valid Python type that
@@ -198,6 +218,7 @@ def get_valid_type(type_) -> type:
         <class 'bool'>
         >>> get_valid_type(list[int])
         list[int]
+        >>> from typing import Union
         >>> get_valid_type(Union[int, float])
         <class 'int'>
         >>> from typing import Optional
@@ -205,8 +226,10 @@ def get_valid_type(type_) -> type:
         <class 'str'>
         >>> get_valid_type(Union[Timedelta, None])
         <class 'pandas._libs.tslibs.timedeltas.Timedelta'>
+        >>> get_valid_type(NotRequired[bool])
+        <class 'bool'>
         >>> get_valid_type(NotRequired[dict[str, int]])
-        <class 'str'>
+        dict[str, int]
         >>> get_valid_type(tuple[int, str])
         tuple[int, str]
         >>> get_valid_type(list[Union[int, str]])
@@ -217,25 +240,60 @@ def get_valid_type(type_) -> type:
         Traceback (most recent call last):
         ...
         ValueError: Invalid type: None
-    """
-    # TODO: get first valid type
-    from types import GenericAlias
 
+    """
+    # TODO(MarekWadinger): get first valid type
+    # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/59
     if isinstance(type_, (type, GenericAlias)):
         return type_
-    elif hasattr(type_, "__args__"):
-        # if any([t is type(None) for t in type_.__args__]):
-        #     return type(None)
-        if "NotRequired" in str(type_):
-            return str
-        else:
-            return get_valid_type(type_.__args__[0])
-    else:
-        raise ValueError(f"Invalid type: {type_}")
+    if hasattr(type_, "__args__"):
+        return get_valid_type(cast("tuple[type, ...]", type_.__args__)[0])
+    msg = f"Invalid type: {type_}"
+    raise ValueError(msg)
+
+
+def _to_bool(value: object) -> bool:
+    """Parse a boolean from a bool or a common string representation.
+
+    Args:
+        value (object): A bool (returned as-is) or a string such as
+        "true"/"false", "1"/"0", "yes"/"no" (case-insensitive).
+
+    Returns:
+        bool: The parsed boolean value.
+
+    Raises:
+        ValueError: If the value cannot be interpreted as a boolean.
+
+    Example:
+        >>> _to_bool(True)
+        True
+        >>> _to_bool("False")
+        False
+        >>> _to_bool("yes")
+        True
+        >>> _to_bool("0")
+        False
+        >>> _to_bool("maybe")
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid boolean value: 'maybe'
+
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes"}:
+            return True
+        if normalized in {"false", "0", "no"}:
+            return False
+    msg = f"Invalid boolean value: {value!r}"
+    raise ValueError(msg)
 
 
 def get_valid_client(config: Config) -> Config:
-    """Check the validity of the specified client configuration in the given 'config'.
+    """Check validity of client configuration in the given ``config``.
 
     The 'config' dictionary contains configuration information for different
     client types such as 'file', 'mqtt', 'kafka', and 'pulsar'. This function
@@ -287,36 +345,38 @@ def get_valid_client(config: Config) -> Config:
     Traceback (most recent call last):
     ...
     ValueError: Specify one of the clients: ['file', 'mqtt', 'kafka', 'pulsar']
+
     """
     config_ = config.copy()
+    config_dyn: dict[str, Any] = cast("dict[str, Any]", config_)
     active_clients = []
     clients = ["file", "mqtt", "kafka", "pulsar"]
     for client in clients:
-        if client in config_:
+        if client in config_dyn:
             missing_args = any(
-                [arg is None for arg in config_[client].values()]
+                arg is None for arg in config_dyn[client].values()
             )
             if missing_args:
-                del config_[client]
+                del config_dyn[client]
             else:
                 active_clients.append(client)
     if len(active_clients) > 1:
-        raise ValueError(f"Multiple clients specified: {active_clients}")
+        msg = f"Multiple clients specified: {active_clients}"
+        raise ValueError(msg)
     if len(active_clients) == 0:
-        raise ValueError(f"Specify one of the clients: {clients}")
+        msg = f"Specify one of the clients: {clients}"
+        raise ValueError(msg)
     if len(active_clients) == 1:
-        config_["client"] = config_.pop(active_clients[0])
+        config_dyn["client"] = config_dyn.pop(active_clients[0])
 
     return config_
 
 
 def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
-    """Build a configuration dictionary based on command line arguments and a configuration file.
+    """Build a configuration dictionary from CLI arguments and a config file.
 
-    This function constructs a configuration dictionary following the
-    structure defined by TypedDicts. It populates the configuration from
-    command line arguments when provided, and falls back to values from a
-    configuration file.
+    Constructs a Config following the TypedDict structure, preferring CLI
+    values and falling back to values from config_parser.
 
     Args:
         args (Namespace): Parsed command line arguments.
@@ -349,6 +409,7 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
     ['topic1', 'topic2']
     >>> config['file']['path']
     '/data/file.txt'
+
     """
     config_struct = {
         "setup": SetupConfig,
@@ -361,11 +422,12 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
         "pulsar": PulsarClient,
     }
     args_ = vars(args)
-    config: Config = {}  # type: ignore
+    config: Config = {}  # ty: ignore[missing-typed-dict-key]
+    config_dyn: dict[str, Any] = cast("dict[str, Any]", config)
     for section, struct in config_struct.items():
-        config[section] = {}
-        for param, type_ in struct.__annotations__.items():
-            type_ = get_valid_type(type_)
+        config_dyn[section] = {}
+        for param, type_ann in struct.__annotations__.items():
+            type_ = cast("type", get_valid_type(type_ann))
             if args_.get(param) is not None:
                 param_value = args_[param]
             elif config_parser.has_option(section, param):
@@ -373,30 +435,27 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
             else:
                 param_value = None
 
-            if (
-                param_value is not None
-                and param_value != "None"
-                and param_value != ""
-            ):
-                config[section][param] = type_(param_value)
-            elif (
-                param_value is None
-                or param_value == "None"
-                or param_value == ""
-            ):
-                config[section][param] = None
+            if param_value is not None and param_value not in ("None", ""):
+                config_dyn[section][param] = (
+                    _to_bool(param_value)
+                    if type_ is bool
+                    else type_(param_value)
+                )
+            elif param_value is None or param_value in ("None", ""):
+                config_dyn[section][param] = None
 
     return config
 
 
 def get_params() -> Config:  # pragma: no cover
-    """Parse command line arguments and a configuration file to create a Config object.
+    """Parse command line arguments and config file into a Config object.
 
     This function combines command line arguments and settings from a
     configuration file to create a configuration object.
 
     Returns:
         Config: A Config object containing the parsed parameters.
+
     """
     args = get_args()
 
@@ -406,6 +465,4 @@ def get_params() -> Config:  # pragma: no cover
 
     config = build_config(args, config_parser)
 
-    config = get_valid_client(config)
-
-    return config
+    return get_valid_client(config)
