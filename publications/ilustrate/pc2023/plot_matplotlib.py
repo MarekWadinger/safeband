@@ -527,52 +527,68 @@ def plot_limits_grid_(
         ax.tick_params(axis="both", which="major", labelsize=8)
 
         # Kokam module - 1st case study - second
-        # if a['2023-08-23 16:00':'2023-08-23 18:00'].any():
-        #     axins1 = ax.inset_axes(
-        #         [0.45, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[])
-        #     axins1.plot(ser_['2023-08-23 16:00':'2023-08-23 18:00'])
-        #     axins1.scatter(
-        #         ser[a]['2023-08-23 16:00':'2023-08-23 18:00'].index,
-        #         ser[a]['2023-08-23 16:00':'2023-08-23 18:00'],
-        #         color=colors[3], s=3, label='Signal Anomalies',
-        #         zorder=2)
-        #     axins1.grid(False)
-        #     ax.indicate_inset_zoom(axins1, edgecolor="black")
-        # if a['2023-08-24 17:00':'2023-08-24 20:00'].any():
-        #     axins1 = ax.inset_axes(
-        #         [0.8, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[])
-        #     axins1.plot(ser_['2023-08-24 17:00':'2023-08-24 20:00'])
-        #     axins1.scatter(
-        #             ser[a]['2023-08-24 17:00':'2023-08-24 20:00'].index,
-        #             ser[a]['2023-08-24 17:00':'2023-08-24 20:00'],
-        #                 color=colors[3], s=3, label='Signal Anomalies',
-        #                 zorder=2)
-        #     axins1.grid(False)
-        #     ax.indicate_inset_zoom(axins1, edgecolor="black")
+        if a["2023-08-23 16:00":"2023-08-23 18:00"].any():
+            axins1 = ax.inset_axes(
+                [0.45, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[]
+            )
+            axins1.plot(ser_["2023-08-23 16:00":"2023-08-23 18:00"])
+            axins1.scatter(
+                ser[a]["2023-08-23 16:00":"2023-08-23 18:00"].index,
+                ser[a]["2023-08-23 16:00":"2023-08-23 18:00"],
+                color=colors[3],
+                s=3,
+                label="Signal Anomalies",
+                zorder=2,
+            )
+            axins1.grid(False)
+            ax.indicate_inset_zoom(axins1, edgecolor="black")
+        if a["2023-08-24 17:00":"2023-08-24 20:00"].any():
+            axins1 = ax.inset_axes(
+                [0.8, 0.1, 0.20, 0.40], xticklabels=[], yticklabels=[]
+            )
+            axins1.plot(ser_["2023-08-24 17:00":"2023-08-24 20:00"])
+            axins1.scatter(
+                ser[a]["2023-08-24 17:00":"2023-08-24 20:00"].index,
+                ser[a]["2023-08-24 17:00":"2023-08-24 20:00"],
+                color=colors[3],
+                s=3,
+                label="Signal Anomalies",
+                zorder=2,
+            )
+            axins1.grid(False)
+            ax.indicate_inset_zoom(axins1, edgecolor="black")
 
-        # # Kokam module - 2nd case study - second
-        # if a['2023-08-27 01:00':'2023-08-27 06:00'].any():
-        #     axins1 = ax.inset_axes(
-        #         [0.2, 0.6, 0.20, 0.40], xticklabels=[], yticklabels=[])
-        #     axins1.plot(ser_['2023-08-27 01:00':'2023-08-27 06:00'])
-        #     axins1.scatter(
-        #         ser[a]['2023-08-27 01:00':'2023-08-27 06:00'].index,
-        #         ser[a]['2023-08-27 01:00':'2023-08-27 06:00'],
-        #         color=colors[3], s=3, label='Signal Anomalies',
-        #         zorder=2)
-        #     axins1.grid(False)
-        #     ax.indicate_inset_zoom(axins1, edgecolor="black")
-        # if a['2023-08-28 03:00':'2023-08-28 05:00'].any():
-        #     axins1 = ax.inset_axes(
-        #         [0.7, 0.6, 0.20, 0.40], xticklabels=[], yticklabels=[])
-        #     axins1.plot(ser_['2023-08-28 03:00':'2023-08-28 05:00'])
-        #     axins1.scatter(
-        #             ser[a]['2023-08-28 03:00':'2023-08-28 05:00'].index,
-        #             ser[a]['2023-08-28 03:00':'2023-08-28 05:00'],
-        #                 color=colors[3], s=3, label='Signal Anomalies',
-        #                 zorder=2)
-        #     axins1.grid(False)
-        #     ax.indicate_inset_zoom(axins1, edgecolor="black")
+        # Kokam module - 2nd case study - second
+        if a["2023-08-27 01:00":"2023-08-27 06:00"].any():
+            axins1 = ax.inset_axes(
+                [0.2, 0.6, 0.20, 0.40], xticklabels=[], yticklabels=[]
+            )
+            axins1.plot(ser_["2023-08-27 01:00":"2023-08-27 06:00"])
+            axins1.scatter(
+                ser[a]["2023-08-27 01:00":"2023-08-27 06:00"].index,
+                ser[a]["2023-08-27 01:00":"2023-08-27 06:00"],
+                color=colors[3],
+                s=3,
+                label="Signal Anomalies",
+                zorder=2,
+            )
+            axins1.grid(False)
+            ax.indicate_inset_zoom(axins1, edgecolor="black")
+        if a["2023-08-28 03:00":"2023-08-28 05:00"].any():
+            axins1 = ax.inset_axes(
+                [0.7, 0.6, 0.20, 0.40], xticklabels=[], yticklabels=[]
+            )
+            axins1.plot(ser_["2023-08-28 03:00":"2023-08-28 05:00"])
+            axins1.scatter(
+                ser[a]["2023-08-28 03:00":"2023-08-28 05:00"].index,
+                ser[a]["2023-08-28 03:00":"2023-08-28 05:00"],
+                color=colors[3],
+                s=3,
+                label="Signal Anomalies",
+                zorder=2,
+            )
+            axins1.grid(False)
+            ax.indicate_inset_zoom(axins1, edgecolor="black")
 
     plot_anomaly_bars(args, colors, axs)
 
