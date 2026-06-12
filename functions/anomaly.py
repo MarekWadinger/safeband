@@ -2,7 +2,7 @@
 
 import collections
 import warnings
-from collections.abc import Iterator, Sized
+from collections.abc import Callable, Iterator, Sized
 from datetime import datetime, timedelta
 from typing import Protocol, Self, cast, runtime_checkable
 
@@ -135,6 +135,146 @@ class TimeRollingBuffer(TimeRolling):
     def __iter__(self) -> Iterator[float]:
         """Yield the stored items in insertion order."""
         return iter(cast("Store", self.obj))
+
+
+class AdaptiveThresholdFilter(anomaly.base.AnomalyFilter):
+    """Anomaly filter with changepoint-driven re-adaptation.
+
+    Like river's ``ThresholdFilter`` it protects the wrapped detector
+    by learning only on samples classified as normal (the paper's
+    self-supervised protection), but it additionally keeps a rolling
+    buffer of recent anomaly flags and re-enables learning while their
+    share exceeds ``threshold`` — the paper's changepoint test
+    (Eq. ``eq:changepoint``) — so the detector re-adapts to a new
+    regime after the adaptation period ``t_a`` (guidance: ``t_a =
+    t_e / 4``). river's stock filter has no such re-adaptation.
+
+    Args:
+        anomaly_detector: Detector to protect. When it exposes
+            ``predict_one``, that drives the gating; otherwise the
+            score is classified against ``threshold``.
+        threshold: Anomaly threshold for ``classify`` and the anomaly
+            share above which a changepoint is signalled.
+        t_a: Adaptation period sizing the anomaly-flag buffer — a
+            count-based ``deque`` for ``int``, a time-based store for
+            ``timedelta``. ``0`` disables re-adaptation, reducing the
+            filter to river's ``ThresholdFilter`` behavior.
+        protect_anomaly_detector: When ``False`` every sample is
+            learned and no gating happens.
+
+    Examples:
+    --------
+    Protect a detector that would otherwise learn anomalies
+    >>> from river.proba import Gaussian
+    >>> from river.utils import Rolling
+    >>> detector = GaussianScorer(Rolling(Gaussian(), 10),
+    ...     grace_period=2, protect_anomaly_detector=False)
+    >>> filt = AdaptiveThresholdFilter(detector, t_a=4)
+    >>> for x in [1.0, 0.0, 1.0, 0.0]:
+    ...     filt.learn_one(x)
+    >>> detector.gaussian.mu
+    0.5
+
+    An outlier is kept out of the wrapped detector
+    >>> filt.learn_one(10.0)
+    >>> detector.gaussian.mu
+    0.5
+    >>> filt.drift_detected
+    False
+
+    A persistent level shift fills the buffer with anomaly flags;
+    once their share exceeds the threshold, learning resumes so the
+    detector re-adapts to the new regime
+    >>> for x in [10.0, 10.0, 10.0]:
+    ...     filt.learn_one(x)
+    >>> filt.drift_detected
+    True
+    >>> detector.gaussian.mu
+    2.4
+    """
+
+    buffer: "collections.deque[int] | TimeRollingBuffer"
+
+    def __init__(
+        self,
+        anomaly_detector: anomaly.base.AnomalyDetector,
+        threshold: float = 0.99735,
+        t_a: timedelta | int = 0,
+        protect_anomaly_detector: bool = True,
+    ) -> None:
+        """Initialize the filter and its anomaly-flag buffer."""
+        super().__init__(
+            anomaly_detector=anomaly_detector,
+            protect_anomaly_detector=protect_anomaly_detector,
+        )
+        self.threshold = threshold
+        self.t_a = t_a
+        if isinstance(t_a, timedelta):
+            self.buffer = TimeRollingBuffer(Store(), period=t_a)
+        else:
+            self.buffer = collections.deque(maxlen=round(t_a))
+
+    def classify(self, score: float) -> bool:
+        """Classify a score as anomalous when it reaches the threshold."""
+        return score >= self.threshold
+
+    @property
+    def drift_detected(self) -> bool:
+        """Whether the recent anomaly rate indicates a regime change.
+
+        The paper's changepoint test (Eq. ``eq:changepoint``): ``True``
+        when the share of anomaly flags in the buffer exceeds the
+        threshold.
+        """
+        len_ = len(self.buffer)
+        if len_ > 0:
+            return sum(self.buffer) / len_ > self.threshold
+        return False
+
+    def gate_one(self, is_anomaly: bool) -> bool:
+        """Record an anomaly flag and decide whether learning proceeds.
+
+        Learning proceeds when the sample is normal or when the
+        changepoint test fires — the latter lets the wrapped detector
+        re-adapt to a new regime after the adaptation period.
+
+        Args:
+            is_anomaly: Anomaly flag of the current sample.
+
+        Returns:
+            ``True`` when the wrapped detector should learn the sample.
+        """
+        self.buffer.append(int(is_anomaly))
+        return not is_anomaly or self.drift_detected
+
+    def predict_one(self, *args: float | dict[str, float]) -> int:
+        """Return the wrapped detector's anomaly flag for the sample.
+
+        Falls back to classifying the anomaly score when the wrapped
+        detector exposes no ``predict_one`` of its own.
+        """
+        predict = getattr(self.anomaly_detector, "predict_one", None)
+        if callable(predict):
+            return int(predict(*args))
+        return int(self.classify(self.score_one(*args)))
+
+    def learn_one(
+        self,
+        *args: float | dict[str, float],
+        **learn_kwargs: datetime | float | None,
+    ) -> None:
+        """Update the wrapped detector, gated by the protection logic."""
+        if self.protect_anomaly_detector and not self.gate_one(
+            bool(self.predict_one(*args)),
+        ):
+            return
+        # river annotates learn_one(x: dict); wrapped detectors such as
+        # GaussianScorer also take floats and extra kwargs (e.g. ``t``).
+        learn = cast(
+            "Callable[..., None]",
+            self.anomaly_detector.learn_one,
+        )
+        learn(*args, **learn_kwargs)
 
 
 class GaussianScorer(anomaly.base.AnomalyDetector):
@@ -355,10 +495,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
             self.t_a = t_a or self.t_e
-            if isinstance(self.t_a, int):
-                self.buffer = collections.deque(maxlen=round(self.t_a))
-            if isinstance(self.t_a, timedelta):
-                self.buffer = TimeRollingBuffer(Store(), period=self.t_a)
+            # The filter owns the protection internals (buffer +
+            # changepoint test + learn gate); the scorer only asks it
+            # whether learning proceeds, so no call cycle arises.
+            self._protection = AdaptiveThresholdFilter(
+                anomaly_detector=self,
+                threshold=threshold,
+                t_a=self.t_a,
+                protect_anomaly_detector=True,
+            )
 
     def _get_feature_dim_in(self, x: float | dict[str, float]) -> None:
         if not hasattr(self, "_feature_dim_in"):
@@ -383,11 +528,13 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         cast("Rolling", self.gaussian).update(x, **kwargs)
         return self
 
+    @property
+    def buffer(self) -> "collections.deque[int] | TimeRollingBuffer":
+        """Anomaly-flag buffer owned by the protection filter."""
+        return self._protection.buffer
+
     def _drift_detected(self) -> bool:
-        len_ = len(self.buffer)
-        if len_ > 0:
-            return sum(self.buffer) / len_ > self.threshold
-        return False
+        return self._protection.drift_detected
 
     def _physical_violation(self, x: float | dict[str, float]) -> bool:
         # getattr keeps models recovered from pre-physical-limits
@@ -454,6 +601,31 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             n_seen = self.gaussian.n_samples
         return n_seen
 
+    def _gated_learn(
+        self,
+        x: float | dict[str, float],
+        is_anomaly: bool | None = None,
+        # positional-only so **learn_kwargs cannot collide with it
+        /,
+        **learn_kwargs: datetime | float | None,
+    ) -> None:
+        # The single protection layer: when protected, the filter
+        # decides whether learning proceeds (normal sample or
+        # changepoint re-adaptation). ``is_anomaly`` lets callers that
+        # already predicted the sample avoid a second prediction.
+        if self._rejects_learning(x):
+            # Physically impossible samples are kept out of both the
+            # distribution and the protection buffer: a sensor fault
+            # must not drive drift adaptation.
+            return
+        if self.protect_anomaly_detector:
+            if is_anomaly is None:
+                is_anomaly = bool(self.predict_one(x))
+            if self._protection.gate_one(is_anomaly):
+                self._learn_one(x, **learn_kwargs)
+        else:
+            self._learn_one(x, **learn_kwargs)
+
     # river's base annotates learn_one -> None; ours returns self.
     # Annotating violates Liskov under ty.
     def learn_one(  # noqa: ANN201
@@ -462,19 +634,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         **learn_kwargs: datetime | float | None,
     ):
         """Update distribution, skipping anomalous samples when protected."""
-        if self._rejects_learning(x):
-            # Physically impossible samples are kept out of both the
-            # distribution and the protection buffer: a sensor fault
-            # must not drive drift adaptation.
-            return self
-        if self.protect_anomaly_detector:
-            is_anomaly = self.predict_one(x)
-            self.buffer.append(is_anomaly)
-            is_change = self._drift_detected()
-            if not is_anomaly or is_change:
-                self._learn_one(x, **learn_kwargs)
-        else:
-            self._learn_one(x, **learn_kwargs)
+        self._gated_learn(x, **learn_kwargs)
         return self
 
     def score_one(self, x: float | dict[str, float]) -> float:
@@ -657,11 +817,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         thresh_high, thresh_low = self.limit_one(x)
 
-        if not is_anomaly:
+        # Exactly one protection layer: when protected, the filter
+        # gates learning (and records anomalies so changepoint
+        # re-adaptation also works through process_one); otherwise the
+        # plain "learn only normal samples" gate applies here.
+        if self.protect_anomaly_detector or not is_anomaly:
             if isinstance(self.gaussian, utils.TimeRolling):
-                self.learn_one(x, t=t)
+                self._gated_learn(x, bool(is_anomaly), t=t)
             else:
-                self.learn_one(x)
+                self._gated_learn(x, bool(is_anomaly))
 
         return is_anomaly, thresh_high, thresh_low
 

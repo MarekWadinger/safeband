@@ -1,18 +1,20 @@
 """Regression tests for the Gaussian anomaly scorers."""
 
+import collections
 import datetime as dt
 import math
 import sys
 from pathlib import Path
 
 import pytest
-from river import compose, preprocessing
+from river import anomaly, compose, preprocessing
 from river.proba import Gaussian
 from river.utils import Rolling, TimeRolling
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
 from functions.anomaly import (
+    AdaptiveThresholdFilter,
     ConditionalGaussianScorer,
     GaussianScorer,
     TimeRollingBuffer,
@@ -217,6 +219,177 @@ class TestDriftDetected:
         )
         scorer.learn_one(1.0)
         assert scorer.drift_detected is False
+
+
+class _ScoreEchoDetector(anomaly.base.AnomalyDetector):
+    """Minimal detector whose anomaly score is the sample itself."""
+
+    def __init__(self) -> None:
+        self.learned: list[float] = []
+
+    # ty: the deliberate narrowing to plain floats is the point of the
+    # echo detector; the filter passes samples through unchanged.
+    def learn_one(self, x: float) -> None:  # ty: ignore[invalid-method-override]
+        self.learned.append(x)
+
+    def score_one(self, x: float) -> float:  # ty: ignore[invalid-method-override]
+        return x
+
+
+class TestAdaptiveThresholdFilter:
+    """Standalone protection filter wrapping an arbitrary detector."""
+
+    def make_filter(
+        self,
+        t_a: dt.timedelta | int = 4,
+        *,
+        threshold: float = 0.5,
+        protect_anomaly_detector: bool = True,
+    ) -> tuple[AdaptiveThresholdFilter, _ScoreEchoDetector]:
+        """Build a filter around a learn-recording echo detector."""
+        detector = _ScoreEchoDetector()
+        filt = AdaptiveThresholdFilter(
+            detector,
+            threshold=threshold,
+            t_a=t_a,
+            protect_anomaly_detector=protect_anomaly_detector,
+        )
+        return filt, detector
+
+    def test_learns_normal_samples(self) -> None:
+        """Samples classified as normal reach the wrapped detector."""
+        filt, detector = self.make_filter()
+        for x in [0.1, 0.2, 0.3]:
+            filt.learn_one(x)
+        assert detector.learned == [0.1, 0.2, 0.3]
+
+    def test_skips_anomalous_sample(self) -> None:
+        """A sporadic anomaly never reaches the wrapped detector."""
+        filt, detector = self.make_filter()
+        for x in [0.1, 0.2, 0.3]:
+            filt.learn_one(x)
+        filt.learn_one(0.9)
+        assert detector.learned == [0.1, 0.2, 0.3]
+        assert filt.drift_detected is False
+
+    def test_readapts_on_changepoint(self) -> None:
+        """Learning resumes once anomalies dominate the buffer."""
+        filt, detector = self.make_filter()
+        for x in [0.1, 0.1, 0.1, 0.1]:
+            filt.learn_one(x)
+        # Buffer fills with anomaly flags: 1/4 and 2/4 stay at or
+        # below the threshold, 3/4 exceeds it and re-enables learning.
+        filt.learn_one(0.9)
+        filt.learn_one(0.9)
+        assert detector.learned == [0.1, 0.1, 0.1, 0.1]
+        filt.learn_one(0.9)
+        assert filt.drift_detected is True
+        assert detector.learned[-1] == 0.9
+
+    def test_count_based_buffer(self) -> None:
+        """An int adaptation period yields a bounded deque buffer."""
+        filt, _ = self.make_filter(t_a=4)
+        assert isinstance(filt.buffer, collections.deque)
+        assert filt.buffer.maxlen == 4
+        filt.learn_one(0.1)
+        assert len(filt.buffer) == 1
+
+    def test_time_based_buffer(self) -> None:
+        """A timedelta adaptation period yields a time rolling buffer."""
+        filt, detector = self.make_filter(t_a=dt.timedelta(hours=1))
+        assert isinstance(filt.buffer, TimeRollingBuffer)
+        filt.learn_one(0.1)
+        assert len(filt.buffer) == 1
+        assert detector.learned == [0.1]
+
+    def test_unprotected_filter_learns_everything(self) -> None:
+        """Without protection every sample is learned and none gated."""
+        filt, detector = self.make_filter(protect_anomaly_detector=False)
+        filt.learn_one(0.9)
+        assert detector.learned == [0.9]
+        assert len(filt.buffer) == 0
+
+    def test_predict_one_falls_back_to_classify(self) -> None:
+        """Without detector predict_one the score is thresholded."""
+        filt, _ = self.make_filter()
+        assert filt.predict_one(0.9) == 1
+        assert filt.predict_one(0.1) == 0
+
+    def test_predict_one_prefers_detector_predict(self) -> None:
+        """A wrapped scorer's own two-sided decision rule drives gating."""
+        scorer = GaussianScorer(
+            Rolling(Gaussian(), 5),
+            grace_period=2,
+            protect_anomaly_detector=False,
+        )
+        filt = AdaptiveThresholdFilter(scorer, t_a=4)
+        for x in [1.0, 0.0, 1.0, 0.0]:
+            filt.learn_one(x)
+        # The raw CDF score of a low outlier is ~0, below the filter's
+        # threshold; only the scorer's two-sided rule flags it.
+        assert filt.score_one(-10.0) < filt.threshold
+        assert filt.predict_one(-10.0) == 1
+
+
+class TestSingleProtectionLayer:
+    """The filter is the only learn gate of a protected scorer."""
+
+    def make_trained_scorer(self) -> GaussianScorer:
+        """Build a protected scorer trained on three normal samples."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2)
+        for value in [1.0, 1.1, 0.9]:
+            scorer.learn_one(value)
+        return scorer
+
+    def test_process_one_predicts_and_learns_exactly_once(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """process_one neither double-predicts nor double-gates."""
+        scorer = self.make_trained_scorer()
+        predict_calls: list[float] = []
+        learn_calls: list[float] = []
+        original_predict = scorer.predict_one
+        original_learn = scorer._learn_one
+
+        def spy_predict(x: float) -> int:
+            predict_calls.append(x)
+            return original_predict(x)
+
+        def spy_learn(
+            x: float,
+            **kwargs: dt.datetime | float | None,
+        ) -> GaussianScorer:
+            learn_calls.append(x)
+            return original_learn(x, **kwargs)
+
+        monkeypatch.setattr(scorer, "predict_one", spy_predict)
+        monkeypatch.setattr(scorer, "_learn_one", spy_learn)
+        scorer.process_one(1.0)
+        assert predict_calls == [1.0]
+        assert learn_calls == [1.0]
+
+    def test_process_one_records_anomalies_for_readaptation(self) -> None:
+        """Anomalies seen via process_one drive changepoint adaptation."""
+        scorer = self.make_trained_scorer()
+        assert scorer.process_one(10.0)[0] == 1
+        assert scorer.process_one(10.0)[0] == 1
+        # Two anomalies fill 2/3 of the buffer; the distribution is
+        # untouched so far.
+        assert scorer.gaussian.mu == pytest.approx(1.0)
+        assert scorer.drift_detected is False
+        # The third anomaly tips the buffer over the threshold: the
+        # changepoint fires and the sample is learned (re-adaptation).
+        assert scorer.process_one(10.0)[0] == 1
+        assert scorer.drift_detected is True
+        assert scorer.gaussian.mu == pytest.approx(4.0)
+
+    def test_learn_one_skips_anomaly_without_changepoint(self) -> None:
+        """A sporadic anomaly is buffered but not learned."""
+        scorer = self.make_trained_scorer()
+        scorer.learn_one(10.0)
+        assert scorer.gaussian.mu == pytest.approx(1.0)
+        assert list(scorer.buffer) == [0, 0, 1]
 
 
 class TestGetLimits:
