@@ -1,7 +1,12 @@
-# Notebooks reading private (gitignored) datasets — runnable locally,
-# impossible on CI runners.
-PRIVATE_NOTEBOOKS := examples/04_eco_pack_presov.ipynb
-PUBLIC_NOTEBOOKS := $(filter-out $(PRIVATE_NOTEBOOKS),$(wildcard examples/*.ipynb))
+# Notebooks excluded from the CI execution gate because their inputs do
+# not ship with the repo — runnable locally, impossible on CI runners:
+#  - 04 reads a private (gitignored) dataset.
+#  - 05_eval only plots the benchmark CSVs written by the separate, slow
+#    05_scalability.py run; those .results/ outputs are not committed.
+SKIP_NOTEBOOKS := \
+	examples/04_eco_pack_presov.ipynb \
+	examples/05_scalability_eval.ipynb
+PUBLIC_NOTEBOOKS := $(filter-out $(SKIP_NOTEBOOKS),$(wildcard examples/*.ipynb))
 
 format:
 	uv run pre-commit run --all-files
