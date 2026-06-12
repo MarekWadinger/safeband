@@ -248,8 +248,12 @@ class RpcOutlierDetector:
         }
 
     def dump_to_file(self, x: dict, f: IO[str]) -> None:
-        """Serialize a result dictionary as JSON and append it to a file."""
-        print(json.dumps(x), file=f)
+        """Serialize a result dictionary as JSON and append it to a file.
+
+        Flushes after every line so consumers tailing the file see each
+        result as it is produced and nothing is lost on SIGTERM.
+        """
+        print(json.dumps(x), file=f, flush=True)
 
     def send_anomaly_email(
         self,
@@ -424,7 +428,6 @@ class RpcOutlierDetector:
             data.index = pd.to_datetime(data.index, utc=True)
             for row in data.head().iterrows():
                 source.emit(row)
-            _exit_stack.close()
             logger.info("=== Debugging finished with success... ===")
         else:  # pragma: no cover
             detector.start()
@@ -531,5 +534,8 @@ class RpcOutlierDetector:
             self.run(client, source, detector, debug)
         finally:
             detector.stop()
+            # Close (and thereby flush) any files opened by the sink on
+            # every shutdown path, not only in debug mode.
+            _exit_stack.close()
             logger.info("=== Service stopped ===")
             save_model(recovery_path, in_topics, model)

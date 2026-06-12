@@ -23,6 +23,22 @@ if TYPE_CHECKING:
     )
 
 
+class TestDumpToFile:
+    """Tests for the JSON-lines file writer."""
+
+    def test_dump_to_file_result_visible_before_close(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Each result reaches disk immediately, without closing the file."""
+        output = tmp_path / "out.json"
+
+        with output.open("a") as f:
+            RpcOutlierDetector().dump_to_file({"anomaly": 0}, f)
+
+            assert json.loads(output.read_text().strip()) == {"anomaly": 0}
+
+
 class TestGetSinkFile:
     """Tests for the file sink branch."""
 
