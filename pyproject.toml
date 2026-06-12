@@ -5,7 +5,7 @@ description = "Online outlier detection service for industrial SCADA-based infra
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "cryptography>=45.0.7",
+    "cryptography>=46.0.7",
     "human-security>=1.0",
     "matplotlib<4.0.0",
     "paho-mqtt<3.0.0",
@@ -36,7 +36,7 @@ update_changelog_on_bump = true
 build = [
     "setuptools>=80.9.0",
     "setuptools-rust>=1.12.0",
-    "wheel>=0.45.1",
+    "wheel>=0.46.2",
 ]
 dev = [
     "commitizen>=4.16.3",
