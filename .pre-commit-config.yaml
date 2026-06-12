@@ -74,6 +74,18 @@ repos:
           - "pre-push"
           - "pre-merge-commit"
 
+  - repo: https://github.com/MarekWadinger/doc-checks
+    rev: v0.2.0
+    hooks:
+      # doc-checks requires Python >=3.13; the project itself pins 3.12
+      - id: doc-check-make-refs
+        language_version: python3.13
+      - id: doc-check-cd-refs
+        language_version: python3.13
+      - id: doc-check-py-imports
+        language_version: python3.13
+      - id: doc-check-mermaid
+        language_version: python3.13
   - repo: https://github.com/roy-ht/pre-commit-jupyter
     rev: v1.2.1
     hooks:
