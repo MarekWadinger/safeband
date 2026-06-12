@@ -224,6 +224,8 @@ def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
         >>> from typing import Optional
         >>> get_valid_type(Optional[str])
         <class 'str'>
+        >>> get_valid_type(Union[None, int])
+        <class 'int'>
         >>> get_valid_type(Union[Timedelta, None])
         <class 'pandas._libs.tslibs.timedeltas.Timedelta'>
         >>> get_valid_type(NotRequired[bool])
@@ -242,12 +244,16 @@ def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
         ValueError: Invalid type: None
 
     """
-    # TODO(MarekWadinger): get first valid type
-    # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/59
     if isinstance(type_, (type, GenericAlias)):
         return type_
     if hasattr(type_, "__args__"):
-        return get_valid_type(cast("tuple[type, ...]", type_.__args__)[0])
+        for arg in cast("tuple[type, ...]", type_.__args__):
+            if arg is type(None):
+                continue
+            try:
+                return get_valid_type(arg)
+            except ValueError:
+                continue
     msg = f"Invalid type: {type_}"
     raise ValueError(msg)
 

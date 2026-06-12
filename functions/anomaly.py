@@ -120,9 +120,21 @@ class Store:
         self.x.pop(0)
 
 
-# TODO(MarekWadinger): Find a better way to expose __len__ of parent class
-# https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/53
-TimeRolling.__len__ = lambda self: len(self.x)  # type: ignore
+class TimeRollingBuffer(TimeRolling):
+    """TimeRolling window that reports the length of its underlying store.
+
+    ``len`` looks ``__len__`` up on the type, so river's attribute
+    delegation to the wrapped object never applies to it; defining it on a
+    subclass replaces the former monkey-patch on ``TimeRolling``.
+    """
+
+    def __len__(self) -> int:
+        """Return the number of items currently held by the store."""
+        return len(cast("Store", self.obj))
+
+    def __iter__(self) -> Iterator[float]:
+        """Yield the stored items in insertion order."""
+        return iter(cast("Store", self.obj))
 
 
 class GaussianScorer(anomaly.base.AnomalyDetector):
@@ -302,7 +314,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             if isinstance(self.t_a, int):
                 self.buffer = collections.deque(maxlen=round(self.t_a))
             if isinstance(self.t_a, timedelta):
-                self.buffer = TimeRolling(Store(), period=self.t_a)
+                self.buffer = TimeRollingBuffer(Store(), period=self.t_a)
 
     def _get_feature_dim_in(self, x: float | dict[str, float]) -> None:
         if not hasattr(self, "_feature_dim_in"):
@@ -328,9 +340,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self
 
     def _drift_detected(self) -> bool:
-        len_ = len(self.buffer)  # type: ignore
+        len_ = len(self.buffer)
         if len_ > 0:
-            return sum(self.buffer) / len_ > (self.threshold)  # type: ignore
+            return sum(self.buffer) / len_ > self.threshold
         return False
 
     def n_seen(self) -> timedelta | float:
@@ -339,12 +351,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             self.gaussian,
             TimeRolling,
         ):
-            # TODO(MarekWadinger): remove after river ~= 0.20.0 is buildable
-            # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/54
-            if hasattr(self.gaussian, "_timestamps"):
-                timestamps = self.gaussian._timestamps
-            else:
-                timestamps = [event[0] for event in self.gaussian._events]
+            timestamps = self.gaussian._timestamps
             if len(timestamps) == 0:
                 n_seen = timedelta(0)
             else:
@@ -372,10 +379,13 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self
 
     def score_one(self, x: float | dict[str, float]) -> float:
-        """Return the CDF anomaly score for x; 0.5 during grace period."""
-        # TODO(MarekWadinger): find out why return different results on each
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/55
-        #   invocation
+        """Return the CDF anomaly score for x; 0.5 during grace period.
+
+        Repeated calls are reproducible as long as the distribution is not
+        updated in between and, for multivariate distributions, a seed is
+        set (scipy evaluates the multivariate normal CDF with randomized
+        quasi-Monte-Carlo integration).
+        """
         if cast("float", self.n_seen()) >= cast("float", self.grace_period):
             return self.gaussian.cdf(cast("dict[str, float]", x))
         if not hasattr(self, "_feature_dim_in"):
@@ -412,7 +422,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         float | np.ndarray | dict[str, float],
         float | np.ndarray | dict[str, float],
     ]:
-        """Return (upper, lower) Gaussian limits derived from the threshold."""
+        """Return (upper, lower) Gaussian limits derived from the threshold.
+
+        The limits are the normal quantiles of the configured
+        (log-)threshold scaled to the input dimensionality, mirroring the
+        decision rule of ``predict_one``. They are informative envelopes
+        around the fitted distribution, not strict process boundaries:
+        observations are never clipped to them and the distribution may
+        drift past previously reported limits as it adapts.
+        """
         if len(args) > 0:
             self._get_feature_dim_in(args[0])
             self._get_feature_names_in(args[0])
@@ -427,12 +445,6 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             kwargs["scale"] = [
                 kwargs["scale"][i][i] for i in kwargs["scale"].columns
             ]
-        # TODO(MarekWadinger): consider strict process boundaries
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/56
-        # A strict variant would take the inverse normal CDF at
-        # sigma / 2 + 0.5 with the fitted location and scale; the code
-        # below instead derives the limits from the (log-)threshold,
-        # which changes them relative to that former behavior.
         if not hasattr(self, "_feature_dim_in"):
             _feature_dim_in = 1
         else:
@@ -675,22 +687,20 @@ class ConditionalGaussianScorer(GaussianScorer):
         self,
         x: float | dict[str, float],
     ) -> tuple[float, int | None]:
-        # TODO(MarekWadinger): find out why return different results on each
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/55
-        #   invocation -- Due to scipy's cdf function
         if not self.grace_period or cast("float", self.n_seen()) > cast(
             "float",
             self.grace_period,
         ):
             # Deactivate grace period after first invocation
             self.grace_period = None
-            # TODO(MarekWadinger): generally score is None when the
-            # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/57
-            #  conditional covariance is maldefined. This
-            #  case should be handled differently.
             scores = self._scores_one(cast("dict[str, float]", x))
             score, idx = self._farthest_from_center(scores)
-            return score or 1, idx
+            if score is None:
+                # No conditional score could be computed (no features in
+                # x); report the neutral score instead of flagging an
+                # anomaly.
+                return 0.5, None
+            return score, idx
         return 0.5, None
 
     def get_root_cause(self) -> str | int | None:
@@ -698,7 +708,12 @@ class ConditionalGaussianScorer(GaussianScorer):
         return self.root_cause
 
     def score_one(self, x: float | dict[str, float]) -> float:
-        """Return the conditional anomaly score farthest from 0.5."""
+        """Return the conditional anomaly score farthest from 0.5.
+
+        Returns the neutral score 0.5 while the grace period has not
+        elapsed, and also when no conditional score can be computed
+        (e.g. ``x`` carries no features).
+        """
         score, _ = self._score_one(x)
         return score
 
@@ -738,10 +753,12 @@ class ConditionalGaussianScorer(GaussianScorer):
         *_args,  # noqa: ANN002
         **_kwargs,  # noqa: ANN003
     ) -> tuple[dict[str, float], dict[str, float]]:
-        """Return per-feature (upper, lower) conditional limits."""
-        # TODO(MarekWadinger): might break the things up in Pipeline if called
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/58
-        #  before predict_one or learn_one
+        """Return per-feature (upper, lower) conditional limits.
+
+        Safe to call before any ``learn_one``/``predict_one``: feature
+        names are inferred from ``x`` and NaN limits are returned until
+        the covariance estimate is defined.
+        """
         if x is None:
             x = {}
         self._get_feature_dim_in(x)

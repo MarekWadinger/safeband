@@ -2,7 +2,6 @@
 
 import logging
 from collections.abc import Callable
-from typing import Never
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import MQTTMessage
@@ -62,6 +61,8 @@ class to_mqtt(Sink):
         keepalive (int): Keepalive duration.
         client_kwargs (dict): Additional arguments for MQTT client connect.
         publish_kwargs (dict): Additional arguments for MQTT publish.
+        publish_timeout (float): Seconds to wait for delivery confirmation
+            of each published message before logging a warning.
         **kwargs: Additional keyword arguments.
 
     Examples:
@@ -124,6 +125,7 @@ class to_mqtt(Sink):
         keepalive: int = 60,
         client_kwargs: dict | None = None,
         publish_kwargs: dict | None = None,
+        publish_timeout: float = 5.0,
         **kwargs: object,
     ) -> None:
         """Store connection parameters and initialize the Sink."""
@@ -134,7 +136,20 @@ class to_mqtt(Sink):
         self.client: mqtt.Client | None = None
         self.topic = topic
         self.keepalive = keepalive
+        self.publish_timeout = publish_timeout
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
+
+    def _publish(self, topic: str, payload: object) -> None:
+        """Publish one message and wait for its delivery confirmation."""
+        assert self.client is not None  # narrowed by update()
+        info = self.client.publish(topic, payload, **self.p_kw)
+        info.wait_for_publish(timeout=self.publish_timeout)
+        if not info.is_published():
+            logger.warning(
+                "MQTT delivery not confirmed within %.1fs for topic %r",
+                self.publish_timeout,
+                topic,
+            )
 
     def update(
         self,
@@ -145,16 +160,6 @@ class to_mqtt(Sink):
         """Publish x to the MQTT broker, connecting lazily on first call."""
         del who, metadata  # unused; required by the streamz Sink.update API
 
-        def publish_many(
-            client: mqtt.Client,
-            topics: list[str],
-            payloads: list,
-            *args: Never,
-            **kwargs: Never,
-        ) -> None:
-            for topic, payload in zip(topics, payloads, strict=False):
-                client.publish(topic, payload, *args, **kwargs)
-
         if self.client is None:
             self.client = mqtt.Client(clean_session=True)
             self.client.connect(
@@ -163,43 +168,30 @@ class to_mqtt(Sink):
                 self.keepalive,
                 **self.c_kw,
             )
-        # TODO(MarekWadinger): wait on successful delivery
-        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/60
+            # Run the network loop in the background so the broker
+            # handshake completes and wait_for_publish can confirm
+            # delivery.
+            self.client.loop_start()
         if isinstance(x, bytes):
-            self.client.publish(self.topic, x, **self.p_kw)
+            self._publish(self.topic, x)
         else:
-            self.client.publish(
-                f"{self.topic}anomaly",
-                x["anomaly"],
-                **self.p_kw,
-            )
+            self._publish(f"{self.topic}anomaly", x["anomaly"])
             if isinstance(x["level_high"], dict):
                 for key in x["level_high"]:
-                    publish_many(
-                        self.client,
-                        [
-                            f"{key}_DOL_high",
-                            f"{key}_DOL_low",
-                            f"{key}_root_cause",
-                        ],
-                        [
-                            x["level_high"][key],
-                            x["level_low"][key],
-                            1 if key == x["root_cause"] else 0,
-                        ],
-                        **self.p_kw,
+                    self._publish(f"{key}_DOL_high", x["level_high"][key])
+                    self._publish(f"{key}_DOL_low", x["level_low"][key])
+                    self._publish(
+                        f"{key}_root_cause",
+                        1 if key == x["root_cause"] else 0,
                     )
             else:
-                publish_many(
-                    self.client,
-                    [f"{self.topic}_DOL_high", f"{self.topic}_DOL_low"],
-                    [x["level_high"], x["level_low"]],
-                    **self.p_kw,
-                )
+                self._publish(f"{self.topic}_DOL_high", x["level_high"])
+                self._publish(f"{self.topic}_DOL_low", x["level_low"])
 
     def destroy(self) -> None:
         """Disconnect the MQTT client and destroy the sink."""
         if self.client is not None:
+            self.client.loop_stop()
             self.client.disconnect()
             self.client = None
             super().destroy()
