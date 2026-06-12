@@ -2,7 +2,7 @@
 
 import collections
 import warnings
-from collections.abc import Iterator, Sized
+from collections.abc import Callable, Iterator, Sized
 from datetime import datetime, timedelta
 from typing import Protocol, Self, cast, runtime_checkable
 
@@ -137,6 +137,146 @@ class TimeRollingBuffer(TimeRolling):
         return iter(cast("Store", self.obj))
 
 
+class AdaptiveThresholdFilter(anomaly.base.AnomalyFilter):
+    """Anomaly filter with changepoint-driven re-adaptation.
+
+    Like river's ``ThresholdFilter`` it protects the wrapped detector
+    by learning only on samples classified as normal (the paper's
+    self-supervised protection), but it additionally keeps a rolling
+    buffer of recent anomaly flags and re-enables learning while their
+    share exceeds ``threshold`` — the paper's changepoint test
+    (Eq. ``eq:changepoint``) — so the detector re-adapts to a new
+    regime after the adaptation period ``t_a`` (guidance: ``t_a =
+    t_e / 4``). river's stock filter has no such re-adaptation.
+
+    Args:
+        anomaly_detector: Detector to protect. When it exposes
+            ``predict_one``, that drives the gating; otherwise the
+            score is classified against ``threshold``.
+        threshold: Anomaly threshold for ``classify`` and the anomaly
+            share above which a changepoint is signalled.
+        t_a: Adaptation period sizing the anomaly-flag buffer — a
+            count-based ``deque`` for ``int``, a time-based store for
+            ``timedelta``. ``0`` disables re-adaptation, reducing the
+            filter to river's ``ThresholdFilter`` behavior.
+        protect_anomaly_detector: When ``False`` every sample is
+            learned and no gating happens.
+
+    Examples:
+    --------
+    Protect a detector that would otherwise learn anomalies
+    >>> from river.proba import Gaussian
+    >>> from river.utils import Rolling
+    >>> detector = GaussianScorer(Rolling(Gaussian(), 10),
+    ...     grace_period=2, protect_anomaly_detector=False)
+    >>> filt = AdaptiveThresholdFilter(detector, t_a=4)
+    >>> for x in [1.0, 0.0, 1.0, 0.0]:
+    ...     filt.learn_one(x)
+    >>> detector.gaussian.mu
+    0.5
+
+    An outlier is kept out of the wrapped detector
+    >>> filt.learn_one(10.0)
+    >>> detector.gaussian.mu
+    0.5
+    >>> filt.drift_detected
+    False
+
+    A persistent level shift fills the buffer with anomaly flags;
+    once their share exceeds the threshold, learning resumes so the
+    detector re-adapts to the new regime
+    >>> for x in [10.0, 10.0, 10.0]:
+    ...     filt.learn_one(x)
+    >>> filt.drift_detected
+    True
+    >>> detector.gaussian.mu
+    2.4
+    """
+
+    buffer: "collections.deque[int] | TimeRollingBuffer"
+
+    def __init__(
+        self,
+        anomaly_detector: anomaly.base.AnomalyDetector,
+        threshold: float = 0.99735,
+        t_a: timedelta | int = 0,
+        protect_anomaly_detector: bool = True,
+    ) -> None:
+        """Initialize the filter and its anomaly-flag buffer."""
+        super().__init__(
+            anomaly_detector=anomaly_detector,
+            protect_anomaly_detector=protect_anomaly_detector,
+        )
+        self.threshold = threshold
+        self.t_a = t_a
+        if isinstance(t_a, timedelta):
+            self.buffer = TimeRollingBuffer(Store(), period=t_a)
+        else:
+            self.buffer = collections.deque(maxlen=round(t_a))
+
+    def classify(self, score: float) -> bool:
+        """Classify a score as anomalous when it reaches the threshold."""
+        return score >= self.threshold
+
+    @property
+    def drift_detected(self) -> bool:
+        """Whether the recent anomaly rate indicates a regime change.
+
+        The paper's changepoint test (Eq. ``eq:changepoint``): ``True``
+        when the share of anomaly flags in the buffer exceeds the
+        threshold.
+        """
+        len_ = len(self.buffer)
+        if len_ > 0:
+            return sum(self.buffer) / len_ > self.threshold
+        return False
+
+    def gate_one(self, is_anomaly: bool) -> bool:
+        """Record an anomaly flag and decide whether learning proceeds.
+
+        Learning proceeds when the sample is normal or when the
+        changepoint test fires — the latter lets the wrapped detector
+        re-adapt to a new regime after the adaptation period.
+
+        Args:
+            is_anomaly: Anomaly flag of the current sample.
+
+        Returns:
+            ``True`` when the wrapped detector should learn the sample.
+        """
+        self.buffer.append(int(is_anomaly))
+        return not is_anomaly or self.drift_detected
+
+    def predict_one(self, *args: float | dict[str, float]) -> int:
+        """Return the wrapped detector's anomaly flag for the sample.
+
+        Falls back to classifying the anomaly score when the wrapped
+        detector exposes no ``predict_one`` of its own.
+        """
+        predict = getattr(self.anomaly_detector, "predict_one", None)
+        if callable(predict):
+            return int(predict(*args))
+        return int(self.classify(self.score_one(*args)))
+
+    def learn_one(
+        self,
+        *args: float | dict[str, float],
+        **learn_kwargs: datetime | float | None,
+    ) -> None:
+        """Update the wrapped detector, gated by the protection logic."""
+        if self.protect_anomaly_detector and not self.gate_one(
+            bool(self.predict_one(*args)),
+        ):
+            return
+        # river annotates learn_one(x: dict); wrapped detectors such as
+        # GaussianScorer also take floats and extra kwargs (e.g. ``t``).
+        learn = cast(
+            "Callable[..., None]",
+            self.anomaly_detector.learn_one,
+        )
+        learn(*args, **learn_kwargs)
+
+
 class GaussianScorer(anomaly.base.AnomalyDetector):
     """Gaussian Scorer for anomaly detection.
 
@@ -148,6 +288,13 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         window_size (int or None): Size of the rolling window.
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
+        physical_limits (tuple[float, float] or None): Known static
+        bounds of the modeled signal. Reported dynamic limits are
+        clipped into them, and observations outside them are flagged
+        anomalous even during the grace period.
+        learn_on_physical_violation (bool): Whether physically
+        impossible samples still update the distribution. Defaults to
+        False, excluding them from learning entirely.
 
     Examples:
     --------
@@ -240,7 +387,31 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     >>> scorer.predict_one({"a": -2.160, "b": -1.160})
     0
 
+    Known physical bounds complement the learned envelope, so the
+    dynamic limits "may be used as an addition to static operating
+    limits used by monitoring systems in SCADA" (ESwA 2023). Bounds
+    must satisfy low < high
+    >>> GaussianScorer(Gaussian(), physical_limits=(2.0, 0.0))
+    Traceback (most recent call last):
+    ...
+    ValueError: physical_limits must satisfy low < high; got (2.0, 0.0)
+
+    Physically impossible observations are flagged even during the
+    grace period, and the reported limits are clipped into the bounds
+    >>> scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2,
+    ...     physical_limits=(0.0, 2.0), protect_anomaly_detector=False)
+    >>> scorer.predict_one(5.0)
+    1
+    >>> scorer = scorer.learn_one(1).learn_one(0)
+    >>> scorer.limit_one()
+    (np.float64(2.0), np.float64(0.0))
+
     """
+
+    # The conditional subclass keys the bounds by feature name.
+    physical_limits: (
+        tuple[float, float] | dict[str, tuple[float, float]] | None
+    )
 
     def __init__(
         self,
@@ -253,6 +424,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         grace_period: timedelta | int | None = None,
         t_a: timedelta | int | None = None,
         protect_anomaly_detector: bool = True,
+        physical_limits: tuple[float, float] | None = None,
+        learn_on_physical_violation: bool = False,
     ) -> None:
         """Initialize GaussianScorer, validating the distribution protocol."""
         if not isinstance(gaussian, (Distribution, ConditionableDistribution)):
@@ -308,13 +481,29 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if self.log_threshold is not None:
             self.log_threshold_top = np.log1p(-np.exp(self.log_threshold))
 
+        if physical_limits is not None:
+            phys_low, phys_high = physical_limits
+            if not phys_low < phys_high:
+                msg = (
+                    "physical_limits must satisfy low < high; "
+                    f"got {physical_limits}"
+                )
+                raise ValueError(msg)
+        self.physical_limits = physical_limits
+        self.learn_on_physical_violation = learn_on_physical_violation
+
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
             self.t_a = t_a or self.t_e
-            if isinstance(self.t_a, int):
-                self.buffer = collections.deque(maxlen=round(self.t_a))
-            if isinstance(self.t_a, timedelta):
-                self.buffer = TimeRollingBuffer(Store(), period=self.t_a)
+            # The filter owns the protection internals (buffer +
+            # changepoint test + learn gate); the scorer only asks it
+            # whether learning proceeds, so no call cycle arises.
+            self._protection = AdaptiveThresholdFilter(
+                anomaly_detector=self,
+                threshold=threshold,
+                t_a=self.t_a,
+                protect_anomaly_detector=True,
+            )
 
     def _get_feature_dim_in(self, x: float | dict[str, float]) -> None:
         if not hasattr(self, "_feature_dim_in"):
@@ -339,11 +528,63 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         cast("Rolling", self.gaussian).update(x, **kwargs)
         return self
 
+    @property
+    def buffer(self) -> "collections.deque[int] | TimeRollingBuffer":
+        """Anomaly-flag buffer owned by the protection filter."""
+        return self._protection.buffer
+
     def _drift_detected(self) -> bool:
-        len_ = len(self.buffer)
-        if len_ > 0:
-            return sum(self.buffer) / len_ > self.threshold
-        return False
+        return self._protection.drift_detected
+
+    def _physical_violation(self, x: float | dict[str, float]) -> bool:
+        # getattr keeps models recovered from pre-physical-limits
+        # pickles working; the isinstance guard also excludes the
+        # dict-keyed bounds of the conditional subclass, which
+        # overrides this method.
+        limits = getattr(self, "physical_limits", None)
+        if not isinstance(limits, tuple):
+            return False
+        phys_low, phys_high = limits
+        values = x.values() if isinstance(x, dict) else [x]
+        return any(not phys_low <= v <= phys_high for v in values)
+
+    def _rejects_learning(self, x: float | dict[str, float]) -> bool:
+        return (
+            self._physical_violation(x)
+            and not self.learn_on_physical_violation
+        )
+
+    @property
+    def drift_detected(self) -> bool:
+        """Whether the recent anomaly rate indicates a regime change.
+
+        Public wrapper over the internal drift signal — the paper's
+        changepoint ("regime change") diagnostic: ``True`` when the
+        share of anomalies in the protection buffer exceeds the
+        threshold. Always ``False`` when ``protect_anomaly_detector``
+        is disabled, since no buffer is maintained then.
+
+        Examples:
+        --------
+        >>> from river.proba import Gaussian
+        >>> from river.utils import Rolling
+        >>> scorer = GaussianScorer(Rolling(Gaussian(), 3),
+        ...     grace_period=2)
+        >>> for x in [1.0, 1.1, 0.9]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.drift_detected
+        False
+
+        A persistent level shift fills the buffer with anomalies and is
+        reported as drift
+        >>> for x in [10.0, 10.0, 10.0]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.drift_detected
+        True
+        """
+        if not self.protect_anomaly_detector:
+            return False
+        return self._drift_detected()
 
     def n_seen(self) -> timedelta | float:
         """Return the number of observations seen, as count or timedelta."""
@@ -360,6 +601,31 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             n_seen = self.gaussian.n_samples
         return n_seen
 
+    def _gated_learn(
+        self,
+        x: float | dict[str, float],
+        is_anomaly: bool | None = None,
+        # positional-only so **learn_kwargs cannot collide with it
+        /,
+        **learn_kwargs: datetime | float | None,
+    ) -> None:
+        # The single protection layer: when protected, the filter
+        # decides whether learning proceeds (normal sample or
+        # changepoint re-adaptation). ``is_anomaly`` lets callers that
+        # already predicted the sample avoid a second prediction.
+        if self._rejects_learning(x):
+            # Physically impossible samples are kept out of both the
+            # distribution and the protection buffer: a sensor fault
+            # must not drive drift adaptation.
+            return
+        if self.protect_anomaly_detector:
+            if is_anomaly is None:
+                is_anomaly = bool(self.predict_one(x))
+            if self._protection.gate_one(is_anomaly):
+                self._learn_one(x, **learn_kwargs)
+        else:
+            self._learn_one(x, **learn_kwargs)
+
     # river's base annotates learn_one -> None; ours returns self.
     # Annotating violates Liskov under ty.
     def learn_one(  # noqa: ANN201
@@ -368,14 +634,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         **learn_kwargs: datetime | float | None,
     ):
         """Update distribution, skipping anomalous samples when protected."""
-        if self.protect_anomaly_detector:
-            is_anomaly = self.predict_one(x)
-            self.buffer.append(is_anomaly)
-            is_change = self._drift_detected()
-            if not is_anomaly or is_change:
-                self._learn_one(x, **learn_kwargs)
-        else:
-            self._learn_one(x, **learn_kwargs)
+        self._gated_learn(x, **learn_kwargs)
         return self
 
     def score_one(self, x: float | dict[str, float]) -> float:
@@ -393,9 +652,16 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return 0.5**self._feature_dim_in
 
     def predict_one(self, x: float | dict[str, float]) -> int:
-        """Return 1 if x is anomalous under the threshold, else 0."""
+        """Return 1 if x is anomalous under the threshold, else 0.
+
+        Observations outside the configured ``physical_limits`` are
+        flagged unconditionally, even during the grace period.
+        """
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
+
+        if self._physical_violation(x):
+            return 1
 
         score = self.score_one(x)
         if (
@@ -426,10 +692,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         The limits are the normal quantiles of the configured
         (log-)threshold scaled to the input dimensionality, mirroring the
-        decision rule of ``predict_one``. They are informative envelopes
-        around the fitted distribution, not strict process boundaries:
-        observations are never clipped to them and the distribution may
-        drift past previously reported limits as it adapts.
+        decision rule of ``predict_one``. By default they are informative
+        envelopes around the fitted distribution that may drift as it
+        adapts; configuring ``physical_limits`` makes them strict process
+        boundaries by clipping the reported thresholds into the known
+        bounds, so they "may be used as an addition to static operating
+        limits used by monitoring systems in SCADA" (ESwA 2023).
         """
         if len(args) > 0:
             self._get_feature_dim_in(args[0])
@@ -490,6 +758,32 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                     strict=False,
                 ),
             )
+        limits = getattr(self, "physical_limits", None)
+        if isinstance(limits, tuple):
+            phys_low, phys_high = limits
+            if isinstance(thresh_high, dict) and isinstance(
+                thresh_low,
+                dict,
+            ):
+                thresh_high = {
+                    k: np.clip(v, phys_low, phys_high)
+                    for k, v in thresh_high.items()
+                }
+                thresh_low = {
+                    k: np.clip(v, phys_low, phys_high)
+                    for k, v in thresh_low.items()
+                }
+            else:
+                thresh_high = np.clip(
+                    cast("float | np.ndarray", thresh_high),
+                    phys_low,
+                    phys_high,
+                )
+                thresh_low = np.clip(
+                    cast("float | np.ndarray", thresh_low),
+                    phys_low,
+                    phys_high,
+                )
         return thresh_high, thresh_low
 
     def process_one(
@@ -502,7 +796,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         float | np.ndarray | dict[str, float],
     ]:
         """Predict, compute limits, and learn from x in one step."""
-        if self.gaussian.n_samples == 0:
+        if self.gaussian.n_samples == 0 and not self._rejects_learning(x):
             if isinstance(self.gaussian, (Rolling, TimeRolling)):
                 if hasattr(self.gaussian.obj, "_from_state"):
                     self.gaussian.obj = self.gaussian.obj._from_state(  # type: ignore
@@ -523,11 +817,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         thresh_high, thresh_low = self.limit_one(x)
 
-        if not is_anomaly:
+        # Exactly one protection layer: when protected, the filter
+        # gates learning (and records anomalies so changepoint
+        # re-adaptation also works through process_one); otherwise the
+        # plain "learn only normal samples" gate applies here.
+        if self.protect_anomaly_detector or not is_anomaly:
             if isinstance(self.gaussian, utils.TimeRolling):
-                self.learn_one(x, t=t)
+                self._gated_learn(x, bool(is_anomaly), t=t)
             else:
-                self.learn_one(x)
+                self._gated_learn(x, bool(is_anomaly))
 
         return is_anomaly, thresh_high, thresh_low
 
@@ -541,6 +839,14 @@ class ConditionalGaussianScorer(GaussianScorer):
         window_size (int or None): Size of the rolling window.
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
+        physical_limits (dict[str, tuple[float, float]] or None): Known
+        static (low, high) bounds keyed by feature name. Reported
+        dynamic limits are clipped into them per feature, and a
+        violation forces an anomaly with the violated feature as root
+        cause, even during the grace period.
+        learn_on_physical_violation (bool): Whether physically
+        impossible samples still update the distribution. Defaults to
+        False, excluding them from learning entirely.
 
     Examples:
     --------
@@ -605,6 +911,25 @@ class ConditionalGaussianScorer(GaussianScorer):
     >>> scorer.score_one({"a": 1.0, "b": 2.801})
     np.float64(0.99867...)
 
+    Per-feature physical bounds clip the dynamic limits and force
+    anomalies, so the limits "may be used as an addition to static
+    operating limits used by monitoring systems in SCADA" (ESwA 2023).
+    Violations are flagged even during the grace period, with the
+    violated feature as root cause
+    >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 3),
+    ...     grace_period=1, protect_anomaly_detector=False,
+    ...     physical_limits={"b": (0.0, 2.5)})
+    >>> scorer.predict_one({"a": 1.0, "b": 9.9})
+    1
+    >>> scorer.get_root_cause()
+    'b'
+    >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+    ...           {"a": 0.5, "b": 2.}]:
+    ...     scorer = scorer.learn_one(x)
+    >>> scorer.limit_one({"a": 1., "b": 2.})  # doctest: +NORMALIZE_WHITESPACE
+    ({'a': np.float64(1.501...), 'b': np.float64(2.5)},
+     {'a': np.float64(-0.001...), 'b': np.float64(0.198...)})
+
     """
 
     gaussian: ConditionableDistribution | Rolling | TimeRolling
@@ -616,6 +941,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         grace_period: timedelta | int | None = None,
         t_a: timedelta | int | None = None,
         protect_anomaly_detector: bool = True,
+        physical_limits: dict[str, tuple[float, float]] | None = None,
+        learn_on_physical_violation: bool = False,
     ) -> None:
         """Initialize ConditionalGaussianScorer with a conditionable dist."""
         if not isinstance(gaussian, ConditionableDistribution):
@@ -635,10 +962,46 @@ class ConditionalGaussianScorer(GaussianScorer):
             grace_period=grace_period,
             t_a=t_a,
             protect_anomaly_detector=protect_anomaly_detector,
+            learn_on_physical_violation=learn_on_physical_violation,
         )
+        if physical_limits is not None:
+            for name, (phys_low, phys_high) in physical_limits.items():
+                if not phys_low < phys_high:
+                    msg = (
+                        "physical_limits must satisfy low < high; got "
+                        f"{(phys_low, phys_high)} for feature {name!r}"
+                    )
+                    raise ValueError(msg)
+        self.physical_limits = physical_limits
         self.gaussian = gaussian
         self.root_cause = None
         self.alpha = (1 - threshold) / 2
+
+    def _physical_violations(self, x: dict[str, float]) -> list[str]:
+        # Violated features sorted by how far they exceed their bound,
+        # so the worst offender leads. getattr keeps models recovered
+        # from pre-physical-limits pickles working.
+        limits = getattr(self, "physical_limits", None)
+        if not isinstance(limits, dict):
+            return []
+        violated = [
+            name
+            for name, (phys_low, phys_high) in limits.items()
+            if name in x and not phys_low <= x[name] <= phys_high
+        ]
+        violated.sort(
+            key=lambda name: max(
+                limits[name][0] - x[name],
+                x[name] - limits[name][1],
+            ),
+            reverse=True,
+        )
+        return violated
+
+    def _physical_violation(self, x: float | dict[str, float]) -> bool:
+        if not isinstance(x, dict):
+            return False
+        return bool(self._physical_violations(x))
 
     def _farthest_from_center(
         self,
@@ -703,6 +1066,123 @@ class ConditionalGaussianScorer(GaussianScorer):
             return score, idx
         return 0.5, None
 
+    def scores_one(self, x: dict[str, float]) -> dict[str, float]:
+        """Return per-signal conditional CDF scores keyed by feature name.
+
+        Each signal is scored under its Gaussian distribution
+        conditioned on the remaining observed signals — the paper's
+        root-cause isolation diagnostic. Returns the neutral score 0.5
+        for every feature until the covariance estimate is defined.
+
+        Examples:
+        --------
+        >>> from river.utils import Rolling
+        >>> from functions.proba import MultivariateGaussian
+        >>> scorer = ConditionalGaussianScorer(
+        ...     Rolling(MultivariateGaussian(), 3),
+        ...     grace_period=1, protect_anomaly_detector=False)
+        >>> scorer.scores_one({"a": 1., "b": 2.})
+        {'a': 0.5, 'b': 0.5}
+        >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+        ...           {"a": 0.5, "b": 2.}]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.scores_one({"a": 1., "b": 2.})
+        {'a': np.float64(0.841...), 'b': np.float64(0.875...)}
+        """
+        cg = cast("ConditionableDistribution", self.gaussian)
+        if cg.var.shape[0] == 0:
+            return dict.fromkeys(x, 0.5)
+        return dict(zip(x, self._scores_one(x), strict=True))
+
+    def residuals_one(
+        self,
+        x: dict[str, float],
+    ) -> dict[str, tuple[float, float]]:
+        """Return per-signal conditional residuals keyed by feature name.
+
+        For each feature ``i`` the residual ``x_i - E[x_i | x_rest]``
+        is returned together with the conditional std — the raw
+        material for sensor-fault-type classification
+        (``functions.fault_diagnosis``), which the saturating CDF
+        scores of ``scores_one`` cannot provide. Returns ``(nan,
+        nan)`` for every feature until the covariance estimate is
+        defined.
+
+        Examples:
+        --------
+        >>> from river.utils import Rolling
+        >>> from functions.proba import MultivariateGaussian
+        >>> scorer = ConditionalGaussianScorer(
+        ...     Rolling(MultivariateGaussian(), 3),
+        ...     grace_period=1, protect_anomaly_detector=False)
+        >>> scorer.residuals_one({"a": 1., "b": 2.})
+        {'a': (nan, nan), 'b': (nan, nan)}
+        >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+        ...           {"a": 0.5, "b": 2.}]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.residuals_one(
+        ...     {"a": 1., "b": 2.})  # doctest: +NORMALIZE_WHITESPACE
+        {'a': (np.float64(0.25), np.float64(0.25)),
+         'b': (np.float64(0.5), np.float64(0.433...))}
+        """
+        cg = cast("ConditionableDistribution", self.gaussian)
+        if cg.var.shape[0] == 0:
+            return dict.fromkeys(x, (np.nan, np.nan))
+        residuals: dict[str, tuple[float, float]] = {}
+        for var_key, var_val in x.items():
+            cond_mean, _, cond_std = cg.mv_conditional(
+                x,
+                var_key,
+                cg.mu,
+                cg.var,
+            )
+            residuals[var_key] = (var_val - cond_mean[0], cond_std[0])
+        return residuals
+
+    def rank_root_causes(
+        self,
+        x: dict[str, float],
+        k: int | None = None,
+    ) -> list[str]:
+        """Return features ranked as root-cause candidates for ``x``.
+
+        Features are sorted by the deviation of their per-signal
+        conditional score from the neutral 0.5 — the same criterion as
+        the internal ``_farthest_from_center`` argmax behind
+        ``get_root_cause`` — extending the paper's root-cause isolation
+        from a single signal to a ranked top-``k``.
+
+        Args:
+            x: Observation keyed by feature name.
+            k: Number of top candidates to return; ``None`` returns
+                all features.
+
+        Returns:
+            Feature names sorted by decreasing deviation from center.
+
+        Examples:
+        --------
+        >>> from river.utils import Rolling
+        >>> from functions.proba import MultivariateGaussian
+        >>> scorer = ConditionalGaussianScorer(
+        ...     Rolling(MultivariateGaussian(), 3),
+        ...     grace_period=1, protect_anomaly_detector=False)
+        >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+        ...           {"a": 0.5, "b": 2.}]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.rank_root_causes({"a": 1., "b": 2.})
+        ['b', 'a']
+        >>> scorer.rank_root_causes({"a": 1., "b": 2.}, k=1)
+        ['b']
+        """
+        scores = self.scores_one(x)
+        ranked = sorted(
+            scores,
+            key=lambda name: abs(scores[name] - 0.5),
+            reverse=True,
+        )
+        return ranked if k is None else ranked[:k]
+
     def get_root_cause(self) -> str | int | None:
         """Return feature name identified as root cause of the last anomaly."""
         return self.root_cause
@@ -718,9 +1198,20 @@ class ConditionalGaussianScorer(GaussianScorer):
         return score
 
     def predict_one(self, x: float | dict[str, float]) -> int:
-        """Return 1 and set root cause if x is anomalous, else 0."""
+        """Return 1 and set root cause if x is anomalous, else 0.
+
+        A violation of the configured ``physical_limits`` forces an
+        anomaly — even during the grace period — and attributes the
+        most violated feature as root cause.
+        """
         self._get_feature_dim_in(x)
         self._get_feature_names_in(x)
+
+        if isinstance(x, dict):
+            violations = self._physical_violations(x)
+            if violations:
+                self.root_cause = violations[0]
+                return 1
 
         score, idx = self._score_one(x)
         if (self.alpha > score) or (score > 1 - self.alpha):
@@ -757,7 +1248,9 @@ class ConditionalGaussianScorer(GaussianScorer):
 
         Safe to call before any ``learn_one``/``predict_one``: feature
         names are inferred from ``x`` and NaN limits are returned until
-        the covariance estimate is defined.
+        the covariance estimate is defined. Features with configured
+        ``physical_limits`` have their reported limits clipped into the
+        known static bounds.
         """
         if x is None:
             x = {}
@@ -780,4 +1273,40 @@ class ConditionalGaussianScorer(GaussianScorer):
                     cond_std,
                 )
 
+        limits = getattr(self, "physical_limits", None)
+        if isinstance(limits, dict):
+            for name, (phys_low, phys_high) in limits.items():
+                if name in ths:
+                    ths[name] = np.clip(ths[name], phys_low, phys_high)
+                    tls[name] = np.clip(tls[name], phys_low, phys_high)
+
         return ths, tls
+
+    def get_limits(
+        self,
+        x: dict[str, float] | None = None,
+    ) -> dict[str, tuple[float, float]]:
+        """Return per-signal (lower, upper) limits keyed by feature name.
+
+        Public view of the dynamic operating limits computed from the
+        conditional moments — the paper's dynamic signal limits
+        diagnostic. The values agree with ``limit_one``, which returns
+        the same limits grouped as (upper, lower) dicts instead, and
+        are clipped into any configured per-feature ``physical_limits``.
+
+        Examples:
+        --------
+        >>> from river.utils import Rolling
+        >>> from functions.proba import MultivariateGaussian
+        >>> scorer = ConditionalGaussianScorer(
+        ...     Rolling(MultivariateGaussian(), 3),
+        ...     grace_period=1, protect_anomaly_detector=False)
+        >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+        ...           {"a": 0.5, "b": 2.}]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.get_limits({"a": 1., "b": 2.})
+        {'a': (np.float64(-0.001...), np.float64(1.501...)),
+         'b': (np.float64(0.198...), np.float64(2.801...))}
+        """
+        ths, tls = self.limit_one(x)
+        return {key: (tls[key], ths[key]) for key in ths}

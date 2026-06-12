@@ -55,6 +55,8 @@ class ModelConfig(TypedDict):
     t_e: Timedelta
     t_a: Timedelta | None
     t_g: Timedelta | None
+    # JSON object string in config files, parsed mapping in code.
+    physical_limits: NotRequired[str | dict[str, tuple[float, float]] | None]
 
 
 class SetupConfig(TypedDict):

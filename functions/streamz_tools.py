@@ -12,7 +12,17 @@ logger = logging.getLogger(__name__)
 
 @Stream.register_api(attribute_name="map")
 class MapStream(Stream):
-    """Stream operator that applies a function to each upstream element."""
+    """Stream operator that applies a function to each upstream element.
+
+    Args:
+        upstream (Stream): Upstream stream.
+        func (Callable): Function applied to each element.
+        *args: Extra positional arguments passed to ``func``.
+        on_error (str): Either ``"skip"`` (default) to log and drop a
+            message whose processing raised, or ``"raise"`` to stop the
+            stream and re-raise the exception.
+        **kwargs: Extra keyword arguments passed to ``func``.
+    """
 
     def __init__(
         self,
@@ -25,6 +35,11 @@ class MapStream(Stream):
         self.func = func
         # this is one of a few stream specific kwargs
         stream_name = kwargs.pop("stream_name", None)
+        on_error = kwargs.pop("on_error", "skip")
+        if on_error not in ("skip", "raise"):
+            msg = f"on_error must be 'skip' or 'raise', got {on_error!r}"
+            raise ValueError(msg)
+        self.on_error = on_error
         self.kwargs = kwargs
         self.args = args
 
@@ -36,15 +51,23 @@ class MapStream(Stream):
         who: Stream | None = None,
         metadata: list | None = None,
     ) -> object:
-        """Apply func to x and emit the result, stop stream on error."""
+        """Apply func to x and emit the result, handling errors per on_error.
+
+        With ``on_error="skip"`` a failing message is logged and dropped so
+        one bad payload cannot take down the service; with ``"raise"`` the
+        stream is stopped and the exception propagates.
+        """
         del who  # unused; required by the streamz Stream.update API
         try:
             result = self.func(x, *self.args, **self.kwargs)
         except Exception:
-            self.stop()
-            self.destroy()
-            logger.exception("Stream update failed")
-            raise
+            if self.on_error == "raise":
+                self.stop()
+                self.destroy()
+                logger.exception("Stream update failed")
+                raise
+            logger.exception("Stream update failed; dropping message")
+            return None
         else:
             return self._emit(result, metadata=metadata)
 
@@ -146,9 +169,35 @@ class to_mqtt(Sink):
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
     def _publish(self, topic: str, payload: object) -> None:
-        """Publish one message and wait for its delivery confirmation."""
+        """Publish one message and wait for its delivery confirmation.
+
+        paho reports failures (e.g. a dropped broker connection) via the
+        result code instead of raising, so a failed publish reconnects
+        and retries once before giving up with an error log.
+        """
         assert self.client is not None  # narrowed by update()
         info = self.client.publish(topic, payload, **self.p_kw)
+        if info.rc != mqtt.MQTT_ERR_SUCCESS:
+            logger.warning(
+                "MQTT publish failed (rc=%s) for topic %r; "
+                "reconnecting and retrying once",
+                info.rc,
+                topic,
+            )
+            try:
+                self.client.reconnect()
+            except OSError:
+                logger.exception("MQTT reconnect failed for topic %r", topic)
+                return
+            info = self.client.publish(topic, payload, **self.p_kw)
+            if info.rc != mqtt.MQTT_ERR_SUCCESS:
+                logger.error(
+                    "MQTT publish failed after reconnect (rc=%s) "
+                    "for topic %r; message dropped",
+                    info.rc,
+                    topic,
+                )
+                return
         info.wait_for_publish(timeout=self.publish_timeout)
         if not info.is_published():
             logger.warning(
@@ -256,7 +305,6 @@ def _func(previous_state: dict, new_msg: MQTTMessage, topics: list) -> dict:
     {'foo': b'2.'}
 
     """
-    MQTTMessage()
     if new_msg.topic in topics:
         if not _filt(previous_state, topics):
             previous_state[new_msg.topic] = new_msg.payload

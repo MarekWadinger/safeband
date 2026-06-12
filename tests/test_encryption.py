@@ -1,7 +1,9 @@
 """Tests for RSA encryption, signing, and key management utilities."""
 
+import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 from cryptography.exceptions import InvalidSignature
@@ -11,6 +13,7 @@ sys.path.insert(1, str(Path(__file__).parent.parent))
 from functions.encryption import (
     decode_data,
     decrypt_data,
+    deserialize_value,
     encrypt_data,
     generate_keys,
     load_private_key,
@@ -131,7 +134,10 @@ class TestSecurity:
         signed_msg = sign_data(msg, self.sender)
         ciphertext = encrypt_data(signed_msg, self.sender)
         plaintext = decrypt_data(ciphertext, self.receiver)
-        sign = plaintext.pop("signature")
+        # Values travel JSON-serialized, so the decrypted signature must
+        # be deserialized before verification.
+        sign = deserialize_value(plaintext.pop("signature").decode("utf-8"))
+        assert isinstance(sign, str)
         verify = verify_signature(plaintext, sign, self.receiver)
         assert verify is True
 
@@ -154,3 +160,82 @@ class TestSecurity:
         ciphertext_str = decode_data(ciphertext)
         with pytest.raises(InvalidSignature):
             verify_and_decrypt_data(ciphertext_str, self.receiver)
+
+    def _round_trip(self, msg: dict[str, Any]) -> dict[str, Any]:
+        """Run msg through the full sign-encrypt-dump-verify-decrypt path."""
+        signed_msg = sign_data(msg, self.sender)
+        ciphertext = encrypt_data(signed_msg, self.sender)
+        wire = json.loads(json.dumps(decode_data(ciphertext)))
+        return dict(verify_and_decrypt_data(wire, self.receiver))
+
+    def test_round_trip_preserves_float_limits(self) -> None:
+        """Univariate result dict round-trips with original value types."""
+        msg = {
+            "time": "2023-01-01 00:00:00",
+            "anomaly": 0,
+            "root_cause": None,
+            "level_high": 0.5,
+            "level_low": -0.5,
+        }
+        item = self._round_trip(msg)
+        assert isinstance(item["level_high"], float)
+        assert isinstance(item["level_low"], float)
+        assert isinstance(item["anomaly"], int)
+        assert isinstance(item["time"], str)
+        assert item["root_cause"] is None
+        assert item == msg
+
+    def test_round_trip_preserves_dict_limits(self) -> None:
+        """Multivariate result dict round-trips limits as dicts."""
+        msg = {
+            "time": "2023-01-01 00:00:00",
+            "anomaly": True,
+            "root_cause": "b",
+            "level_high": {"a": 0.5, "b": 0.6},
+            "level_low": {"a": -0.5, "b": -0.6},
+        }
+        item = self._round_trip(msg)
+        assert isinstance(item["level_high"], dict)
+        assert isinstance(item["level_low"], dict)
+        assert isinstance(item["anomaly"], bool)
+        assert isinstance(item["time"], str)
+        assert item == msg
+
+    def test_round_trip_preserves_types_for_chunked_payload(self) -> None:
+        """Limits longer than one RSA block are chunked and still parse."""
+        msg = {
+            "time": "2023-01-01 00:00:00",
+            "anomaly": 0,
+            "level_high": {f"signal_{i:02d}": i + 0.5 for i in range(30)},
+            "level_low": {f"signal_{i:02d}": i - 0.5 for i in range(30)},
+        }
+        signed_msg = sign_data(msg, self.sender)
+        ciphertext = encrypt_data(signed_msg, self.sender)
+        # The long limit dicts must exercise the split_msg chunking path.
+        assert isinstance(ciphertext["level_high"], list)
+        wire = json.loads(json.dumps(decode_data(ciphertext)))
+        item = dict(verify_and_decrypt_data(wire, self.receiver))
+        assert isinstance(item["level_high"], dict)
+        assert isinstance(item["level_low"], dict)
+        assert item == msg
+
+    def test_old_format_stringified_payload_still_decrypts(self) -> None:
+        """Payloads stringified by the old str() coercion verify and parse."""
+        msg = {
+            "time": "2023-01-01 00:00:00",
+            "anomaly": 0,
+            "level_high": 0.5,
+        }
+        # Replicate the old wire format: every value coerced with str()
+        # and encrypted raw, signature computed over the str() dict.
+        old_plain = {k: str(v) for k, v in msg.items()}
+        signature = self.sender.sign(json.dumps(old_plain).encode("utf-8"))
+        old_signed = {**old_plain, "signature": signature}
+        ciphertext = {
+            k: encrypt_data(v, self.sender) for k, v in old_signed.items()
+        }
+        wire = json.loads(json.dumps(decode_data(ciphertext)))
+        item = dict(verify_and_decrypt_data(wire, self.receiver))
+        assert item["time"] == "2023-01-01 00:00:00"
+        assert item["anomaly"] == 0
+        assert item["level_high"] == 0.5

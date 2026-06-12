@@ -37,13 +37,21 @@ def load_model(path: str, topics: list[str]) -> GaussianScorer | None:
     return None
 
 
-def save_model(path: str, topics: list[str], model: object) -> None:
+def save_model(
+    path: str,
+    topics: list[str],
+    model: object,
+    keep_last: int = 5,
+) -> None:
     """Save a model to a given path.
 
     Args:
         path: The path to the model.
         topics: The topics of the model.
         model: The model to save.
+        keep_last: Number of newest recovery pickles to retain for this
+            topic prefix; older ones are deleted after a successful
+            save. Non-positive values disable pruning.
 
     """
     if path:
@@ -56,3 +64,11 @@ def save_model(path: str, topics: list[str], model: object) -> None:
         with recovery_path.open("wb") as f:
             joblib.dump({"model": model, "topics": topics}, f)
             logger.info("Model saved to %s", recovery_path)
+        if keep_last > 0:
+            # Timestamped names sort lexicographically, newest first.
+            stale = sorted(p.glob(f"{model_prefix}_*.pkl"), reverse=True)[
+                keep_last:
+            ]
+            for old in stale:
+                old.unlink()
+                logger.info("Pruned old recovery file %s", old)

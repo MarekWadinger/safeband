@@ -4,11 +4,13 @@
 #    05_scalability.py run; those .results/ outputs are not committed.
 #  - comparison / comparison_ARIMA hang on a cell under nbconvert
 #    (no running event loop), stalling the CI job; run them locally.
+#  - 06 needs the TSB-AD datasets (multi-hundred-MB zips, gitignored).
 SKIP_NOTEBOOKS := \
 	examples/04_eco_pack_presov.ipynb \
 	examples/05_scalability_eval.ipynb \
 	examples/comparison.ipynb \
-	examples/comparison_ARIMA.ipynb
+	examples/comparison_ARIMA.ipynb \
+	examples/06_tsb_ad_benchmark.ipynb
 PUBLIC_NOTEBOOKS := $(filter-out $(SKIP_NOTEBOOKS),$(wildcard examples/*.ipynb))
 
 format:

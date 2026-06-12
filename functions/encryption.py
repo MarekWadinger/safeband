@@ -12,6 +12,65 @@ from human_security import HumanRSA
 LEN_LIMIT = 214
 
 
+def serialize_value(value: object) -> str:
+    """Serialize one payload value to its JSON wire representation.
+
+    Bytes pass through as UTF-8 text; every other value is JSON-encoded so
+    floats, dicts, ints, bools, and ``None`` keep their types across the
+    sign -> encrypt -> decrypt -> verify round trip. Objects JSON cannot
+    represent (e.g. ``datetime``) fall back to ``str()``.
+
+    Args:
+        value: Payload value to serialize.
+
+    Returns:
+        str: Wire representation of the value.
+
+    Examples:
+        >>> serialize_value(0.5)
+        '0.5'
+        >>> serialize_value({"a": 0.5})
+        '{"a": 0.5}'
+        >>> serialize_value("text")
+        '"text"'
+        >>> serialize_value(b"raw")
+        'raw'
+
+    """
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return json.dumps(value, default=str)
+
+
+def deserialize_value(value: str) -> object:
+    """Parse a wire value back to its original type.
+
+    Values that are not valid JSON — timestamps such as
+    ``"2023-01-01 00:00:00"``, or payloads produced by older versions of
+    this module that coerced values with ``str()`` — are returned
+    unchanged as strings.
+
+    Args:
+        value: Wire representation of a payload value.
+
+    Returns:
+        object: The parsed value, or the input string if not valid JSON.
+
+    Examples:
+        >>> deserialize_value('0.5')
+        0.5
+        >>> deserialize_value('{"a": 0.5}')
+        {'a': 0.5}
+        >>> deserialize_value('2023-01-01 00:00:00')
+        '2023-01-01 00:00:00'
+
+    """
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
+
+
 def save_public_key(file: str | os.PathLike, key: HumanRSA) -> None:
     """Save the public key to a file.
 
@@ -129,19 +188,22 @@ def encrypt_data(data: str | bytes, key: HumanRSA) -> bytes: ...
 def encrypt_data(data: list[bytes], key: HumanRSA) -> list[bytes]: ...
 @overload
 def encrypt_data(
-    data: Mapping[str, bytes | str | list[bytes | str]],
+    data: Mapping[str, object],
     key: HumanRSA,
 ) -> dict[str, bytes]: ...
 
 
 def encrypt_data(
-    data: str
-    | bytes
-    | list[bytes]
-    | Mapping[str, bytes | str | list[bytes | str]],
+    data: str | bytes | list[bytes] | Mapping[str, object],
     key: HumanRSA,
 ) -> bytes | list[bytes] | dict[str, bytes]:
     """Encrypt data using the provided key.
+
+    Dict values are serialized with :func:`serialize_value` (JSON; bytes
+    pass through as UTF-8 text, ``datetime`` objects fall back to
+    ``str()``) so the consumer can restore their original types after
+    decryption. This must stay consistent with :func:`sign_data`, which
+    signs the same wire representation.
 
     Args:
         data (bytes): Data to encrypt.
@@ -160,20 +222,14 @@ def encrypt_data(
         b...
         >>> print(encrypt_data([b'Test', b'Test'], key))
         b...
-        >>> print(encrypt_data({'a': b'Test', 'b': ['Test', b'Test']}, key))
+        >>> print(encrypt_data({'a': b'Test', 'b': ['Test', 'Test']}, key))
         {'a': b..., 'b': b...}
 
     """
     if isinstance(data, dict):
         data_ = {}
         for x, v in data.items():
-            if isinstance(v, bytes):
-                v_s = v.decode("utf-8")
-            elif not isinstance(v, str):
-                v_s = str(v)
-            else:
-                v_s = v
-            data_[x] = encrypt_data(v_s, key)
+            data_[x] = encrypt_data(serialize_value(v), key)
         return data_
     if isinstance(data, bytes):
         if len(data) > LEN_LIMIT:
@@ -248,16 +304,21 @@ def decrypt_data(
 def sign_data(data: bytes | str, key: HumanRSA) -> str: ...
 @overload
 def sign_data(
-    data: Mapping[str, bytes | str | int | float],
+    data: Mapping[str, object],
     key: HumanRSA,
-) -> dict[str, bytes | str]: ...
+) -> dict[str, object]: ...
 
 
 def sign_data(
-    data: bytes | str | Mapping[str, bytes | str | int | float],
+    data: bytes | str | Mapping[str, object],
     key: HumanRSA,
-) -> str | dict[str, bytes | str]:
+) -> str | dict[str, object]:
     """Sign the provided data using the given key.
+
+    Dict values are signed in their :func:`serialize_value` wire form
+    (JSON; ``datetime`` objects fall back to ``str()``), the same form
+    :func:`encrypt_data` encrypts, so the consumer can verify the
+    signature against the decrypted wire strings.
 
     Args:
         data (bytes): Data to sign.
@@ -279,20 +340,13 @@ def sign_data(
 
     """
     if isinstance(data, Mapping):
-        data_map = cast("Mapping[str, bytes | str | int | float]", data)
-        data_str: dict[str, str] = {}
-        for x, v in data_map.items():
-            if isinstance(v, bytes):
-                data_str[x] = v.decode("utf-8")
-            elif not isinstance(v, str):
-                data_str[x] = str(v)
-            else:
-                data_str[x] = v
-        result_dict: dict[str, bytes | str] = {
-            k: cast("bytes | str", w) for k, w in data_map.items()
+        data_map = cast("Mapping[str, object]", data)
+        data_ser: dict[str, str] = {
+            x: serialize_value(v) for x, v in data_map.items()
         }
+        result_dict: dict[str, object] = dict(data_map)
         result_dict["signature"] = key.sign(
-            json.dumps(data_str).encode("utf-8"),
+            json.dumps(data_ser).encode("utf-8"),
         )
         return result_dict
     if isinstance(data, bytes):
@@ -354,8 +408,14 @@ def verify_signature(
 def verify_and_decrypt_data(
     item: dict[str, str | list[str]],
     key: HumanRSA,
-) -> dict[str, str]:
+) -> dict[str, object]:
     """Verify the signature of the item, and return the decrypted data.
+
+    Each decrypted value is parsed with :func:`deserialize_value`, so
+    floats, dicts, ints, bools, and ``None`` come back with the types the
+    producer sent. Values that are not valid JSON — timestamps and
+    payloads produced by older versions that coerced values with
+    ``str()`` — are returned as strings.
 
     Args:
         item: The item to verify and decrypt.
@@ -365,22 +425,26 @@ def verify_and_decrypt_data(
         InvalidSignature: If the signature verification fails.
 
     Returns:
-        dict: The decrypted data (values decoded to str).
+        dict: The decrypted data with original value types restored.
 
     """
     item_enc = cast("dict[str, bytes | Sequence[bytes]]", encode_data(item))
     item_dec: dict[str, bytes] = decrypt_data(item_enc, key)  # type: ignore[assignment]
-    sign = item_dec.pop("signature")
-    item_str: dict[str, str] = {
+    item_ser: dict[str, str] = {
         k: v.decode("latin1") if isinstance(v, bytes) else v
         for k, v in item_dec.items()
     }
-    verify = verify_signature(item_str, sign, key)
+    sign_ser = item_ser.pop("signature")
+    # New-format signatures arrive JSON-quoted; old-format ones are raw.
+    sign = deserialize_value(sign_ser)
+    if not isinstance(sign, str):
+        sign = sign_ser
+    verify = verify_signature(item_ser, sign, key)
     if verify is not True:
         msg = "Signature verification failed."
         raise InvalidSignature(msg)
 
-    return item_str
+    return {k: deserialize_value(v) for k, v in item_ser.items()}
 
 
 def encode_data(

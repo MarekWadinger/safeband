@@ -6,6 +6,7 @@ import logging
 import re
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import paho.mqtt.client as mqtt
 import pytest
@@ -89,6 +90,87 @@ class TestConsumer:
         assert "signature" not in caplog.text
 
 
+class TestConsumerPlaintext:
+    """The consumer must work without encryption configured."""
+
+    def test_query_file_no_receiver_logs_plaintext_item(
+        self,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A plaintext output file is queried without any key configured."""
+        output = tmp_path / "out.json"
+        output.write_text(json.dumps({"time": "2022-01-01 00:00:00"}) + "\n")
+        config: FileClient = {"path": "", "output": str(output)}
+
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            query_file(config)
+
+        assert "2022, 1, 1, 0, 0" in caplog.text
+
+    def test_query_file_receiver_none_skips_decryption(
+        self,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """An explicit receiver=None must not attempt decryption."""
+        output = tmp_path / "out.json"
+        output.write_text(json.dumps({"time": "2022-01-01 00:00:00"}) + "\n")
+        config: FileClient = {"path": "", "output": str(output)}
+
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            query_file(config, receiver=None)
+
+        assert "2022, 1, 1, 0, 0" in caplog.text
+
+    def test_query_file_mixed_lines_decrypts_only_signed_items(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Only items carrying a signature field are decrypted."""
+        output = tmp_path / "out.json"
+        lines = [
+            {"time": "2022-01-01 00:00:00"},
+            {"time": "2022-01-01 00:00:01", "signature": "sig"},
+        ]
+        output.write_text(
+            "\n".join(json.dumps(x) for x in lines) + "\n",
+        )
+        decrypt = MagicMock(
+            return_value={"time": "2022-01-01 00:00:02"},
+        )
+        monkeypatch.setattr("consumer.verify_and_decrypt_data", decrypt)
+        receiver = HumanRSA()
+        receiver.generate()
+
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            query_file(
+                {"path": "", "output": str(output)},
+                receiver=receiver,
+            )
+
+        decrypt.assert_called_once()
+        assert decrypt.call_args[0][0]["signature"] == "sig"
+        assert "2022, 1, 1, 0, 0" in caplog.text
+
+    def test_on_message_receiver_none_logs_plaintext(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A plaintext MQTT message is logged when no key is configured."""
+        userdata = argparse.Namespace()
+        userdata.receiver = None
+        msg = mqtt.MQTTMessage()
+        msg.payload = b'{"time": "2022-01-01 00:00:00"}'
+
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            on_message(mqtt.Client(), userdata, msg)
+
+        assert '{"time": "2022-01-01 00:00:00"}' in caplog.text
+
+
 class TestModelPresistence:
     """Tests for saving and loading models to/from disk."""
 
@@ -127,3 +209,34 @@ class TestModelPresistence:
 
         assert model == load_model(self.path, self.topics)
         assert load_model(self.path, ["bad_topics"]) is None
+
+    def test_save_model_many_files_prunes_to_keep_last(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Saving keeps only the newest keep_last recovery pickles."""
+        prefix = f"model_{common_prefix(self.topics)}"
+        for i in range(6):
+            (tmp_path / f"{prefix}_20240101-00000{i}.pkl").touch()
+
+        save_model(str(tmp_path), self.topics, {"model": 1}, keep_last=3)
+
+        remaining = sorted(tmp_path.glob(f"{prefix}_*.pkl"))
+        assert len(remaining) == 3
+        # The two newest pre-existing files plus the just-saved one.
+        names = [p.name for p in remaining]
+        assert f"{prefix}_20240101-000004.pkl" in names
+        assert f"{prefix}_20240101-000005.pkl" in names
+
+    def test_save_model_keep_last_zero_disables_pruning(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A non-positive keep_last leaves every recovery file alone."""
+        prefix = f"model_{common_prefix(self.topics)}"
+        for i in range(3):
+            (tmp_path / f"{prefix}_20240101-00000{i}.pkl").touch()
+
+        save_model(str(tmp_path), self.topics, {"model": 1}, keep_last=0)
+
+        assert len(list(tmp_path.glob(f"{prefix}_*.pkl"))) == 4

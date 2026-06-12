@@ -54,16 +54,65 @@ _exit_stack: contextlib.ExitStack = contextlib.ExitStack()
 
 
 # DEFINITIONS
+def _parse_physical_limits(
+    value: str | dict[str, tuple[float, float]] | None,
+) -> dict[str, tuple[float, float]] | None:
+    """Parse a physical_limits config entry into per-signal bounds.
+
+    Accepts ``None``, a JSON object string, or an already-built mapping
+    of signal name to a (low, high) pair.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = json.loads(value)
+    if not isinstance(value, dict):
+        msg = (
+            "physical_limits must be a mapping of signal name to "
+            f"(low, high); got {value!r}"
+        )
+        raise TypeError(msg)
+    limits: dict[str, tuple[float, float]] = {}
+    for name, bounds in value.items():
+        try:
+            phys_low, phys_high = bounds
+        except (TypeError, ValueError) as exc:
+            msg = (
+                "physical_limits bounds must be a (low, high) pair; "
+                f"got {bounds!r} for signal {name!r}"
+            )
+            raise ValueError(msg) from exc
+        limits[str(name)] = (float(phys_low), float(phys_high))
+    return limits
+
+
 def expand_model_params(
     model_params: ModelConfig,
-) -> tuple[float, dt.timedelta, dt.timedelta, dt.timedelta]:
+) -> tuple[
+    float,
+    dt.timedelta,
+    dt.timedelta,
+    dt.timedelta,
+    dict[str, tuple[float, float]] | None,
+]:
     """Extract and convert model parameters from the configuration dictionary.
 
     Args:
-        model_params: Mapping containing threshold, t_e, t_a, and t_g values.
+        model_params: Mapping containing threshold, t_e, t_a, t_g, and
+            optional physical_limits values.
 
     Returns:
-        tuple: ``(threshold, t_e, t_a, t_g)`` as a float and three timedeltas.
+        tuple: ``(threshold, t_e, t_a, t_g, physical_limits)`` as a float,
+        three timedeltas, and an optional mapping of signal name to its
+        static (low, high) operating bounds.
+
+    Examples:
+        >>> *_, limits = expand_model_params({
+        ...     "t_e": pd.Timedelta("1d"),
+        ...     "physical_limits": '{"plant/a": [0.0, 100.0]}',
+        ... })
+        >>> limits
+        {'plant/a': (0.0, 100.0)}
 
     """
     threshold = model_params.get("threshold", 0.99735)
@@ -104,7 +153,10 @@ def expand_model_params(
     t_a = period_to_timedelta(t_a)
     t_g = cast("pd.Timedelta", model_params.get("t_g", t_e))
     t_g = period_to_timedelta(t_g)
-    return threshold, t_e, t_a, t_g
+    physical_limits = _parse_physical_limits(
+        model_params.get("physical_limits"),
+    )
+    return threshold, t_e, t_a, t_g, physical_limits
 
 
 def print_summary(df: pd.DataFrame) -> None:
@@ -138,6 +190,10 @@ class RpcOutlierDetector:
     def __init__(self) -> None:
         """Initialize the detector in a stopped state."""
         self.stopped = True
+        # Raw broker/source node captured by get_source so run() can
+        # poll its ``stopped`` flag regardless of how the pipeline wraps
+        # the source (e.g. the MQTT accumulate/filter chain).
+        self._raw_source: Stream | None = None
 
     def preprocess(
         self,
@@ -158,43 +214,59 @@ class RpcOutlierDetector:
             topics: Feature names to extract from the input.
 
         Returns:
-            dict: Normalized record with keys ``time`` and ``data``.
+            dict | None: Normalized record with keys ``time`` and ``data``,
+            or ``None`` when the input type is unrecognized or a value
+            cannot be parsed as a float.
 
         """
+        result: dict | None = None
         if isinstance(x, pd.Series):
             if isinstance(x.name, pd.Timestamp):
                 t = x.name.tz_localize(None)
             else:
                 t = pd.Timestamp.utcnow().tz_localize(None)
-            return {"time": t, "data": x[topics].to_dict()}
-        if isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
-            return {
+            result = {"time": t, "data": x[topics].to_dict()}
+        elif isinstance(x, tuple) and isinstance(x[1], (pd.Series)):
+            result = {
                 "time": cast("pd.Timestamp", x[0]).tz_localize(None),
                 "data": x[1][topics].to_dict(),
             }
-        if isinstance(x, dict):
-            return {
-                "time": dt.datetime.now(dt.UTC).replace(microsecond=0),
-                "data": {
-                    k: float(cast("float | str | bytes", v))
-                    for k, v in x.items()
-                    if k in topics
-                },
-            }
-        if isinstance(x, MQTTMessage):
-            return {
-                "time": dt.datetime.fromtimestamp(
-                    x.timestamp,
-                    tz=dt.UTC,
-                ).replace(microsecond=0),
-                "data": {x.topic.split("/")[-1]: float(x.payload)},
-            }
-        if isinstance(x, bytes):
-            return {
-                "time": dt.datetime.now(dt.UTC).replace(microsecond=0),
-                "data": {topics[0]: float(x.decode("utf-8"))},
-            }
-        return None
+        else:
+            # Timestamps are tz-naive UTC: the rolling model and the
+            # consumer's strptime format both reject tz-aware values.
+            try:
+                if isinstance(x, dict):
+                    result = {
+                        "time": dt.datetime.now(dt.UTC).replace(
+                            microsecond=0,
+                            tzinfo=None,
+                        ),
+                        "data": {
+                            k: float(cast("float | str | bytes", v))
+                            for k, v in x.items()
+                            if k in topics
+                        },
+                    }
+                elif isinstance(x, MQTTMessage):
+                    result = {
+                        "time": dt.datetime.fromtimestamp(
+                            x.timestamp,
+                            tz=dt.UTC,
+                        ).replace(microsecond=0, tzinfo=None),
+                        "data": {x.topic.split("/")[-1]: float(x.payload)},
+                    }
+                elif isinstance(x, bytes):
+                    result = {
+                        "time": dt.datetime.now(dt.UTC).replace(
+                            microsecond=0,
+                            tzinfo=None,
+                        ),
+                        "data": {topics[0]: float(x.decode("utf-8"))},
+                    }
+            except (ValueError, TypeError):
+                logger.warning("Skipping unparsable message: %r", x)
+                result = None
+        return result
 
     def fit_transform(self, x: dict, model: GaussianScorer) -> dict:
         """Apply the anomaly detection model and return a serialisable result.
@@ -232,8 +304,12 @@ class RpcOutlierDetector:
         }
 
     def dump_to_file(self, x: dict, f: IO[str]) -> None:
-        """Serialize a result dictionary as JSON and append it to a file."""
-        print(json.dumps(x), file=f)
+        """Serialize a result dictionary as JSON and append it to a file.
+
+        Flushes after every line so consumers tailing the file see each
+        result as it is produced and nothing is lost on SIGTERM.
+        """
+        print(json.dumps(x), file=f, flush=True)
 
     def send_anomaly_email(
         self,
@@ -254,6 +330,44 @@ class RpcOutlierDetector:
                 f"AID Alert: Anomaly detected in {model.get_root_cause()}",
                 xs[1],
             )
+
+    def _warn_on_param_mismatch(
+        self,
+        model: GaussianScorer,
+        threshold: float,
+        t_e: dt.timedelta,
+        t_a: dt.timedelta,
+        t_g: dt.timedelta,
+        physical_limits: dict[str, tuple[float, float]]
+        | tuple[float, float]
+        | None,
+    ) -> None:
+        """Warn when a recovered model diverges from the configuration.
+
+        A recovery pickle restores the model exactly as saved, so edits
+        to ``threshold`` / ``t_e`` / ``t_a`` / ``t_g`` /
+        ``physical_limits`` in the config are silently ignored while a
+        recovery file exists. Make that visible instead of letting the
+        config lie to the operator.
+        """
+        configured = {
+            "threshold": threshold,
+            "t_e": t_e,
+            "t_a": t_a,
+            "grace_period": t_g,
+            "physical_limits": physical_limits,
+        }
+        for name, want in configured.items():
+            have = getattr(model, name, None)
+            if have != want:
+                logger.warning(
+                    "Recovered model %s=%r differs from configured %r; "
+                    "the recovered value stays in effect. Delete the "
+                    "recovery file to apply the new configuration.",
+                    name,
+                    have,
+                    want,
+                )
 
     def get_source(
         self,
@@ -288,21 +402,29 @@ class RpcOutlierDetector:
                 data = pd.read_csv(config.get("path", ""), index_col=0)
                 data.index = pd.to_datetime(data.index, utc=True)
                 source = Stream.from_iterable(data.iterrows())
+            self._raw_source = source
         elif istypedinstance(config, MQTTClient):
             source = Stream.from_mqtt(
                 **config,
                 topic=[(topic, 0) for topic in topics],
             )
+            # Capture the raw broker node before wrapping: run() polls
+            # its ``stopped`` flag, which the accumulate/filter nodes
+            # below do not expose.
+            self._raw_source = source
             source = source.accumulate(
                 _func,
                 start={},
                 topics=topics,
             ).filter(_filt, topics)
         elif istypedinstance(config, KafkaClient):
+            # "detection_service" is only a default: a user-supplied
+            # group.id in the config must win.
             source = Stream.from_kafka(
                 topics,
-                {**config, "group.id": "detection_service"},
+                {"group.id": "detection_service", **config},
             )
+            self._raw_source = source
         elif istypedinstance(config, PulsarClient):
             if not _PULSAR_AVAILABLE:
                 msg = "pulsar-client is not installed"
@@ -312,6 +434,7 @@ class RpcOutlierDetector:
                 topics,
                 subscription_name="detection_service",
             )
+            self._raw_source = source
         else:
             msg = f"Wrong client: {config}"
             raise RuntimeError(msg)
@@ -408,20 +531,18 @@ class RpcOutlierDetector:
             data.index = pd.to_datetime(data.index, utc=True)
             for row in data.head().iterrows():
                 source.emit(row)
-            _exit_stack.close()
             logger.info("=== Debugging finished with success... ===")
-        else:  # pragma: no cover
+        else:
             detector.start()
             logger.info("=== Service started ===")
 
-            while True:
-                try:
-                    if source.stopped:
-                        break
-                except AttributeError:
-                    if source.upstreams[0].upstreams[0].stopped:
-                        break
-                time.sleep(2)
+            # Poll the raw source node captured by get_source rather
+            # than probing a hardcoded upstream depth of the pipeline.
+            raw_source = (
+                self._raw_source if self._raw_source is not None else source
+            )
+            while not raw_source.stopped:
+                time.sleep(2)  # pragma: no cover
 
     def start(
         self,
@@ -441,7 +562,8 @@ class RpcOutlierDetector:
             client: Transport configuration (file, MQTT, Kafka, or Pulsar).
             io: I/O configuration with ``in_topics`` and ``out_topics``.
             model_params: Model hyper-parameters including ``t_e`` and optional
-                ``t_a``, ``t_g``, and ``threshold``.
+                ``t_a``, ``t_g``, ``threshold``, and ``physical_limits``
+                (static per-signal operating bounds).
             setup: Runtime options such as ``debug``, ``key_path``, and
                 ``recovery_path``.
             email: Optional email alert configuration.
@@ -465,10 +587,31 @@ class RpcOutlierDetector:
         in_topics = io.get("in_topics", [])
         out_topics = io.get("out_topics", None)
 
-        threshold, t_e, t_a, t_g = expand_model_params(model_params)
+        threshold, t_e, t_a, t_g, physical_limits = expand_model_params(
+            model_params,
+        )
+        # The univariate scorer takes the bounds of its single signal;
+        # the conditional scorer keeps the whole per-feature mapping.
+        univariate_limits = (
+            physical_limits.get(in_topics[0])
+            if physical_limits and in_topics
+            else None
+        )
+        scoped_limits: (
+            dict[str, tuple[float, float]] | tuple[float, float] | None
+        ) = physical_limits if len(in_topics) > 1 else univariate_limits
 
         model = load_model(recovery_path, in_topics)
 
+        if model is not None:
+            self._warn_on_param_mismatch(
+                model,
+                threshold,
+                t_e,
+                t_a,
+                t_g,
+                scoped_limits,
+            )
         if model is None:
             if len(in_topics) > 1:
                 obj = MultivariateGaussian()
@@ -477,6 +620,7 @@ class RpcOutlierDetector:
                     threshold=threshold,
                     grace_period=t_g,
                     t_a=t_a,
+                    physical_limits=physical_limits,
                 )
             else:
                 obj = proba.Gaussian()
@@ -485,14 +629,19 @@ class RpcOutlierDetector:
                     threshold=threshold,
                     grace_period=t_g,
                     t_a=t_a,
+                    physical_limits=univariate_limits,
                 )
 
         source = self.get_source(client, in_topics, debug)
 
-        detector = source.map(self.preprocess, in_topics).map(
-            self.fit_transform,
-            model,
+        detector = (
+            source.map(self.preprocess, in_topics)
+            .filter(lambda x: x is not None)
+            .map(self.fit_transform, model)
         )
+        # Email alerting branches off the plaintext detector node; after
+        # the sign/encrypt maps the anomaly flags are opaque strings.
+        plain = detector
 
         if key_path:
             sender, _ = init_rsa_security(key_path)
@@ -504,7 +653,7 @@ class RpcOutlierDetector:
         detector = self.get_sink(client, in_topics, detector, out_topics)
         if email is not None and email.get("sender_email") is not None:
             email_client = EmailClient(**email)
-            detector.sliding_window(2).sink(
+            plain.sliding_window(2).sink(
                 self.send_anomaly_email,
                 email_client,
                 model,
@@ -514,5 +663,8 @@ class RpcOutlierDetector:
             self.run(client, source, detector, debug)
         finally:
             detector.stop()
+            # Close (and thereby flush) any files opened by the sink on
+            # every shutdown path, not only in debug mode.
+            _exit_stack.close()
             logger.info("=== Service stopped ===")
             save_model(recovery_path, in_topics, model)

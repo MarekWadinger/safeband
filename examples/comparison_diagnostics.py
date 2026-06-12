@@ -2,6 +2,7 @@
 
 # IMPORTS
 import ast
+import collections
 import logging
 import pickle
 import random
@@ -12,23 +13,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from bayes_opt import (
-    BayesianOptimization,
-    SequentialDomainReductionTransformer,
-)
-from bayes_opt.event import Events
-from bayes_opt.logger import JSONLogger
-from river import cluster, metrics, utils
-from river.metrics import MacroF1
+from river import utils
 
 sys.path.insert(1, str(Path.cwd().parent))
 from functions.anomaly import ConditionalGaussianScorer
-from functions.compose import build_model, convert_to_nested_dict
-from functions.evaluate import (
-    batch_save_evaluate_metrics,
-    build_fit_evaluate,
-    progressive_val_predict,
-)
+from functions.fault_diagnosis import SensorFaultClassifier
 from functions.proba import MultivariateGaussian
 
 logger = logging.getLogger(__name__)
@@ -52,6 +41,116 @@ def save_results_y(df_ys: pd.DataFrame, path: str) -> None:
     Path(path).mkdir(parents=True, exist_ok=True)
     df_ys.to_csv(f"{path}/ys.csv", index=False)
 
+
+# FAULT-TYPE DIAGNOSIS DEMO (IDEAS I7)
+def demo_fault_diagnosis(
+    n_train: int = 300,
+    n_gap: int = 80,
+    n_fault: int = 120,
+    seed: int = 42,
+) -> None:
+    """Classify the four sensor-fault types on a synthetic stream.
+
+    Trains a ``ConditionalGaussianScorer`` on a correlated four-signal
+    stream, then injects each fault of the taxonomy — bias, drift,
+    accuracy loss, freezing — into one signal in turn and reports the
+    labels assigned by ``SensorFaultClassifier``. Kept small so it
+    finishes in seconds::
+
+        python comparison_diagnostics.py --demo-faults
+    """
+    rng_demo = np.random.default_rng(seed)
+    signals = [f"s{i}" for i in range(4)]
+
+    def sample() -> dict[str, float]:
+        latent = rng_demo.standard_normal()
+        return {
+            s: 0.6 * latent + 0.8 * rng_demo.standard_normal() for s in signals
+        }
+
+    scorer = ConditionalGaussianScorer(
+        utils.Rolling(MultivariateGaussian(seed=seed), n_train),
+        grace_period=50,
+        protect_anomaly_detector=False,
+    )
+    for _ in range(n_train):
+        scorer.learn_one(sample())
+
+    clf = SensorFaultClassifier(window=20, long_window=80)
+    injections = [
+        ("bias", "s0"),
+        ("drift", "s1"),
+        ("accuracy_loss", "s2"),
+        ("freezing", "s3"),
+    ]
+    logger.info("fault           target  labels on target (last %s)", 50)
+    for fault, target in injections:
+        # Healthy gap so the streaming statistics settle again.
+        for _ in range(n_gap):
+            x = sample()
+            clf.process_one(x, scorer.residuals_one(x))
+        frozen_at = float(scorer.gaussian.mu[target])
+        tail: collections.Counter[str] = collections.Counter()
+        cross: collections.Counter[str] = collections.Counter()
+        for t in range(n_fault):
+            x = sample()
+            if fault == "bias":
+                x[target] += 4.0
+            elif fault == "drift":
+                x[target] += 0.08 * t
+            elif fault == "accuracy_loss":
+                x[target] += 4.0 * rng_demo.standard_normal()
+            else:  # freezing — stuck at a perfectly plausible value
+                x[target] = frozen_at
+            labels = clf.process_one(
+                x,
+                scorer.residuals_one(x),
+                scorer.drift_detected,
+            )
+            if t >= n_fault - 50:
+                tail[labels[target]] += 1
+            cross.update(
+                label
+                for s, label in labels.items()
+                if s != target and label != "normal"
+            )
+        logger.info(
+            "%-15s %-7s %s | other signals: %s",
+            fault,
+            target,
+            dict(tail),
+            dict(cross) or "all normal",
+        )
+
+
+if __name__ == "__main__" and "--demo-faults" in sys.argv:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    demo_fault_diagnosis()
+    sys.exit(0)
+
+
+# Optimisation-study-only imports deliberately kept below the demo
+# guard so ``--demo-faults`` stays fast and independent of them.
+from bayes_opt import (  # noqa: E402
+    BayesianOptimization,
+    SequentialDomainReductionTransformer,
+)
+
+# Event/JSONLogger API removed in bayes_opt 3.x; study ran on 2.x.
+from bayes_opt.event import Events  # type: ignore  # noqa: E402
+from bayes_opt.logger import JSONLogger  # type: ignore  # noqa: E402
+from river import cluster, metrics  # noqa: E402
+from river.metrics import MacroF1  # noqa: E402
+
+from functions.compose import (  # noqa: E402
+    build_model,
+    convert_to_nested_dict,
+)
+from functions.evaluate import (  # noqa: E402
+    batch_save_evaluate_metrics,
+    build_fit_evaluate,
+    progressive_val_predict,
+)
 
 # DETECTION ALGORITHMS
 detection_algorithms = [
@@ -173,7 +272,11 @@ if __name__ == "__main__":
                 json_logger = JSONLogger(
                     path=f"./.results/{dataset['name']}-{alg[0]}.log",
                 )
-                optimizer.subscribe(Events.OPTIMIZATION_END, json_logger)
+                # subscribe() removed in bayes_opt 3.x; study ran on 2.x.
+                optimizer.subscribe(  # ty: ignore[unresolved-attribute]
+                    Events.OPTIMIZATION_END,
+                    json_logger,
+                )
                 optimizer.maximize()  # init_points=1, n_iter=5)
                 assert optimizer.max is not None
                 params = convert_to_nested_dict(optimizer.max["params"])
