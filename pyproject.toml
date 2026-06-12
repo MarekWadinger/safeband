@@ -39,6 +39,7 @@ build = [
     "wheel>=0.45.1",
 ]
 dev = [
+    "commitizen>=4.16.3",
     "jupyter<2.0.0",
     "pre-commit>=4.6.0",
     "pytest>=9.0.3",
