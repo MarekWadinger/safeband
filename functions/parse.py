@@ -55,7 +55,7 @@ def get_args() -> Namespace:
     ...             '--out-topics', 'output1', 'output2', '--path', '/data',
     ...             '--output', '/outs', '--host', 'localhost',
     ...             '--port', '12345', '--bootstrap-servers', 'kafka-server',
-    ...             '--service-url', 'pulsar-service', '--debug', 'True']
+    ...             '--service-url', 'pulsar-service', '--debug']
     >>> args = get_args()
     >>> args.config_file.name
     'example.ini'
@@ -119,8 +119,8 @@ def get_args() -> Namespace:
         "-d",
         "--debug",
         help="Debug the file using loop as source",
-        default=False,
-        type=bool,
+        action="store_true",
+        default=None,
     )
 
     mail_arg_grp = parser.add_argument_group("mail")
@@ -226,8 +226,10 @@ def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
         <class 'str'>
         >>> get_valid_type(Union[Timedelta, None])
         <class 'pandas._libs.tslibs.timedeltas.Timedelta'>
+        >>> get_valid_type(NotRequired[bool])
+        <class 'bool'>
         >>> get_valid_type(NotRequired[dict[str, int]])
-        <class 'str'>
+        dict[str, int]
         >>> get_valid_type(tuple[int, str])
         tuple[int, str]
         >>> get_valid_type(list[Union[int, str]])
@@ -245,10 +247,48 @@ def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
     if isinstance(type_, (type, GenericAlias)):
         return type_
     if hasattr(type_, "__args__"):
-        if "NotRequired" in str(type_):
-            return str
         return get_valid_type(cast("tuple[type, ...]", type_.__args__)[0])
     msg = f"Invalid type: {type_}"
+    raise ValueError(msg)
+
+
+def _to_bool(value: object) -> bool:
+    """Parse a boolean from a bool or a common string representation.
+
+    Args:
+        value (object): A bool (returned as-is) or a string such as
+        "true"/"false", "1"/"0", "yes"/"no" (case-insensitive).
+
+    Returns:
+        bool: The parsed boolean value.
+
+    Raises:
+        ValueError: If the value cannot be interpreted as a boolean.
+
+    Example:
+        >>> _to_bool(True)
+        True
+        >>> _to_bool("False")
+        False
+        >>> _to_bool("yes")
+        True
+        >>> _to_bool("0")
+        False
+        >>> _to_bool("maybe")
+        Traceback (most recent call last):
+        ...
+        ValueError: Invalid boolean value: 'maybe'
+
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes"}:
+            return True
+        if normalized in {"false", "0", "no"}:
+            return False
+    msg = f"Invalid boolean value: {value!r}"
     raise ValueError(msg)
 
 
@@ -396,7 +436,11 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
                 param_value = None
 
             if param_value is not None and param_value not in ("None", ""):
-                config_dyn[section][param] = type_(param_value)
+                config_dyn[section][param] = (
+                    _to_bool(param_value)
+                    if type_ is bool
+                    else type_(param_value)
+                )
             elif param_value is None or param_value in ("None", ""):
                 config_dyn[section][param] = None
 
