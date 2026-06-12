@@ -1,11 +1,14 @@
 """Entry point for running the RPC outlier detection client."""
 
+import logging
+
 from functions.parse import get_params
 from rpc_server import RpcOutlierDetector
 
 RPC_ENDPOINT = "rpc_online_outlier_detection"
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     config = get_params()
 
     client: RpcOutlierDetector = RpcOutlierDetector()

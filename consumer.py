@@ -131,12 +131,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     config = get_params()
 
-    if "key_path" in config["setup"]:
+    receiver: HumanRSA | None = None
+    if config["setup"].get("key_path"):
         _, receiver = init_rsa_security(config["setup"]["key_path"])
 
     client = config["client"]
     if istypedinstance(cast("FileClient", client), FileClient):
-        query_file(cast("FileClient", client), receiver=receiver)
+        query_file(
+            cast("FileClient", client),
+            **({"receiver": receiver} if receiver else {}),
+        )
     elif istypedinstance(cast("MQTTClient", client), MQTTClient):
         client = query_mqtt(cast("MQTTClient", client))
         client.loop_forever()
