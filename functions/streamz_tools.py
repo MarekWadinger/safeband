@@ -68,14 +68,15 @@ class to_mqtt(Sink):
     >>> import datetime as dt
     >>> out_msg = bytes(str(dt.datetime.utcnow()), encoding='utf-8')
     >>> mqtt_sink = to_mqtt(
-    ...     Stream(), host="mqtt.eclipseprojects.io",
-    ...     port=1883, topic='test', publish_kwargs={"retain":True})
+    ...     Stream(), host="test.mosquitto.org",
+    ...     port=1883, topic='adaptive-interpretable-ad/test',
+    ...     publish_kwargs={"retain":True})
     >>> mqtt_sink.update(out_msg)
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
-    ...                        topics="test")
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
+    ...                        topics="adaptive-interpretable-ad/test")
     >>> msg.payload == out_msg
     True
 
@@ -89,8 +90,8 @@ class to_mqtt(Sink):
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
-    ...                        topics="testanomaly")
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
+    ...                        topics="adaptive-interpretable-ad/testanomaly")
     >>> int(msg.payload) == out_msg['anomaly']
     True
 
@@ -105,7 +106,7 @@ class to_mqtt(Sink):
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="mqtt.eclipseprojects.io",
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
     ...                        topics="b_DOL_high")
     >>> float(msg.payload) == out_msg['level_high']['b']
     True
