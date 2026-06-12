@@ -52,10 +52,11 @@ def on_message(
         msg: The message received from the broker.
 
     """
-    if isinstance(userdata, Namespace) and "receiver" in userdata:
+    receiver = getattr(userdata, "receiver", None)
+    if receiver is not None:
         item = verify_and_decrypt_data(
             json.loads(msg.payload.decode()),
-            userdata.receiver,
+            receiver,
         )
         item = json.dumps(item)
     else:
@@ -66,26 +67,28 @@ def on_message(
     logger.info("Received message at %s: %s", t, item)
 
 
-def query_file(config: FileClient, **kwargs: HumanRSA) -> None:
+def query_file(config: FileClient, **kwargs: HumanRSA | None) -> None:
     """Read a JSON output file and log the entry closest to now.
 
     Args:
         config: File client configuration with an ``output`` key pointing
             to the JSON file to read.
         **kwargs: Optional keyword arguments. Pass ``receiver`` (RSA key)
-            to decrypt entries before processing.
+            to decrypt entries before processing; with no key (or
+            ``receiver=None``) entries are treated as plaintext.
 
     """
+    receiver = kwargs.get("receiver")
     # Load the JSON file as a list of dictionaries
     with Path(config.get("output", "")).open(encoding="utf-8") as f:
         data: list[dict[str, Any]] = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects
     for i, item in enumerate(data):
-        if "receiver" in kwargs and not item["time"].isascii():
+        if receiver is not None and not item["time"].isascii():
             data[i] = cast(
                 "dict[str, Any]",
-                verify_and_decrypt_data(item, kwargs["receiver"]),
+                verify_and_decrypt_data(item, receiver),
             )
         data[i]["time"] = dt.datetime.strptime(
             str(data[i]["time"]),
@@ -137,10 +140,7 @@ if __name__ == "__main__":
 
     client = config["client"]
     if istypedinstance(cast("FileClient", client), FileClient):
-        query_file(
-            cast("FileClient", client),
-            **({"receiver": receiver} if receiver else {}),
-        )
+        query_file(cast("FileClient", client), receiver=receiver)
     elif istypedinstance(cast("MQTTClient", client), MQTTClient):
         client = query_mqtt(cast("MQTTClient", client))
         client.loop_forever()

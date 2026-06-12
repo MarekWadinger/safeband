@@ -89,6 +89,55 @@ class TestConsumer:
         assert "signature" not in caplog.text
 
 
+class TestConsumerPlaintext:
+    """The consumer must work without encryption configured."""
+
+    def test_query_file_no_receiver_logs_plaintext_item(
+        self,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A plaintext output file is queried without any key configured."""
+        output = tmp_path / "out.json"
+        output.write_text(json.dumps({"time": "2022-01-01 00:00:00"}) + "\n")
+        config: FileClient = {"path": "", "output": str(output)}
+
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            query_file(config)
+
+        assert "2022, 1, 1, 0, 0" in caplog.text
+
+    def test_query_file_receiver_none_skips_decryption(
+        self,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """An explicit receiver=None must not attempt decryption."""
+        output = tmp_path / "out.json"
+        output.write_text(json.dumps({"time": "2022-01-01 00:00:00"}) + "\n")
+        config: FileClient = {"path": "", "output": str(output)}
+
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            query_file(config, receiver=None)
+
+        assert "2022, 1, 1, 0, 0" in caplog.text
+
+    def test_on_message_receiver_none_logs_plaintext(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A plaintext MQTT message is logged when no key is configured."""
+        userdata = argparse.Namespace()
+        userdata.receiver = None
+        msg = mqtt.MQTTMessage()
+        msg.payload = b'{"time": "2022-01-01 00:00:00"}'
+
+        with caplog.at_level(logging.INFO, logger="consumer"):
+            on_message(mqtt.Client(), userdata, msg)
+
+        assert '{"time": "2022-01-01 00:00:00"}' in caplog.text
+
+
 class TestModelPresistence:
     """Tests for saving and loading models to/from disk."""
 
