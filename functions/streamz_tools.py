@@ -169,9 +169,35 @@ class to_mqtt(Sink):
         super().__init__(upstream, ensure_io_loop=True, **kwargs)
 
     def _publish(self, topic: str, payload: object) -> None:
-        """Publish one message and wait for its delivery confirmation."""
+        """Publish one message and wait for its delivery confirmation.
+
+        paho reports failures (e.g. a dropped broker connection) via the
+        result code instead of raising, so a failed publish reconnects
+        and retries once before giving up with an error log.
+        """
         assert self.client is not None  # narrowed by update()
         info = self.client.publish(topic, payload, **self.p_kw)
+        if info.rc != mqtt.MQTT_ERR_SUCCESS:
+            logger.warning(
+                "MQTT publish failed (rc=%s) for topic %r; "
+                "reconnecting and retrying once",
+                info.rc,
+                topic,
+            )
+            try:
+                self.client.reconnect()
+            except OSError:
+                logger.exception("MQTT reconnect failed for topic %r", topic)
+                return
+            info = self.client.publish(topic, payload, **self.p_kw)
+            if info.rc != mqtt.MQTT_ERR_SUCCESS:
+                logger.error(
+                    "MQTT publish failed after reconnect (rc=%s) "
+                    "for topic %r; message dropped",
+                    info.rc,
+                    topic,
+                )
+                return
         info.wait_for_publish(timeout=self.publish_timeout)
         if not info.is_published():
             logger.warning(
