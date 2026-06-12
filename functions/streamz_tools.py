@@ -66,19 +66,25 @@ class to_mqtt(Sink):
         **kwargs: Additional keyword arguments.
 
     Examples:
+    The publish/subscribe lines below talk to the public broker
+    ``test.mosquitto.org`` and are marked ``# doctest: +SKIP``: the
+    round-trip is non-deterministic (a shared public topic) and
+    ``subscribe.simple`` blocks with no timeout, so running them under
+    CI both flakes and hangs. Construction is lazy and stays offline.
+
     >>> import datetime as dt
     >>> out_msg = bytes(str(dt.datetime.utcnow()), encoding='utf-8')
     >>> mqtt_sink = to_mqtt(
     ...     Stream(), host="test.mosquitto.org",
     ...     port=1883, topic='adaptive-interpretable-ad/test',
     ...     publish_kwargs={"retain":True})
-    >>> mqtt_sink.update(out_msg)
+    >>> mqtt_sink.update(out_msg)  # doctest: +SKIP
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",  # doctest: +SKIP
     ...                        topics="adaptive-interpretable-ad/test")
-    >>> msg.payload == out_msg
+    >>> msg.payload == out_msg  # doctest: +SKIP
     True
 
     Publish a dictionary
@@ -87,13 +93,13 @@ class to_mqtt(Sink):
     ...     'level_high': 0.5,
     ...     'level_low': -0.5,
     ...     }
-    >>> mqtt_sink.update(out_msg)
+    >>> mqtt_sink.update(out_msg)  # doctest: +SKIP
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",  # doctest: +SKIP
     ...                        topics="adaptive-interpretable-ad/testanomaly")
-    >>> int(msg.payload) == out_msg['anomaly']
+    >>> int(msg.payload) == out_msg['anomaly']  # doctest: +SKIP
     True
 
     Publish a nested dictionary
@@ -103,16 +109,16 @@ class to_mqtt(Sink):
     ...     'level_low': {'a': -0.5, 'b': -0.4},
     ...     'root_cause': 'b',
     ...     }
-    >>> mqtt_sink.update(out_msg)
+    >>> mqtt_sink.update(out_msg)  # doctest: +SKIP
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
-    >>> msg = subscribe.simple(hostname="test.mosquitto.org",
+    >>> msg = subscribe.simple(hostname="test.mosquitto.org",  # doctest: +SKIP
     ...                        topics="b_DOL_high")
-    >>> float(msg.payload) == out_msg['level_high']['b']
+    >>> float(msg.payload) == out_msg['level_high']['b']  # doctest: +SKIP
     True
 
-    >>> mqtt_sink.destroy()
+    >>> mqtt_sink.destroy()  # doctest: +SKIP
 
     """
 
