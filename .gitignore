@@ -42,14 +42,15 @@ plots/
 
 # Misc
 config.ini
+reports/
 tests/*
 !tests/test.csv
 !tests/sample.json
 !tests/test*.py
 !tests/__init__.py
-!reports/.coveragerc
 
 # Allow gitignore
 !*.gitignore
 !*.github
 !*.gitattributes
+!.doc-checks.yaml

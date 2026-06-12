@@ -31,8 +31,6 @@ build = [
     "wheel>=0.45.1",
 ]
 dev = [
-    "flake8>=7.3.0",
-    "flake8-html>=0.4.3",
     "jupyter<2.0.0",
     "pre-commit>=4.6.0",
     "pytest>=9.0.3",
@@ -105,12 +103,32 @@ addopts = [
     "--cov=.",
     "--cov-report=xml:reports/coverage/coverage.xml",
     "--cov-report=html:reports/coverage/report",
-    "--cov-config=reports/.coveragerc"
 ]
 
 norecursedirs = [".*", "examples", "publications", "scripts"]
 doctest_optionflags = ["NORMALIZE_WHITESPACE", "NUMBER", "ELLIPSIS", "IGNORE_EXCEPTION_DETAIL"]
 
-[tool.flake8]
-exclude = ".*"
-extend-ignore = ["E203"]
+[tool.coverage.report]
+omit = [
+    # Non-library trees that pollute the `--cov=.` report
+    "examples/*",
+    "publications/*",
+    "scripts/*",
+    "dist_linux/*",
+    "tests/*",
+    # Plotting/evaluation helpers excluded from coverage
+    "functions/evaluate.py",
+    "functions/plot.py",
+]
+exclude_also = [
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
