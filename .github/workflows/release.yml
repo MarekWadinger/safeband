@@ -1,0 +1,82 @@
+# End-to-end versioning: every push to main computes the next version
+# from conventional commits (cz bump), updates pyproject + CHANGELOG,
+# tags, and publishes a GitHub release.
+#
+# main requires PRs, so the bump commit lands through an auto-merged
+# release PR (0 approvals required). Pushes and PRs made with
+# GITHUB_TOKEN don't retrigger workflows, so this cannot loop.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  bump-and-release:
+    # Defense in depth: skip release-PR merges even though GITHUB_TOKEN
+    # pushes don't trigger workflows.
+    if: ${{ !startsWith(github.event.head_commit.message, 'bump:') && !contains(github.event.head_commit.message, 'release/') }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v8
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version, changelog, and tag
+        id: bump
+        run: |
+          set -euo pipefail
+          # Eligibility pre-check: dry-run fails when no commit since the
+          # last tag warrants an increment — that is a no-op, not an error.
+          if ! uv run cz bump --yes --dry-run; then
+            echo "Nothing to bump since $(uv run cz version --project)."
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          uv run cz bump --yes
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
+          echo "version=$(uv run cz version --project)" >> "$GITHUB_OUTPUT"
+
+      - name: Open and auto-merge release PR (main requires PRs)
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          set -euo pipefail
+          v="${{ steps.bump.outputs.version }}"
+          git push origin "HEAD:release/$v" "$v"
+          gh pr create --base main --head "release/$v" \
+            --title "bump: version $v" \
+            --body "Automated version bump, changelog update, and tag $v."
+          # Mergeability is computed asynchronously; retry briefly.
+          for _ in 1 2 3 4 5; do
+            if gh pr merge "release/$v" --merge --delete-branch; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Failed to merge release PR release/$v" >&2
+          exit 1
+
+      - name: Publish GitHub release
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          set -euo pipefail
+          v="${{ steps.bump.outputs.version }}"
+          uv run cz changelog --dry-run "$v" > release-notes.md
+          gh release create "$v" --title "$v" --notes-file release-notes.md
