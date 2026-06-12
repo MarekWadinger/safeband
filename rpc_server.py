@@ -276,7 +276,9 @@ class RpcOutlierDetector:
             streamz.Stream: Configured source stream.
 
         Raises:
-            RuntimeError: If no recognised transport key is found in config.
+            RuntimeError: If the Pulsar transport is requested but
+                pulsar-client is not installed, or if no recognised
+                transport key is found in config.
 
         """
         if istypedinstance(config, FileClient):
@@ -302,8 +304,14 @@ class RpcOutlierDetector:
                 {**config, "group.id": "detection_service"},
             )
         elif istypedinstance(config, PulsarClient):
-            msg = "Pulsar client requires Python < 3.12.*"
-            raise ValueError(msg)
+            if not _PULSAR_AVAILABLE:
+                msg = "pulsar-client is not installed"
+                raise RuntimeError(msg)
+            source = Stream.from_pulsar(
+                config.get("service_url"),
+                topics,
+                subscription_name="detection_service",
+            )
         else:
             msg = f"Wrong client: {config}"
             raise RuntimeError(msg)
