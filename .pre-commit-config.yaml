@@ -67,9 +67,10 @@ repos:
     hooks:
       - id: make
         name: make
-        language: python
+        language: system
         types: [python]
         entry: make execute-notebooks
+        pass_filenames: false
         stages:
           - "pre-push"
           - "pre-merge-commit"
