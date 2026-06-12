@@ -5,6 +5,7 @@ from typing import cast
 import numpy as np
 import pandas as pd
 from river import proba
+from scipy.stats import multivariate_normal
 
 
 class MultivariateGaussian(proba.MultivariateGaussian):
@@ -50,6 +51,40 @@ class MultivariateGaussian(proba.MultivariateGaussian):
     def __init__(self, seed: int | None = None) -> None:
         """Initialize the distribution, forwarding seed to the parent class."""
         super().__init__(seed=seed)
+
+    def cdf(self, x: dict[str, float]) -> float:
+        """Return the CDF at x, reproducible across repeated calls.
+
+        scipy evaluates the multivariate normal CDF with randomized
+        quasi-Monte-Carlo integration, so an unseeded distribution returns
+        slightly different values on every call. Building a fresh frozen
+        distribution seeded with ``self.seed`` for each evaluation makes
+        repeated calls return identical results (when a seed is set).
+
+        Args:
+            x: Mapping of feature names to observed values.
+
+        Returns:
+            float: The cumulative distribution function value at ``x``.
+
+        Examples:
+        >>> p = MultivariateGaussian(seed=42)
+        >>> for v in [
+        ...     {"a": 0.1, "b": 0.6}, {"a": 0.5, "b": 0.2},
+        ...     {"a": 0.3, "b": 0.9},
+        ... ]:
+        ...     p.update(v)
+        >>> p.cdf({"a": 0.4, "b": 0.5}) == p.cdf({"a": 0.4, "b": 0.5})
+        True
+
+        """
+        cdf_ = multivariate_normal(
+            [self.mu[i] for i in x],
+            self.var,
+            allow_singular=True,
+            seed=self.seed,
+        ).cdf(list(x.values()))
+        return float(cdf_)
 
     def mv_conditional(
         self,
