@@ -22,14 +22,21 @@ repos:
         name: ruff
         entry: uv run ruff check
         language: system
-        args: [--fix, --exit-non-zero-on-fix, --line-length=79]
+        args: [--fix, --exit-non-zero-on-fix]
         types_or: [python, pyi, jupyter]
       - id: ruff-format
         name: ruff-format
         entry: uv run ruff format
         language: system
-        args: [--line-length=79]
         types_or: [python, pyi, jupyter]
+      - id: ruff-era001
+        name: ruff ERA001 (no commented-out code on push)
+        entry: uv run ruff check --isolated --select ERA001 .
+        language: system
+        pass_filenames: false
+        stages:
+          - "pre-push"
+          - "pre-merge-commit"
   - repo: https://github.com/asottile/blacken-docs
     rev: 1.20.0
     hooks:

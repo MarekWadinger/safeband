@@ -56,6 +56,38 @@ namespace-packages = [
     "scripts",
 ]
 
+[tool.ruff.lint]
+select = ["ALL"]
+# Explicitly permitted ignores (decision 2026-06-11). Everything else is
+# enforced; do not extend this list without an explicit decision.
+ignore = [
+    # -- user-permitted classes ------------------------------------------
+    "S101",    # asserts: pytest tests + type-narrowing asserts
+    "FBT001",  # boolean positional args: fixing changes public signatures
+    "FBT002",
+    "FBT003",
+    "N801",    # naming: math notation (X, df_A) and numbered examples
+    "N802",
+    "N803",
+    "N806",
+    "N999",
+    "SLF001",  # private access into river/matplotlib internals
+    "PGH003",  # blanket type: ignore where rule codes differ ruff/ty
+    "PLR2004", # magic-value comparisons in research evaluation code
+    "PLR0913", # complexity: research evaluation loops
+    "PLR0912",
+    "PLR0915",
+    "C901",
+    "FIX002",  # TODOs are kept, tracked via linked GitHub issues (TD003)
+    # -- tooling ----------------------------------------------------------
+    "ERA001",  # commented-out code: enforced by dedicated pre-push hook
+    "COM812",  # conflicts with ruff format (trailing commas)
+    "ISC001",  # conflicts with ruff format (implicit str concat)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 [tool.markdownlint]
 no-duplicate-heading = { siblings_only = true, allow_different_nesting = true }
 line-length = { stern = true, code_blocks = true }
