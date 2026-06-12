@@ -49,7 +49,7 @@ COPY . /app
 FROM python:3.12-slim
 
 # Copy the environment, but not the source code
-COPY --from=builder --chown=app:app /app /app
+COPY --from=builder /app /app
 
 # Make sure the environment is in the PATH
 ENV PATH="/app/.venv/bin:$PATH"
