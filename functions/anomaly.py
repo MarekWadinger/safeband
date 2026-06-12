@@ -120,9 +120,21 @@ class Store:
         self.x.pop(0)
 
 
-# TODO(MarekWadinger): Find a better way to expose __len__ of parent class
-# https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/53
-TimeRolling.__len__ = lambda self: len(self.x)  # type: ignore
+class TimeRollingBuffer(TimeRolling):
+    """TimeRolling window that reports the length of its underlying store.
+
+    ``len`` looks ``__len__`` up on the type, so river's attribute
+    delegation to the wrapped object never applies to it; defining it on a
+    subclass replaces the former monkey-patch on ``TimeRolling``.
+    """
+
+    def __len__(self) -> int:
+        """Return the number of items currently held by the store."""
+        return len(cast("Store", self.obj))
+
+    def __iter__(self) -> Iterator[float]:
+        """Yield the stored items in insertion order."""
+        return iter(cast("Store", self.obj))
 
 
 class GaussianScorer(anomaly.base.AnomalyDetector):
@@ -302,7 +314,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             if isinstance(self.t_a, int):
                 self.buffer = collections.deque(maxlen=round(self.t_a))
             if isinstance(self.t_a, timedelta):
-                self.buffer = TimeRolling(Store(), period=self.t_a)
+                self.buffer = TimeRollingBuffer(Store(), period=self.t_a)
 
     def _get_feature_dim_in(self, x: float | dict[str, float]) -> None:
         if not hasattr(self, "_feature_dim_in"):
@@ -328,9 +340,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         return self
 
     def _drift_detected(self) -> bool:
-        len_ = len(self.buffer)  # type: ignore
+        len_ = len(self.buffer)
         if len_ > 0:
-            return sum(self.buffer) / len_ > (self.threshold)  # type: ignore
+            return sum(self.buffer) / len_ > self.threshold
         return False
 
     def n_seen(self) -> timedelta | float:
@@ -339,12 +351,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             self.gaussian,
             TimeRolling,
         ):
-            # TODO(MarekWadinger): remove after river ~= 0.20.0 is buildable
-            # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/54
-            if hasattr(self.gaussian, "_timestamps"):
-                timestamps = self.gaussian._timestamps
-            else:
-                timestamps = [event[0] for event in self.gaussian._events]
+            timestamps = self.gaussian._timestamps
             if len(timestamps) == 0:
                 n_seen = timedelta(0)
             else:
