@@ -1,3 +1,9 @@
+## 2.2.3 (2026-06-12)
+
+### Fix
+
+- patch 33 Dependabot vulnerabilities via targeted dependency upgrade
+
 ## 2.2.2 (2026-06-12)
 
 ### Fix
