@@ -1094,6 +1094,51 @@ class ConditionalGaussianScorer(GaussianScorer):
             return dict.fromkeys(x, 0.5)
         return dict(zip(x, self._scores_one(x), strict=True))
 
+    def residuals_one(
+        self,
+        x: dict[str, float],
+    ) -> dict[str, tuple[float, float]]:
+        """Return per-signal conditional residuals keyed by feature name.
+
+        For each feature ``i`` the residual ``x_i - E[x_i | x_rest]``
+        is returned together with the conditional std — the raw
+        material for sensor-fault-type classification
+        (``functions.fault_diagnosis``), which the saturating CDF
+        scores of ``scores_one`` cannot provide. Returns ``(nan,
+        nan)`` for every feature until the covariance estimate is
+        defined.
+
+        Examples:
+        --------
+        >>> from river.utils import Rolling
+        >>> from functions.proba import MultivariateGaussian
+        >>> scorer = ConditionalGaussianScorer(
+        ...     Rolling(MultivariateGaussian(), 3),
+        ...     grace_period=1, protect_anomaly_detector=False)
+        >>> scorer.residuals_one({"a": 1., "b": 2.})
+        {'a': (nan, nan), 'b': (nan, nan)}
+        >>> for x in [{"a": 1.5, "b": 0.5}, {"a": 1., "b": 2.},
+        ...           {"a": 0.5, "b": 2.}]:
+        ...     scorer = scorer.learn_one(x)
+        >>> scorer.residuals_one(
+        ...     {"a": 1., "b": 2.})  # doctest: +NORMALIZE_WHITESPACE
+        {'a': (np.float64(0.25), np.float64(0.25)),
+         'b': (np.float64(0.5), np.float64(0.433...))}
+        """
+        cg = cast("ConditionableDistribution", self.gaussian)
+        if cg.var.shape[0] == 0:
+            return dict.fromkeys(x, (np.nan, np.nan))
+        residuals: dict[str, tuple[float, float]] = {}
+        for var_key, var_val in x.items():
+            cond_mean, _, cond_std = cg.mv_conditional(
+                x,
+                var_key,
+                cg.mu,
+                cg.var,
+            )
+            residuals[var_key] = (var_val - cond_mean[0], cond_std[0])
+        return residuals
+
     def rank_root_causes(
         self,
         x: dict[str, float],
