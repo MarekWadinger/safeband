@@ -1,7 +1,12 @@
-## Unreleased
+## 2.2.1 (2026-06-12)
 
 ### Fix
 
+- **ci**: skip plot-only notebook in gate, pin codecov project target
+- scope CI notebook gate to notebooks with committed data
+- pin setup-uv to exact v8.2.0 (no floating v8 tag exists)
+- wire Pulsar source instead of stale Python version gate
+- surface service logs and guard consumer against missing key_path
 - package structure (INP001) and repair autofix-broken doctests
 - resolve bugbear findings (B007, B023)
 - timezone-aware datetime handling (DTZ)

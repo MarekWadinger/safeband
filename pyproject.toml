@@ -1,6 +1,6 @@
 [project]
 name = "adaptive-interpretable-ad"
-version = "2.2.0"
+version = "2.2.1"
 description = "Online outlier detection service for industrial SCADA-based infrastructures for low-latency detection and change-point adaptation."
 readme = "README.md"
 requires-python = ">=3.12"
