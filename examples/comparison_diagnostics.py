@@ -136,8 +136,10 @@ from bayes_opt import (  # noqa: E402
     BayesianOptimization,
     SequentialDomainReductionTransformer,
 )
-from bayes_opt.event import Events  # noqa: E402
-from bayes_opt.logger import JSONLogger  # noqa: E402
+
+# Event/JSONLogger API removed in bayes_opt 3.x; study ran on 2.x.
+from bayes_opt.event import Events  # type: ignore  # noqa: E402
+from bayes_opt.logger import JSONLogger  # type: ignore  # noqa: E402
 from river import cluster, metrics  # noqa: E402
 from river.metrics import MacroF1  # noqa: E402
 
@@ -271,7 +273,11 @@ if __name__ == "__main__":
                 json_logger = JSONLogger(
                     path=f"./.results/{dataset['name']}-{alg[0]}.log",
                 )
-                optimizer.subscribe(Events.OPTIMIZATION_END, json_logger)
+                # subscribe() removed in bayes_opt 3.x; study ran on 2.x.
+                optimizer.subscribe(  # ty: ignore[unresolved-attribute]
+                    Events.OPTIMIZATION_END,
+                    json_logger,
+                )
                 optimizer.maximize()  # init_points=1, n_iter=5)
                 assert optimizer.max is not None
                 params = convert_to_nested_dict(optimizer.max["params"])

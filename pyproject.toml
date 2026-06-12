@@ -53,6 +53,15 @@ example = [
     "numpy>=2.3.2",
 ]
 
+# TSB-AD benchmark deps (TSB_AD, statsmodels) are installed ad hoc in the
+# benchmark environment, not in this project's venv. Silence only the
+# import resolution for that single notebook.
+[[tool.ty.overrides]]
+include = ["examples/06_tsb_ad_benchmark.ipynb"]
+
+[tool.ty.overrides.rules]
+unresolved-import = "ignore"
+
 [tool.ruff]
 line-length = 79
 # Script collections, not importable packages
