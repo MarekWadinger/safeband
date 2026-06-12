@@ -163,6 +163,7 @@ class to_mqtt(Sink):
                 **self.c_kw,
             )
         # TODO(MarekWadinger): wait on successful delivery
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/60
         if isinstance(x, bytes):
             self.client.publish(self.topic, x, **self.p_kw)
         else:

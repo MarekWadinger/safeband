@@ -241,6 +241,7 @@ def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
 
     """
     # TODO(MarekWadinger): get first valid type
+    # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/59
     if isinstance(type_, (type, GenericAlias)):
         return type_
     if hasattr(type_, "__args__"):

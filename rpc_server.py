@@ -341,6 +341,7 @@ class RpcOutlierDetector:
                 publish_kwargs={"retain": True},
             )
         # TODO(MarekWadinger): add coverage test
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/61
         elif istypedinstance(config, KafkaClient):  # pragma: no cover
             detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(
                 topic,
@@ -382,6 +383,7 @@ class RpcOutlierDetector:
 
         """
         # TODO(MarekWadinger): handle combination of debug and remote broker
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/62
         if debug and istypedinstance(config, FileClient):
             logger.info("=== Debugging started... ===")
             data = pd.read_csv(cast("FileClient", config)["path"], index_col=0)
@@ -433,6 +435,7 @@ class RpcOutlierDetector:
 
         in_topics = io.get("in_topics", [])
         # TODO(MarekWadinger): use out_topics
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/63
         _ = io.get("out_topics", None)
 
         threshold, t_e, t_a, t_g = expand_model_params(model_params)

@@ -121,6 +121,7 @@ class Store:
 
 
 # TODO(MarekWadinger): Find a better way to expose __len__ of parent class
+# https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/53
 TimeRolling.__len__ = lambda self: len(self.x)  # type: ignore
 
 
@@ -136,7 +137,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
 
-    Examples
+    Examples:
     --------
     Make sure that the passed distribution sattisfies necessary protocol
     >>> bad_scorer = GaussianScorer(
@@ -340,6 +341,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             TimeRolling,
         ):
             # TODO(MarekWadinger): remove after river ~= 0.20.0 is buildable
+            # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/54
             if hasattr(self.gaussian, "_timestamps"):
                 timestamps = self.gaussian._timestamps
             else:
@@ -352,7 +354,9 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
             n_seen = self.gaussian.n_samples
         return n_seen
 
-    def learn_one(
+    # river's base annotates learn_one -> None; ours returns self.
+    # Annotating violates Liskov under ty.
+    def learn_one(  # noqa: ANN201
         self,
         x: float | dict[str, float],
         **learn_kwargs: datetime | float | None,
@@ -371,6 +375,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     def score_one(self, x: float | dict[str, float]) -> float:
         """Return the CDF anomaly score for x; 0.5 during grace period."""
         # TODO(MarekWadinger): find out why return different results on each
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/55
         #   invocation
         if cast("float", self.n_seen()) >= cast("float", self.grace_period):
             return self.gaussian.cdf(cast("dict[str, float]", x))
@@ -424,8 +429,10 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                 kwargs["scale"][i][i] for i in kwargs["scale"].columns
             ]
         # TODO(MarekWadinger): consider strict process boundaries
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/56
         # real_thresh = norm.ppf((self.sigma/2 + 0.5), **kwargs)
         # TODO(MarekWadinger): following code changes the limits given by
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/56
         #  former
         if not hasattr(self, "_feature_dim_in"):
             _feature_dim_in = 1
@@ -524,7 +531,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
 
-    Examples
+    Examples:
     --------
     Make sure that the passed distribution sattisfies necessary protocol
     >>> bad_scorer = ConditionalGaussianScorer(
@@ -670,6 +677,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         x: float | dict[str, float],
     ) -> tuple[float, int | None]:
         # TODO(MarekWadinger): find out why return different results on each
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/55
         #   invocation -- Due to scipy's cdf function
         if not self.grace_period or cast("float", self.n_seen()) > cast(
             "float",
@@ -678,6 +686,7 @@ class ConditionalGaussianScorer(GaussianScorer):
             # Deactivate grace period after first invocation
             self.grace_period = None
             # TODO(MarekWadinger): generally score is None when the
+            # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/57
             #  conditional covariance is maldefined. This
             #  case should be handled differently.
             scores = self._scores_one(cast("dict[str, float]", x))
@@ -726,11 +735,13 @@ class ConditionalGaussianScorer(GaussianScorer):
     def limit_one(  # type: ignore[override]
         self,
         x: dict[str, float] | None = None,
-        *_args,
-        **_kwargs,
+        # gradual varargs required for ty override-compat with parent
+        *_args,  # noqa: ANN002
+        **_kwargs,  # noqa: ANN003
     ) -> tuple[dict[str, float], dict[str, float]]:
         """Return per-feature (upper, lower) conditional limits."""
         # TODO(MarekWadinger): might break the things up in Pipeline if called
+        # https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/58
         #  before predict_one or learn_one
         if x is None:
             x = {}

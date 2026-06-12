@@ -76,7 +76,7 @@ def set_size(
     subplots: array-like, optional
             The number of rows and columns of subplots.
 
-    Returns
+    Returns:
     -------
     fig_dim: tuple
             Dimensions of figure in inches

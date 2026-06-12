@@ -18,8 +18,10 @@ from functions.compose import build_model, convert_to_nested_dict
 logger = logging.getLogger(__name__)
 
 
-def progressive_val_predict(  # noqa: C901
-    model,
+def progressive_val_predict(
+    # model is duck-typed across river scorers/pipelines/forecasters;
+    # no protocol covers all call sites without breaking ty
+    model,  # noqa: ANN001
     dataset: pd.DataFrame,
     metrics: Sequence[Metric] | None = None,
     print_every: int = 0,

@@ -94,7 +94,9 @@ def nest_step(steps: list | partial | type, params: dict) -> object:
     return first_step(nested_result, **params.get(name, {}))
 
 
-def build_model(steps: list, params: dict):
+# Concrete return types break hasattr-narrowed attribute assignment
+# in callers under ty (e.g. model.seed in examples).
+def build_model(steps: list, params: dict):  # noqa: ANN201
     """Build river model from list of cls and parameters.
 
     Examples:
