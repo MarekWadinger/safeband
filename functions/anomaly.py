@@ -1103,12 +1103,15 @@ class ConditionalGaussianScorer(GaussianScorer):
         self,
         x: float | dict[str, float],
     ) -> tuple[float, int | None]:
-        if not self.grace_period or cast("float", self.n_seen()) > cast(
-            "float",
-            self.grace_period,
+        if (
+            getattr(self, "_grace_elapsed", False)
+            or not self.grace_period
+            or cast("float", self.n_seen()) > cast("float", self.grace_period)
         ):
-            # Deactivate grace period after first invocation
-            self.grace_period = None
+            # Mark grace as elapsed without mutating grace_period, so the
+            # configured value survives pickling/restart (and never
+            # triggers a spurious param-mismatch warning on recovery).
+            self._grace_elapsed = True
             scores = self._scores_one(cast("dict[str, float]", x))
             score, idx = self._farthest_from_center(scores)
             if score is None:

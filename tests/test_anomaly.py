@@ -3,6 +3,7 @@
 import collections
 import datetime as dt
 import math
+import pickle
 import sys
 from pathlib import Path
 
@@ -707,3 +708,36 @@ class TestTaDefault:
             t_a=0,
         )
         assert scorer.t_a == 0
+
+
+class TestGracePeriodImmutable:
+    """Scoring past the grace window must not mutate grace_period."""
+
+    def test_grace_period_unchanged_after_scoring(self) -> None:
+        """grace_period survives scoring past the warm-up window."""
+        scorer = ConditionalGaussianScorer(
+            Rolling(MultivariateGaussian(seed=42), 5),
+            grace_period=2,
+            protect_anomaly_detector=False,
+        )
+        for sample in SAMPLES:
+            scorer.learn_one(sample)
+        # Score well past the grace window several times.
+        for _ in range(5):
+            scorer.score_one({"a": 0.5, "b": 0.5})
+        assert scorer.grace_period == 2
+
+    def test_grace_period_unchanged_across_repickle(self) -> None:
+        """A re-instantiated model keeps the same configured grace_period."""
+        scorer = ConditionalGaussianScorer(
+            Rolling(MultivariateGaussian(seed=42), 5),
+            grace_period=2,
+            protect_anomaly_detector=False,
+        )
+        for sample in SAMPLES:
+            scorer.learn_one(sample)
+        scorer.score_one({"a": 0.5, "b": 0.5})
+        # Round-trip through pickle: the recovered model must keep its
+        # configured grace_period so _warn_on_param_mismatch stays quiet.
+        restored = pickle.loads(pickle.dumps(scorer))  # noqa: S301
+        assert restored.grace_period == 2
