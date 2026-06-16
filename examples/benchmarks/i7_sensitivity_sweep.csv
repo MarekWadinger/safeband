@@ -1,0 +1,51 @@
+case,severity_axis,severity,threshold_axis,threshold,steady_label,delay
+bias,b (cond-sigma),1.0,mean_threshold,2.0,normal,-1
+bias,b (cond-sigma),1.0,mean_threshold,3.0,normal,-1
+bias,b (cond-sigma),1.0,mean_threshold,5.0,normal,-1
+bias,b (cond-sigma),2.0,mean_threshold,2.0,normal,176
+bias,b (cond-sigma),2.0,mean_threshold,3.0,normal,-1
+bias,b (cond-sigma),2.0,mean_threshold,5.0,normal,-1
+bias,b (cond-sigma),3.0,mean_threshold,2.0,bias,208
+bias,b (cond-sigma),3.0,mean_threshold,3.0,normal,208
+bias,b (cond-sigma),3.0,mean_threshold,5.0,normal,-1
+bias,b (cond-sigma),4.0,mean_threshold,2.0,bias,251
+bias,b (cond-sigma),4.0,mean_threshold,3.0,bias,251
+bias,b (cond-sigma),4.0,mean_threshold,5.0,normal,-1
+bias,b (cond-sigma),6.0,mean_threshold,2.0,bias,275
+bias,b (cond-sigma),6.0,mean_threshold,3.0,bias,275
+bias,b (cond-sigma),6.0,mean_threshold,5.0,bias,275
+drift,r (ramp/step),0.01,trend_threshold,0.5,normal,287
+drift,r (ramp/step),0.01,trend_threshold,1.0,normal,287
+drift,r (ramp/step),0.01,trend_threshold,2.0,normal,374
+drift,r (ramp/step),0.03,trend_threshold,0.5,drift,110
+drift,r (ramp/step),0.03,trend_threshold,1.0,drift,110
+drift,r (ramp/step),0.03,trend_threshold,2.0,drift,110
+drift,r (ramp/step),0.05,trend_threshold,0.5,drift,64
+drift,r (ramp/step),0.05,trend_threshold,1.0,drift,64
+drift,r (ramp/step),0.05,trend_threshold,2.0,drift,64
+drift,r (ramp/step),0.1,trend_threshold,0.5,drift,40
+drift,r (ramp/step),0.1,trend_threshold,1.0,drift,40
+drift,r (ramp/step),0.1,trend_threshold,2.0,drift,40
+accuracy_loss,k (noise x cond-sigma),2.0,var_ratio,2.0,normal,-1
+accuracy_loss,k (noise x cond-sigma),2.0,var_ratio,2.5,normal,-1
+accuracy_loss,k (noise x cond-sigma),2.0,var_ratio,4.0,normal,-1
+accuracy_loss,k (noise x cond-sigma),4.0,var_ratio,2.0,normal,-1
+accuracy_loss,k (noise x cond-sigma),4.0,var_ratio,2.5,normal,-1
+accuracy_loss,k (noise x cond-sigma),4.0,var_ratio,4.0,accuracy_loss,4
+accuracy_loss,k (noise x cond-sigma),8.0,var_ratio,2.0,normal,-1
+accuracy_loss,k (noise x cond-sigma),8.0,var_ratio,2.5,normal,-1
+accuracy_loss,k (noise x cond-sigma),8.0,var_ratio,4.0,normal,1
+freezing (noisy),dither std,0.0,freeze_var_ratio,0.01,freezing,-1
+freezing (noisy),dither std,0.0,freeze_var_ratio,0.05,freezing,-1
+freezing (noisy),dither std,0.001,freeze_var_ratio,0.01,freezing,-1
+freezing (noisy),dither std,0.001,freeze_var_ratio,0.05,freezing,-1
+freezing (noisy),dither std,0.01,freeze_var_ratio,0.01,normal,-1
+freezing (noisy),dither std,0.01,freeze_var_ratio,0.05,normal,-1
+freezing (noisy),dither std,0.05,freeze_var_ratio,0.01,normal,-1
+freezing (noisy),dither std,0.05,freeze_var_ratio,0.05,normal,-1
+bias+regime,b (cond-sigma),4.0,suppress_threshold_scale,1.0,normal,-1
+bias+regime,b (cond-sigma),4.0,suppress_threshold_scale,5.0,normal,-1
+bias+regime,b (cond-sigma),4.0,suppress_threshold_scale,inf,normal,-1
+bias+regime,b (cond-sigma),8.0,suppress_threshold_scale,1.0,bias,-1
+bias+regime,b (cond-sigma),8.0,suppress_threshold_scale,5.0,normal,-1
+bias+regime,b (cond-sigma),8.0,suppress_threshold_scale,inf,normal,-1

@@ -12,11 +12,21 @@ the per-signal conditional residuals exposed by
 exponentially weighted statistics per signal — O(1) memory, no
 history buffers:
 
-* **freezing** — stuck-at test: near-zero innovation
-  ``|x_t - x_{t-1}| <= eps`` sustained over ``freeze_window`` steps,
-  with ``eps`` relative to the running signal std. Flagged regardless
-  of the conditional score: a frozen value near the conditional mean
-  scores ~0.5 forever, so it is invisible to the scorer (the
+* **freezing** — stuck-at test on the raw innovation, flagged by
+  either of two complementary criteria. A *strict run* requires the
+  innovation to stay within ``eps`` (relative to the running signal
+  std) over ``freeze_window`` steps — exact for a perfectly stuck
+  value. A *variance-collapse* test additionally flags freezing when
+  the short-window variance of the innovation collapses to at most
+  ``freeze_var_ratio`` times the long-window baseline innovation
+  variance *and* the short-window innovation RMS drops below an
+  absolute floor (``freeze_abs_scale`` times the stuck-at tolerance);
+  this catches a stuck sensor still emitting ~1 LSB readout dither
+  (which resets the strict run on every jitter) while the absolute
+  floor keeps a bursty-but-healthy real signal that merely goes quiet
+  for a window from false-firing. Flagged regardless of the
+  conditional score: a frozen value near the conditional mean scores
+  ~0.5 forever, so it is invisible to the scorer (the
   ``cond_std -> 0`` blind spot).
 * **bias** — persistent constant-sign offset of the normalized
   conditional residual: the short-window mean exceeds
@@ -41,11 +51,18 @@ alarming. Two mechanisms encode this distinction:
 1. The statistics are computed on *conditional* residuals, which a
    coordinated shift largely cancels.
 2. When the scorer's changepoint test fires (its public
-   ``drift_detected`` flag is passed in), residual-based labels are
-   suppressed for that step: the model itself declared a regime
-   change and is re-adapting, so per-sensor mean/variance evidence is
-   transient. Freezing is never suppressed — it is computed on raw
-   innovations.
+   ``drift_detected`` flag is passed in), residual-based detection is
+   *attenuated* rather than hard-zeroed for that step: the per-signal
+   mean and variance thresholds are scaled up by
+   ``suppress_threshold_scale`` while the model re-adapts. A sensor
+   moving *with* the regime has a small conditional residual (the
+   scorer follows its peers) and stays ``normal`` either way; a real
+   sensor fault that co-occurs with a regime change produces a large
+   conditional residual that survives the raised threshold and is
+   still reported, so a genuine fault is no longer fully masked by an
+   unlucky changepoint. Setting ``suppress_threshold_scale`` to
+   ``math.inf`` recovers the legacy hard-suppression behaviour.
+   Freezing is never suppressed — it is computed on raw innovations.
 
 This resolves the adapt-into-fault tension of the ESwA 2023 paper:
 adaptation handles regime changes while the residual-trend test still
@@ -117,8 +134,14 @@ class _SignalState:
         self.prev: float | None = None
         self.freeze_run = 0
         self.n = 0
+        # Number of innovations folded into the innovation baselines.
+        self.n_innov = 0
         # Running scale of the raw signal, for the relative freeze eps.
         self.x_stats = _EwStats(alpha_long)
+        # Short/long-window statistics of the raw innovation
+        # ``x_t - x_{t-1}`` for the variance-collapse freeze test.
+        self.innov_short = _EwStats(alpha_short)
+        self.innov_long = _EwStats(alpha_long)
         # Short/long-window statistics of the normalized residual.
         self.short = _EwStats(alpha_short)
         self.long_mean = _EwStats(alpha_long)
@@ -146,9 +169,30 @@ class SensorFaultClassifier:
         long_window: Effective length of the slow baseline window.
             Defaults to ``4 * window``.
         freeze_window: Consecutive near-zero innovations required to
-            flag freezing. Defaults to ``window``.
+            flag freezing via the strict stuck-at run, and the effective
+            length of the short innovation-variance window used by the
+            variance-collapse test. Defaults to ``window``.
         freeze_eps: Innovation tolerance relative to the running
-            signal std.
+            signal std for the strict stuck-at run.
+        freeze_var_ratio: Variance-collapse threshold. Freezing is
+            flagged when the short-window variance of the raw
+            innovation collapses to at most ``freeze_var_ratio`` times
+            the long-window baseline innovation variance, sustained
+            over the short window. This catches a stuck sensor that
+            still emits ~1 LSB readout dither (which resets the strict
+            run on every jitter) and, because it compares against the
+            signal's own established innovation baseline rather than an
+            absolute tolerance, it does not false-fire on a slow but
+            healthy signal whose innovations are merely small.
+        freeze_abs_scale: Absolute floor for the variance-collapse
+            test, as a multiple of the stuck-at tolerance ``eps``. The
+            short-window innovation RMS must fall below
+            ``freeze_abs_scale * eps`` in addition to clearing the
+            ratio gate. This guards against a *bursty but healthy* real
+            signal that merely goes quiet for one window — its
+            innovation RMS, while small relative to the bursty
+            baseline, stays well above the stuck-at floor — so only a
+            genuinely near-stuck signal trips the test.
         mean_threshold: Short-window |mean| of the normalized residual
             above which a mean-offset fault (bias or drift) is
             flagged.
@@ -163,9 +207,17 @@ class SensorFaultClassifier:
             signals exceed the threshold simultaneously — a fault in
             one sensor also shifts the conditional residuals of its
             peers.
-        suppress_on_drift: Suppress residual-based labels on steps
-            where ``drift_detected`` is passed as True (regime
-            change). Freezing is never suppressed.
+        suppress_on_drift: Attenuate residual-based detection on steps
+            where ``drift_detected`` is passed as True (regime change)
+            by raising the mean and variance thresholds by
+            ``suppress_threshold_scale``, instead of reporting the
+            labels at face value. Freezing is never suppressed.
+        suppress_threshold_scale: Factor by which ``mean_threshold``
+            and ``var_ratio`` are multiplied on changepoint steps when
+            ``suppress_on_drift``. The default (5.0) lets a strong
+            co-occurring sensor fault survive while masking the
+            transient residuals of a coordinated shift. ``math.inf``
+            recovers the legacy hard-zeroing of every label.
 
     Examples:
     --------
@@ -229,11 +281,14 @@ class SensorFaultClassifier:
         long_window: int | None = None,
         freeze_window: int | None = None,
         freeze_eps: float = 1e-3,
+        freeze_var_ratio: float = 1e-2,
+        freeze_abs_scale: float = 20.0,
         mean_threshold: float = 3.0,
         trend_threshold: float = 1.0,
         var_ratio: float = 4.0,
         exclusive_attribution: bool = True,
         suppress_on_drift: bool = True,
+        suppress_threshold_scale: float = 5.0,
     ) -> None:
         """Initialize the classifier and validate the window sizes."""
         if window < 1:
@@ -251,11 +306,20 @@ class SensorFaultClassifier:
         self.long_window = long_window
         self.freeze_window = window if freeze_window is None else freeze_window
         self.freeze_eps = freeze_eps
+        self.freeze_var_ratio = freeze_var_ratio
+        self.freeze_abs_scale = freeze_abs_scale
         self.mean_threshold = mean_threshold
         self.trend_threshold = trend_threshold
         self.var_ratio = var_ratio
         self.exclusive_attribution = exclusive_attribution
         self.suppress_on_drift = suppress_on_drift
+        if suppress_threshold_scale < 1.0:
+            msg = (
+                "suppress_threshold_scale must be >= 1.0; "
+                f"got {suppress_threshold_scale}"
+            )
+            raise ValueError(msg)
+        self.suppress_threshold_scale = suppress_threshold_scale
         self._alpha_short = 2.0 / (window + 1.0)
         self._alpha_long = 2.0 / (long_window + 1.0)
         self._states: dict[str, _SignalState] = {}
@@ -315,11 +379,20 @@ class SensorFaultClassifier:
                 # accuracy tests are not biased on recovery.
                 candidates[name] = "freezing"
             else:
-                candidate = self._update_residual(state, residual)
-                if drift_detected and self.suppress_on_drift:
-                    candidates[name] = "normal"
-                else:
-                    candidates[name] = candidate
+                # On a changepoint, attenuate (raise the thresholds)
+                # rather than hard-zero, so a strong co-occurring sensor
+                # fault is still reported while a coordinated shift is
+                # masked.
+                scale = (
+                    self.suppress_threshold_scale
+                    if (drift_detected and self.suppress_on_drift)
+                    else 1.0
+                )
+                candidates[name] = self._update_residual(
+                    state,
+                    residual,
+                    scale,
+                )
         if self.exclusive_attribution:
             self._attribute_exclusively(candidates)
         self.labels_ = candidates
@@ -331,9 +404,12 @@ class SensorFaultClassifier:
 
         Returns, per signal: number of residual updates ``n``, the
         current ``freeze_run`` length, short/long residual means and
-        variances, the ``trend_gap`` (short minus long mean) and the
+        variances, the ``trend_gap`` (short minus long mean), the
         short/long ``var_ratio`` (NaN until the baseline variance is
-        positive). The magnitudes double as severity measures —
+        positive) and the ``innov_var_ratio`` (short/long innovation
+        variance ratio driving the variance-collapse freeze test; NaN
+        until the innovation baseline is positive). The magnitudes
+        double as severity measures —
         ``short_mean`` for bias/drift, ``var_ratio`` for accuracy
         loss, ``freeze_run`` for freezing.
         """
@@ -341,6 +417,7 @@ class SensorFaultClassifier:
         for name, state in self._states.items():
             baseline = state.long_var.var
             short_var = state.short.var
+            innov_baseline = state.innov_long.var
             out[name] = {
                 "n": float(state.n),
                 "freeze_run": float(state.freeze_run),
@@ -352,37 +429,91 @@ class SensorFaultClassifier:
                 "var_ratio": (
                     short_var / baseline if baseline > 0.0 else math.nan
                 ),
+                "innov_var_ratio": (
+                    state.innov_short.var / innov_baseline
+                    if innov_baseline > _EPS_FLOOR
+                    else math.nan
+                ),
             }
         return out
 
     def _update_freeze(self, state: _SignalState, value: float) -> bool:
-        """Track raw innovations and return whether the signal froze."""
+        """Track raw innovations and return whether the signal froze.
+
+        Two complementary stuck-at tests run on the raw innovation
+        ``d = x_t - x_{t-1}``; either one flags freezing:
+
+        * **strict run** — ``|d| <= eps`` (``eps`` relative to the
+          running signal std) sustained over ``freeze_window`` steps.
+          Exact for a perfectly stuck value.
+        * **variance collapse** — the short-window variance of ``d``
+          collapses to at most ``freeze_var_ratio`` times the
+          long-window baseline variance of ``d`` *and* the short-window
+          innovation RMS falls below an absolute floor tied to the
+          stuck-at tolerance (``freeze_abs_scale`` times ``eps``). The
+          relative test catches a stuck sensor that still emits ~1 LSB
+          readout dither (which resets the strict run on every jitter);
+          the absolute floor is what keeps the test from false-firing
+          on a *bursty but healthy* real signal that merely goes quiet
+          for a window — a quiet stretch is far above the stuck-at
+          floor even when its ratio to the bursty baseline looks small.
+        """
         prev = state.prev
         state.prev = value
         if prev is None:
             state.x_stats.update(value)
             return False
+        innov = value - prev
         eps = max(
             self.freeze_eps * math.sqrt(state.x_stats.var),
             _EPS_FLOOR,
         )
-        if abs(value - prev) <= eps:
+        if abs(innov) <= eps:
             state.freeze_run += 1
         else:
             state.freeze_run = 0
-        frozen = state.freeze_run >= self.freeze_window
+        strict_frozen = state.freeze_run >= self.freeze_window
+
+        # Fold the innovation into the short window first, then test it
+        # against the long baseline that excludes the current point, so
+        # a collapsing run is detected without first contaminating the
+        # baseline it is compared against. The collapse must clear both
+        # a relative gate (vs the signal's own innovation baseline) and
+        # an absolute floor (vs the stuck-at tolerance), so a healthy
+        # signal that merely quiets down does not trip it.
+        state.innov_short.update(innov)
+        baseline = state.innov_long.var
+        short_innov_rms = math.sqrt(state.innov_short.var)
+        abs_floor = self.freeze_abs_scale * eps
+        collapsed = (
+            state.n_innov >= self.freeze_window
+            and baseline > _EPS_FLOOR
+            and state.innov_short.var <= self.freeze_var_ratio * baseline
+            and short_innov_rms <= abs_floor
+        )
+        state.n_innov += 1
+
+        frozen = strict_frozen or collapsed
         if not frozen:
-            # Gate the scale baseline while frozen so a long outage
-            # does not erode the tolerance for the healthy regime.
+            # Gate the scale and innovation baselines while frozen so a
+            # long outage does not erode the tolerance for the healthy
+            # regime.
             state.x_stats.update(value)
+            state.innov_long.update(innov)
         return frozen
 
     def _update_residual(
         self,
         state: _SignalState,
         residual: tuple[float, float] | None,
+        threshold_scale: float = 1.0,
     ) -> FaultLabel:
-        """Fold one conditional residual in and return the candidate."""
+        """Fold one conditional residual in and return the candidate.
+
+        ``threshold_scale`` multiplies the mean and variance thresholds
+        for this step only — used to attenuate detection during a
+        regime change without discarding the residual evidence.
+        """
         if residual is None:
             return "normal"
         value, cond_std = residual
@@ -395,7 +526,7 @@ class SensorFaultClassifier:
         z = value / cond_std
         state.n += 1
         state.short.update(z)
-        candidate = self._candidate(state)
+        candidate = self._candidate(state, threshold_scale)
         state.long_mean.update(z)
         if candidate != "accuracy_loss":
             # Gate the variance baseline during a variance fault so
@@ -403,19 +534,30 @@ class SensorFaultClassifier:
             state.long_var.update(z)
         return candidate
 
-    def _candidate(self, state: _SignalState) -> FaultLabel:
-        """Classify the current residual statistics of one signal."""
+    def _candidate(
+        self,
+        state: _SignalState,
+        threshold_scale: float = 1.0,
+    ) -> FaultLabel:
+        """Classify the current residual statistics of one signal.
+
+        ``threshold_scale`` raises the mean and variance thresholds
+        (used to attenuate detection during a regime change); the
+        trend threshold that separates drift from bias is unscaled.
+        """
         if state.n < self.window:
             return "normal"
+        mean_threshold = self.mean_threshold * threshold_scale
+        var_ratio = self.var_ratio * threshold_scale
         short_mean = state.short.mean
-        if abs(short_mean) >= self.mean_threshold:
+        if abs(short_mean) >= mean_threshold:
             gap = short_mean - state.long_mean.mean
             signed_gap = gap if short_mean >= 0.0 else -gap
             if signed_gap >= self.trend_threshold:
                 return "drift"
             return "bias"
         baseline = state.long_var.var
-        if baseline > 0.0 and state.short.var >= self.var_ratio * baseline:
+        if baseline > 0.0 and state.short.var >= var_ratio * baseline:
             return "accuracy_loss"
         return "normal"
 

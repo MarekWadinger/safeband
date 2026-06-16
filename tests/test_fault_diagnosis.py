@@ -1,6 +1,7 @@
 """Tests for streaming sensor fault-type classification (IDEAS I7)."""
 
 import copy
+import math
 import sys
 from pathlib import Path
 
@@ -266,6 +267,183 @@ def test_residuals_one_matches_conditional_moments(fresh) -> None:  # noqa: ANN0
         res, cond_std = residuals[s]
         assert cond_std > 0
         assert scores[s] == pytest.approx(norm.cdf(res / cond_std))
+
+
+class TestVarianceCollapseFreeze:
+    """Variance-collapse freeze test: noisy-frozen vs slow-healthy."""
+
+    def test_noisy_frozen_signal_is_flagged(self) -> None:
+        """A stuck sensor with ~1 LSB dither is caught by var collapse.
+
+        The strict first-difference run is reset on every jitter, so it
+        never fires; the variance-collapse test catches the signal once
+        its innovation variance drops far below the healthy baseline.
+        """
+        rng = np.random.default_rng(3)
+        clf = SensorFaultClassifier(window=20, long_window=80)
+        # Healthy phase: a genuinely varying signal so the innovation
+        # baseline is well established and large.
+        prev = 0.0
+        for _ in range(120):
+            prev = float(rng.normal(0.0, 1.0))
+            clf.process_one({"s": prev}, {"s": (0.0, 1.0)})
+        # The strict run alone must not have flagged it: innovations are
+        # full-scale healthy here.
+        assert clf.diagnostics["s"]["freeze_run"] == 0.0
+
+        # Noisy-frozen phase: stuck at a constant plus readout dither
+        # an order of magnitude above the strict eps (which is
+        # freeze_eps * running_std ~ 1e-3 here) but two orders below the
+        # full-scale healthy innovation std -- every step jitters past
+        # eps, so the strict |x - prev| <= eps run keeps resetting.
+        stuck_at = 5.0
+        labels: dict[str, FaultLabel] = {}
+        strict_run_max = 0
+        for _ in range(120):
+            value = stuck_at + 1e-2 * float(rng.normal())
+            labels = clf.process_one({"s": value}, {"s": (0.0, 1.0)})
+            strict_run_max = max(
+                strict_run_max,
+                int(clf.diagnostics["s"]["freeze_run"]),
+            )
+        assert labels["s"] == "freezing"
+        # The strict stuck-at run never reached freeze_window on its own
+        # (the dither defeats it) -- the variance-collapse test is what
+        # caught it.
+        assert strict_run_max < clf.freeze_window
+
+    def test_slow_healthy_signal_is_not_frozen(self) -> None:
+        """A slow but healthy ramp must not be flagged as freezing.
+
+        Innovations are small in absolute terms but do not collapse
+        relative to the signal's own (equally small) baseline, so the
+        variance-collapse test stays quiet.
+        """
+        rng = np.random.default_rng(5)
+        clf = SensorFaultClassifier(window=20, long_window=80)
+        # Slow healthy signal: a gentle drift-free meander with small,
+        # steady innovations throughout (consistent scale, not stuck).
+        value = 0.0
+        labels: dict[str, FaultLabel] = {}
+        for _ in range(300):
+            value += 0.05 * float(rng.normal())
+            labels = clf.process_one({"s": value}, {"s": (0.0, 1.0)})
+            assert labels["s"] != "freezing"
+
+    def test_bursty_signal_going_quiet_is_not_frozen(self) -> None:
+        """A healthy bursty signal that quiets for a window stays normal.
+
+        The short innovation variance drops far below the bursty
+        baseline (the relative gate alone would pass) but the
+        innovation RMS is still well above the stuck-at floor, so the
+        absolute-floor guard keeps the variance-collapse test from
+        false-firing -- the real-data failure mode the guard was added
+        for (CATS bursty channels going briefly quiet).
+        """
+        rng = np.random.default_rng(13)
+        clf = SensorFaultClassifier(window=20, long_window=80)
+        # Bursty baseline: large innovations.
+        prev = 0.0
+        for _ in range(200):
+            prev = float(rng.normal(0.0, 3.0))
+            clf.process_one({"s": prev}, {"s": (0.0, 1.0)})
+        # Quiet stretch: innovation std ~0.3, two orders of magnitude
+        # above the stuck-at floor (eps ~ freeze_eps * running std) yet
+        # an order of magnitude below the bursty baseline.
+        value = prev
+        labels: dict[str, FaultLabel] = {}
+        for _ in range(60):
+            value += 0.3 * float(rng.normal())
+            labels = clf.process_one({"s": value}, {"s": (0.0, 1.0)})
+            assert labels["s"] != "freezing"
+
+    def test_exact_freeze_still_caught_by_strict_run(self) -> None:
+        """A perfectly stuck value is still caught (strict run path)."""
+        clf = SensorFaultClassifier(window=10, long_window=40)
+        rng = np.random.default_rng(9)
+        for _ in range(60):
+            clf.process_one({"s": float(rng.normal())}, {"s": (0.0, 1.0)})
+        labels: dict[str, FaultLabel] = {}
+        for _ in range(20):
+            labels = clf.process_one({"s": 2.0}, {"s": (0.0, 1.0)})
+        assert labels["s"] == "freezing"
+
+
+class TestGradedRegimeSuppression:
+    """Graded changepoint suppression vs legacy hard-zeroing."""
+
+    def test_strong_fault_survives_co_occurring_regime_change(self) -> None:
+        """A large residual is still reported during a changepoint.
+
+        With graded attenuation the threshold is raised by
+        ``suppress_threshold_scale`` but a strong co-occurring sensor
+        fault (residual well above the scaled threshold) is no longer
+        fully masked.
+        """
+        clf = SensorFaultClassifier(
+            window=5,
+            long_window=20,
+            mean_threshold=3.0,
+            suppress_threshold_scale=5.0,
+        )
+        # Residual 20 sigma >> 5 * 3 = 15 sigma scaled threshold.
+        x = 0.0
+        labels: dict[str, FaultLabel] = {}
+        for _ in range(40):
+            x = 1.0 - x
+            labels = clf.process_one(
+                {"s": x}, {"s": (20.0, 1.0)}, drift_detected=True
+            )
+        assert labels["s"] in ("bias", "drift")
+
+    def test_weak_coordinated_shift_is_masked_during_changepoint(self) -> None:
+        """A residual below the scaled threshold stays normal.
+
+        A coordinated shift produces small per-signal residuals (the
+        scorer adapts); even a moderate residual below the raised
+        threshold is masked during re-adaptation.
+        """
+        clf = SensorFaultClassifier(
+            window=5,
+            long_window=20,
+            mean_threshold=3.0,
+            suppress_threshold_scale=5.0,
+        )
+        # Residual 6 sigma: above the base threshold (3) -> would be a
+        # fault normally, but below the scaled threshold (15) during a
+        # changepoint, so it is attenuated to normal.
+        x = 0.0
+        labels: dict[str, FaultLabel] = {}
+        for _ in range(40):
+            x = 1.0 - x
+            labels = clf.process_one(
+                {"s": x}, {"s": (6.0, 1.0)}, drift_detected=True
+            )
+        assert labels["s"] == "normal"
+        # Without the changepoint flag the same residual is a fault.
+        plain = SensorFaultClassifier(window=5, long_window=20)
+        x = 0.0
+        plain_labels: dict[str, FaultLabel] = {}
+        for _ in range(40):
+            x = 1.0 - x
+            plain_labels = plain.process_one({"s": x}, {"s": (6.0, 1.0)})
+        assert plain_labels["s"] in ("bias", "drift")
+
+    def test_infinite_scale_recovers_hard_suppression(self) -> None:
+        """``suppress_threshold_scale=inf`` masks even huge residuals."""
+        clf = SensorFaultClassifier(
+            window=2,
+            long_window=4,
+            suppress_threshold_scale=math.inf,
+        )
+        x = 0.0
+        labels: dict[str, FaultLabel] = {}
+        for _ in range(10):
+            x = 1.0 - x
+            labels = clf.process_one(
+                {"s": x}, {"s": (1e6, 1.0)}, drift_detected=True
+            )
+        assert labels["s"] == "normal"
 
 
 class TestFrozenResidualsExcludedFromBaseline:
