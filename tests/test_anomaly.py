@@ -228,8 +228,13 @@ class _ScoreEchoDetector(anomaly.base.AnomalyDetector):
         self.learned: list[float] = []
 
     # ty: the deliberate narrowing to plain floats is the point of the
-    # echo detector; the filter passes samples through unchanged.
-    def learn_one(self, x: float) -> None:  # ty: ignore[invalid-method-override]
+    # echo detector; the filter passes samples through unchanged but may
+    # also thread a timestamp ``t`` for the time-based buffer.
+    def learn_one(  # ty: ignore[invalid-method-override]
+        self,
+        x: float,
+        **_kwargs: object,
+    ) -> None:
         self.learned.append(x)
 
     def score_one(self, x: float) -> float:  # ty: ignore[invalid-method-override]
@@ -298,9 +303,34 @@ class TestAdaptiveThresholdFilter:
         """A timedelta adaptation period yields a time rolling buffer."""
         filt, detector = self.make_filter(t_a=dt.timedelta(hours=1))
         assert isinstance(filt.buffer, TimeRollingBuffer)
-        filt.learn_one(0.1)
+        # river TimeRolling compares timestamps internally; use naive
+        # datetimes (as the server's preprocess produces) to avoid
+        # mixing offset-aware and offset-naive values.
+        t = dt.datetime(2024, 1, 1, tzinfo=dt.UTC).replace(tzinfo=None)
+        filt.learn_one(0.1, t=t)
         assert len(filt.buffer) == 1
         assert detector.learned == [0.1]
+
+    def test_time_based_buffer_evicts_by_time(self) -> None:
+        """Flags older than t_a are evicted so drift reflects the window."""
+        filt, _ = self.make_filter(t_a=dt.timedelta(hours=1))
+        base = dt.datetime(2024, 1, 1, tzinfo=dt.UTC).replace(tzinfo=None)
+        # Three anomalies inside the window: drift fires (3/3 > thresh).
+        for i in range(3):
+            filt.learn_one(0.9, t=base + dt.timedelta(minutes=i))
+        assert len(filt.buffer) == 3
+        assert filt.drift_detected is True
+        # A normal sample more than an hour later evicts all old flags;
+        # only the recent (single, normal) flag remains in the window.
+        filt.learn_one(0.1, t=base + dt.timedelta(hours=2))
+        assert len(filt.buffer) == 1
+        assert filt.drift_detected is False
+
+    def test_time_based_buffer_requires_timestamp(self) -> None:
+        """A timedelta t_a without a timestamp raises a clear error."""
+        filt, _ = self.make_filter(t_a=dt.timedelta(hours=1))
+        with pytest.raises(ValueError, match="timestamped samples"):
+            filt.learn_one(0.1)
 
     def test_unprotected_filter_learns_everything(self) -> None:
         """Without protection every sample is learned and none gated."""

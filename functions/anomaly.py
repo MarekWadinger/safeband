@@ -231,7 +231,11 @@ class AdaptiveThresholdFilter(anomaly.base.AnomalyFilter):
             return sum(self.buffer) / len_ > self.threshold
         return False
 
-    def gate_one(self, is_anomaly: bool) -> bool:
+    def gate_one(
+        self,
+        is_anomaly: bool,
+        t: datetime | None = None,
+    ) -> bool:
         """Record an anomaly flag and decide whether learning proceeds.
 
         Learning proceeds when the sample is normal or when the
@@ -240,11 +244,27 @@ class AdaptiveThresholdFilter(anomaly.base.AnomalyFilter):
 
         Args:
             is_anomaly: Anomaly flag of the current sample.
+            t: Sample timestamp. Required for the time-based
+                (``timedelta`` ``t_a``) buffer so it can evict flags
+                older than the window; ignored by the count-based
+                buffer.
 
         Returns:
             ``True`` when the wrapped detector should learn the sample.
         """
-        self.buffer.append(int(is_anomaly))
+        if isinstance(self.buffer, TimeRollingBuffer):
+            if t is None:
+                msg = (
+                    "A time-based adaptation period (timedelta t_a) needs "
+                    "timestamped samples; pass t to gate_one/learn_one."
+                )
+                raise ValueError(msg)
+            # river TimeRolling.update(value, t=...) appends and evicts
+            # flags older than the t_a window so the changepoint test
+            # averages only the recent window, not all history.
+            self.buffer.update(int(is_anomaly), t=t)
+        else:
+            self.buffer.append(int(is_anomaly))
         return not is_anomaly or self.drift_detected
 
     def predict_one(self, *args: float | dict[str, float]) -> int:
@@ -264,8 +284,10 @@ class AdaptiveThresholdFilter(anomaly.base.AnomalyFilter):
         **learn_kwargs: datetime | float | None,
     ) -> None:
         """Update the wrapped detector, gated by the protection logic."""
+        t = cast("datetime | None", learn_kwargs.get("t"))
         if self.protect_anomaly_detector and not self.gate_one(
             bool(self.predict_one(*args)),
+            t=t,
         ):
             return
         # river annotates learn_one(x: dict); wrapped detectors such as
@@ -639,7 +661,8 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if self.protect_anomaly_detector:
             if is_anomaly is None:
                 is_anomaly = bool(self.predict_one(x))
-            if self._protection.gate_one(is_anomaly):
+            t = cast("datetime | None", learn_kwargs.get("t"))
+            if self._get_protection().gate_one(is_anomaly, t=t):
                 self._learn_one(x, **learn_kwargs)
         else:
             self._learn_one(x, **learn_kwargs)
