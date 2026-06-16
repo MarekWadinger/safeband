@@ -159,8 +159,10 @@ class ReunanenScorer(anomaly.base.AnomalyDetector):
         self._b_z = np.zeros(d)
         self._x_min = np.full(d, np.inf)
         self._x_max = np.full(d, -np.inf)
-        # Patience reset value P_r = M * decmin / d (Eq. 20).
-        self._patience_reset = self.M * self.decmin / d
+        # Patience reset value P_r = M * decmin / d (Eq. 20). Floor at 1
+        # so wide inputs (large d) cannot make patience < 1 and end
+        # calibration after a single point.
+        self._patience_reset = max(1, round(self.M * self.decmin / d))
         self._patience = self._patience_reset
 
     def _vector(self, x: dict) -> np.ndarray:

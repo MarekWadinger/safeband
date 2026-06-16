@@ -266,3 +266,52 @@ def test_residuals_one_matches_conditional_moments(fresh) -> None:  # noqa: ANN0
         res, cond_std = residuals[s]
         assert cond_std > 0
         assert scores[s] == pytest.approx(norm.cdf(res / cond_std))
+
+
+class TestFrozenResidualsExcludedFromBaseline:
+    """Residual baselines must ignore the frozen-period constant residual."""
+
+    def test_freeze_does_not_shift_residual_means(self) -> None:
+        """A large residual during a freeze does not move short/long EWMAs."""
+        clf = SensorFaultClassifier(window=3, long_window=6, freeze_window=3)
+        # Healthy phase: a varying signal with near-zero residuals so the
+        # baselines settle around zero.
+        value = 0.0
+        for _ in range(20):
+            value = 1.0 - value
+            clf.process_one({"s": value}, {"s": (0.0, 1.0)})
+        diag_before = clf.diagnostics["s"]
+
+        # Freeze: the raw value stays constant (triggers the freeze test)
+        # while the reported residual is large. Once freeze_window
+        # consecutive constant points are seen the signal is frozen and
+        # the large residual must NOT be folded into the baselines.
+        for _ in range(30):
+            labels = clf.process_one({"s": 5.0}, {"s": (8.0, 1.0)})
+        assert labels["s"] == "freezing"
+        diag_after = clf.diagnostics["s"]
+        # n grows only by the short pre-freeze ramp (<= freeze_window),
+        # never by the long frozen tail: the 30 frozen residuals are
+        # gated out. The buggy version folded every frozen residual and
+        # would push n up by ~30.
+        ramp = diag_after["n"] - diag_before["n"]
+        assert ramp <= clf.freeze_window
+        assert diag_after["n"] < diag_before["n"] + 30
+
+    def test_recovery_after_freeze_is_not_spuriously_biased(self) -> None:
+        """Healthy residuals after a freeze are labelled normal, not bias."""
+        clf = SensorFaultClassifier(window=3, long_window=6, freeze_window=3)
+        value = 0.0
+        for _ in range(20):
+            value = 1.0 - value
+            clf.process_one({"s": value}, {"s": (0.0, 1.0)})
+        # Freeze with a large constant residual.
+        for _ in range(10):
+            clf.process_one({"s": 5.0}, {"s": (8.0, 1.0)})
+        # Recovery: the signal varies again with healthy residuals.
+        value = 5.0
+        labels: dict[str, FaultLabel] = {}
+        for _ in range(10):
+            value = 6.0 - value
+            labels = clf.process_one({"s": value}, {"s": (0.0, 1.0)})
+        assert labels["s"] == "normal"

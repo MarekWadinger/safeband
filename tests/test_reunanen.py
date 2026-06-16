@@ -256,3 +256,25 @@ class TestProgressiveValPredict:
         assert all(isinstance(p, bool) for p in y_pred)
         assert y_pred[spike] is True
         assert meta == {}
+
+
+class TestPatienceFloor:
+    """Calibration patience must never drop below 1 on wide inputs."""
+
+    def test_wide_input_keeps_patience_at_least_one(self) -> None:
+        """A high-dimensional input cannot drive M*decmin/d below 1."""
+        # M*decmin = 5 here; with d=40 features the raw value 5/40 = 0.125
+        # would end calibration after a single point. The floor keeps
+        # patience at one or greater.
+        scorer = ReunanenScorer(n_hidden=3, M=500, decmin=0.01, seed=0)
+        d = 40
+        x = {f"f{i}": float(i % 3) for i in range(d)}
+        scorer.learn_one(x)
+        assert scorer._patience_reset >= 1
+        assert scorer._patience_reset == max(1, round(500 * 0.01 / d))
+
+    def test_narrow_input_unchanged(self) -> None:
+        """Low-dimensional inputs keep the rounded P_r value."""
+        scorer = ReunanenScorer(n_hidden=2, M=200, decmin=0.01, seed=0)
+        scorer.learn_one({"a": 0.0, "b": 1.0})
+        assert scorer._patience_reset == max(1, round(200 * 0.01 / 2))

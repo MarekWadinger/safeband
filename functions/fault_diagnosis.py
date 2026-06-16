@@ -308,13 +308,18 @@ class SensorFaultClassifier:
                 self._states[name] = state
             frozen = self._update_freeze(state, float(value))
             residual = residuals.get(name) if residuals else None
-            candidate = self._update_residual(state, residual)
             if frozen:
+                # Skip folding the frozen constant residual into the
+                # short/long EWMAs: like x_stats, the residual baselines
+                # must reflect only the healthy regime so bias/drift/
+                # accuracy tests are not biased on recovery.
                 candidates[name] = "freezing"
-            elif drift_detected and self.suppress_on_drift:
-                candidates[name] = "normal"
             else:
-                candidates[name] = candidate
+                candidate = self._update_residual(state, residual)
+                if drift_detected and self.suppress_on_drift:
+                    candidates[name] = "normal"
+                else:
+                    candidates[name] = candidate
         if self.exclusive_attribution:
             self._attribute_exclusively(candidates)
         self.labels_ = candidates

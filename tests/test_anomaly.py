@@ -3,6 +3,7 @@
 import collections
 import datetime as dt
 import math
+import pickle
 import sys
 from pathlib import Path
 
@@ -195,7 +196,10 @@ class TestDriftDetected:
 
     def test_visible_around_changepoint(self) -> None:
         """drift_detected flips once anomalies dominate the buffer."""
-        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2)
+        # Explicit t_a so the buffer accumulates several flags; the
+        # paper default (t_e/4) would re-adapt before three flags pile
+        # up, which this test is not exercising.
+        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2, t_a=3)
         for value in [1.0, 1.1, 0.9]:
             scorer.learn_one(value)
         assert scorer.drift_detected is False
@@ -228,8 +232,13 @@ class _ScoreEchoDetector(anomaly.base.AnomalyDetector):
         self.learned: list[float] = []
 
     # ty: the deliberate narrowing to plain floats is the point of the
-    # echo detector; the filter passes samples through unchanged.
-    def learn_one(self, x: float) -> None:  # ty: ignore[invalid-method-override]
+    # echo detector; the filter passes samples through unchanged but may
+    # also thread a timestamp ``t`` for the time-based buffer.
+    def learn_one(  # ty: ignore[invalid-method-override]
+        self,
+        x: float,
+        **_kwargs: object,
+    ) -> None:
         self.learned.append(x)
 
     def score_one(self, x: float) -> float:  # ty: ignore[invalid-method-override]
@@ -298,9 +307,34 @@ class TestAdaptiveThresholdFilter:
         """A timedelta adaptation period yields a time rolling buffer."""
         filt, detector = self.make_filter(t_a=dt.timedelta(hours=1))
         assert isinstance(filt.buffer, TimeRollingBuffer)
-        filt.learn_one(0.1)
+        # river TimeRolling compares timestamps internally; use naive
+        # datetimes (as the server's preprocess produces) to avoid
+        # mixing offset-aware and offset-naive values.
+        t = dt.datetime(2024, 1, 1, tzinfo=dt.UTC).replace(tzinfo=None)
+        filt.learn_one(0.1, t=t)
         assert len(filt.buffer) == 1
         assert detector.learned == [0.1]
+
+    def test_time_based_buffer_evicts_by_time(self) -> None:
+        """Flags older than t_a are evicted so drift reflects the window."""
+        filt, _ = self.make_filter(t_a=dt.timedelta(hours=1))
+        base = dt.datetime(2024, 1, 1, tzinfo=dt.UTC).replace(tzinfo=None)
+        # Three anomalies inside the window: drift fires (3/3 > thresh).
+        for i in range(3):
+            filt.learn_one(0.9, t=base + dt.timedelta(minutes=i))
+        assert len(filt.buffer) == 3
+        assert filt.drift_detected is True
+        # A normal sample more than an hour later evicts all old flags;
+        # only the recent (single, normal) flag remains in the window.
+        filt.learn_one(0.1, t=base + dt.timedelta(hours=2))
+        assert len(filt.buffer) == 1
+        assert filt.drift_detected is False
+
+    def test_time_based_buffer_requires_timestamp(self) -> None:
+        """A timedelta t_a without a timestamp raises a clear error."""
+        filt, _ = self.make_filter(t_a=dt.timedelta(hours=1))
+        with pytest.raises(ValueError, match="timestamped samples"):
+            filt.learn_one(0.1)
 
     def test_unprotected_filter_learns_everything(self) -> None:
         """Without protection every sample is learned and none gated."""
@@ -336,7 +370,14 @@ class TestSingleProtectionLayer:
 
     def make_trained_scorer(self) -> GaussianScorer:
         """Build a protected scorer trained on three normal samples."""
-        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2)
+        # Explicit t_a=3 so the changepoint buffer holds three flags;
+        # the paper default (t_e/4 == 1) would re-adapt on the first
+        # anomaly, which these tests are not exercising.
+        scorer = GaussianScorer(
+            Rolling(Gaussian(), 3),
+            grace_period=2,
+            t_a=3,
+        )
         for value in [1.0, 1.1, 0.9]:
             scorer.learn_one(value)
         return scorer
@@ -396,15 +437,15 @@ class TestGetLimits:
     """Public per-signal dynamic limits keyed by feature name."""
 
     def test_keys_and_values_match_limit_one(self) -> None:
-        """get_limits regroups limit_one's (upper, lower) per feature."""
+        """get_limits and limit_one agree on the (upper, lower) order."""
         scorer = make_conditional_scorer()
         x = {"a": 0.4, "b": 0.5}
         ths, tls = scorer.limit_one(x)
         limits = scorer.get_limits(x)
         assert set(limits) == set(ths) == set(tls)
-        for key, (lower, upper) in limits.items():
-            assert lower == tls[key]
+        for key, (upper, lower) in limits.items():
             assert upper == ths[key]
+            assert lower == tls[key]
             assert lower < upper
 
     def test_unfitted_scorer_returns_nan_limits(self) -> None:
@@ -596,8 +637,9 @@ class TestPhysicalLimitsConditional:
         x = {"a": 0.4, "b": 0.5}
         free_limits = free.get_limits(x)
         limits = bounded.get_limits(x)
-        assert limits["b"][0] == max(free_limits["b"][0], 0.3)
-        assert limits["b"][1] == min(free_limits["b"][1], 0.6)
+        # get_limits returns (upper, lower), matching limit_one.
+        assert limits["b"][0] == min(free_limits["b"][0], 0.6)
+        assert limits["b"][1] == max(free_limits["b"][1], 0.3)
         assert limits["a"] == free_limits["a"]
 
     def test_learning_exclusion_flag(self) -> None:
@@ -617,3 +659,86 @@ class TestPhysicalLimitsConditional:
         assert scorer.gaussian.n_samples == n
         scorer.learn_one({"a": 0.5, "b": 0.5})
         assert scorer.gaussian.n_samples == n + 1
+
+
+class TestLegacyPickleProtection:
+    """Models pickled before _protection existed degrade gracefully."""
+
+    def test_buffer_and_drift_survive_missing_protection(self) -> None:
+        """A model without _protection rebuilds it instead of raising."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 4), grace_period=2)
+        for value in [1.0, 1.1, 0.9]:
+            scorer.learn_one(value)
+        # Simulate a legacy pickle lacking the protection attribute.
+        del scorer._protection
+        # Access must not raise AttributeError.
+        assert isinstance(
+            scorer.buffer,
+            (collections.deque, TimeRollingBuffer),
+        )
+        assert scorer.drift_detected is False
+
+
+class TestTaDefault:
+    """The adaptation period t_a defaults to t_e / 4 (paper guidance)."""
+
+    def test_int_default_is_quarter_of_window(self) -> None:
+        """Count-based t_e defaults t_a to max(1, round(t_e / 4))."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 8), grace_period=2)
+        assert scorer.t_a == 2
+
+    def test_int_default_floored_at_one(self) -> None:
+        """A tiny window still yields a usable (>= 1) adaptation period."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 2), grace_period=1)
+        assert scorer.t_a == 1
+
+    def test_timedelta_default_is_quarter_of_period(self) -> None:
+        """Time-based t_e defaults t_a to t_e / 4."""
+        period = dt.timedelta(hours=4)
+        scorer = GaussianScorer(
+            TimeRolling(Gaussian(), period=period),
+            grace_period=dt.timedelta(hours=1),
+        )
+        assert scorer.t_a == period / 4
+
+    def test_explicit_zero_is_honored(self) -> None:
+        """t_a=0 (disable re-adaptation) is not overwritten by the default."""
+        scorer = GaussianScorer(
+            Rolling(Gaussian(), 8),
+            grace_period=2,
+            t_a=0,
+        )
+        assert scorer.t_a == 0
+
+
+class TestGracePeriodImmutable:
+    """Scoring past the grace window must not mutate grace_period."""
+
+    def test_grace_period_unchanged_after_scoring(self) -> None:
+        """grace_period survives scoring past the warm-up window."""
+        scorer = ConditionalGaussianScorer(
+            Rolling(MultivariateGaussian(seed=42), 5),
+            grace_period=2,
+            protect_anomaly_detector=False,
+        )
+        for sample in SAMPLES:
+            scorer.learn_one(sample)
+        # Score well past the grace window several times.
+        for _ in range(5):
+            scorer.score_one({"a": 0.5, "b": 0.5})
+        assert scorer.grace_period == 2
+
+    def test_grace_period_unchanged_across_repickle(self) -> None:
+        """A re-instantiated model keeps the same configured grace_period."""
+        scorer = ConditionalGaussianScorer(
+            Rolling(MultivariateGaussian(seed=42), 5),
+            grace_period=2,
+            protect_anomaly_detector=False,
+        )
+        for sample in SAMPLES:
+            scorer.learn_one(sample)
+        scorer.score_one({"a": 0.5, "b": 0.5})
+        # Round-trip through pickle: the recovered model must keep its
+        # configured grace_period so _warn_on_param_mismatch stays quiet.
+        restored = pickle.loads(pickle.dumps(scorer))  # noqa: S301
+        assert restored.grace_period == 2
