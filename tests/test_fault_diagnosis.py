@@ -330,6 +330,33 @@ class TestVarianceCollapseFreeze:
             labels = clf.process_one({"s": value}, {"s": (0.0, 1.0)})
             assert labels["s"] != "freezing"
 
+    def test_bursty_signal_going_quiet_is_not_frozen(self) -> None:
+        """A healthy bursty signal that quiets for a window stays normal.
+
+        The short innovation variance drops far below the bursty
+        baseline (the relative gate alone would pass) but the
+        innovation RMS is still well above the stuck-at floor, so the
+        absolute-floor guard keeps the variance-collapse test from
+        false-firing -- the real-data failure mode the guard was added
+        for (CATS bursty channels going briefly quiet).
+        """
+        rng = np.random.default_rng(13)
+        clf = SensorFaultClassifier(window=20, long_window=80)
+        # Bursty baseline: large innovations.
+        prev = 0.0
+        for _ in range(200):
+            prev = float(rng.normal(0.0, 3.0))
+            clf.process_one({"s": prev}, {"s": (0.0, 1.0)})
+        # Quiet stretch: innovation std ~0.3, two orders of magnitude
+        # above the stuck-at floor (eps ~ freeze_eps * running std) yet
+        # an order of magnitude below the bursty baseline.
+        value = prev
+        labels: dict[str, FaultLabel] = {}
+        for _ in range(60):
+            value += 0.3 * float(rng.normal())
+            labels = clf.process_one({"s": value}, {"s": (0.0, 1.0)})
+            assert labels["s"] != "freezing"
+
     def test_exact_freeze_still_caught_by_strict_run(self) -> None:
         """A perfectly stuck value is still caught (strict run path)."""
         clf = SensorFaultClassifier(window=10, long_window=40)

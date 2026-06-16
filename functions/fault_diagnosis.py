@@ -19,10 +19,12 @@ history buffers:
   value. A *variance-collapse* test additionally flags freezing when
   the short-window variance of the innovation collapses to at most
   ``freeze_var_ratio`` times the long-window baseline innovation
-  variance; this catches a stuck sensor still emitting ~1 LSB readout
-  dither (which resets the strict run on every jitter) while, by
-  comparing against the signal's own innovation baseline, it avoids
-  false-firing on a slow-but-healthy signal. Flagged regardless of the
+  variance *and* the short-window innovation RMS drops below an
+  absolute floor (``freeze_abs_scale`` times the stuck-at tolerance);
+  this catches a stuck sensor still emitting ~1 LSB readout dither
+  (which resets the strict run on every jitter) while the absolute
+  floor keeps a bursty-but-healthy real signal that merely goes quiet
+  for a window from false-firing. Flagged regardless of the
   conditional score: a frozen value near the conditional mean scores
   ~0.5 forever, so it is invisible to the scorer (the
   ``cond_std -> 0`` blind spot).
@@ -182,6 +184,15 @@ class SensorFaultClassifier:
             signal's own established innovation baseline rather than an
             absolute tolerance, it does not false-fire on a slow but
             healthy signal whose innovations are merely small.
+        freeze_abs_scale: Absolute floor for the variance-collapse
+            test, as a multiple of the stuck-at tolerance ``eps``. The
+            short-window innovation RMS must fall below
+            ``freeze_abs_scale * eps`` in addition to clearing the
+            ratio gate. This guards against a *bursty but healthy* real
+            signal that merely goes quiet for one window — its
+            innovation RMS, while small relative to the bursty
+            baseline, stays well above the stuck-at floor — so only a
+            genuinely near-stuck signal trips the test.
         mean_threshold: Short-window |mean| of the normalized residual
             above which a mean-offset fault (bias or drift) is
             flagged.
@@ -271,6 +282,7 @@ class SensorFaultClassifier:
         freeze_window: int | None = None,
         freeze_eps: float = 1e-3,
         freeze_var_ratio: float = 1e-2,
+        freeze_abs_scale: float = 20.0,
         mean_threshold: float = 3.0,
         trend_threshold: float = 1.0,
         var_ratio: float = 4.0,
@@ -295,6 +307,7 @@ class SensorFaultClassifier:
         self.freeze_window = window if freeze_window is None else freeze_window
         self.freeze_eps = freeze_eps
         self.freeze_var_ratio = freeze_var_ratio
+        self.freeze_abs_scale = freeze_abs_scale
         self.mean_threshold = mean_threshold
         self.trend_threshold = trend_threshold
         self.var_ratio = var_ratio
@@ -435,13 +448,15 @@ class SensorFaultClassifier:
           Exact for a perfectly stuck value.
         * **variance collapse** — the short-window variance of ``d``
           collapses to at most ``freeze_var_ratio`` times the
-          long-window baseline variance of ``d``. Robust to a stuck
-          sensor that still emits ~1 LSB readout dither (which resets
-          the strict run on every jitter), and — because it compares
-          against the signal's own established innovation baseline
-          rather than an absolute tolerance — it does not false-fire
-          on a slow but healthy signal whose innovations are small yet
-          have not collapsed relative to that baseline.
+          long-window baseline variance of ``d`` *and* the short-window
+          innovation RMS falls below an absolute floor tied to the
+          stuck-at tolerance (``freeze_abs_scale`` times ``eps``). The
+          relative test catches a stuck sensor that still emits ~1 LSB
+          readout dither (which resets the strict run on every jitter);
+          the absolute floor is what keeps the test from false-firing
+          on a *bursty but healthy* real signal that merely goes quiet
+          for a window — a quiet stretch is far above the stuck-at
+          floor even when its ratio to the bursty baseline looks small.
         """
         prev = state.prev
         state.prev = value
@@ -462,13 +477,19 @@ class SensorFaultClassifier:
         # Fold the innovation into the short window first, then test it
         # against the long baseline that excludes the current point, so
         # a collapsing run is detected without first contaminating the
-        # baseline it is compared against.
+        # baseline it is compared against. The collapse must clear both
+        # a relative gate (vs the signal's own innovation baseline) and
+        # an absolute floor (vs the stuck-at tolerance), so a healthy
+        # signal that merely quiets down does not trip it.
         state.innov_short.update(innov)
         baseline = state.innov_long.var
+        short_innov_rms = math.sqrt(state.innov_short.var)
+        abs_floor = self.freeze_abs_scale * eps
         collapsed = (
             state.n_innov >= self.freeze_window
             and baseline > _EPS_FLOOR
             and state.innov_short.var <= self.freeze_var_ratio * baseline
+            and short_innov_rms <= abs_floor
         )
         state.n_innov += 1
 
