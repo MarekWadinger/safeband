@@ -1,3 +1,14 @@
+## 2.5.0 (2026-06-16)
+
+### Feat
+
+- validate I7 fault taxonomy by controlled CATS injection
+
+### Fix
+
+- add absolute floor to variance-collapse freeze test (I7)
+- harden sensor-fault freeze test and regime-change suppression (I7)
+
 ## 2.4.5 (2026-06-16)
 
 ### Refactor
