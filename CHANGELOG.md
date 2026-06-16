@@ -1,3 +1,9 @@
+## 2.4.0 (2026-06-16)
+
+### Feat
+
+- add NATS pub-sub source and sink
+
 ## 2.3.1 (2026-06-16)
 
 ### Fix
