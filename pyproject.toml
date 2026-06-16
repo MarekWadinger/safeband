@@ -11,6 +11,7 @@ dependencies = [
     "nats-py<3.0.0",
     "paho-mqtt<3.0.0",
     "pandas<3.0.0",
+    "pydantic>=2",
     "pandas-stubs>=2.3.2.250827",
     "plotly<7.0.0",
     "river~=0.21.0 ; platform_machine != 'aarch64' and sys_platform == 'linux'",
