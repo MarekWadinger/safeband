@@ -14,7 +14,7 @@ import rpc_server
 from rpc_server import RpcOutlierDetector
 
 if TYPE_CHECKING:
-    from functions.typing_extras import KafkaClient
+    from functions.typing_extras import KafkaClient, NATSClient
 
 
 class TestGetSourcePulsar:
@@ -109,6 +109,32 @@ class TestGetSourceKafka:
 
         config = from_kafka.call_args[0][1]
         assert config["group.id"] == "detection_service"
+
+
+class TestGetSourceNats:
+    """A NATSClient config wires from_nats with the MQTT-style wrapping."""
+
+    def test_nats_source_wires_from_nats_and_wraps(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """from_nats is built, then wrapped with accumulate/filter."""
+        raw = Stream()
+        from_nats = MagicMock(return_value=raw)
+        monkeypatch.setattr(Stream, "from_nats", from_nats)
+        detector = RpcOutlierDetector()
+
+        config: NATSClient = {"servers": "nats://localhost:4222"}
+        source = detector.get_source(config, ["topic_a"], debug=False)
+
+        from_nats.assert_called_once_with(
+            servers="nats://localhost:4222",
+            topic=["topic_a"],
+        )
+        # The raw broker node is captured for stop detection, and the
+        # returned node is the accumulate/filter wrapper, just like MQTT.
+        assert detector._raw_source is raw
+        assert source is not raw
 
 
 class TestRawSourceStopDetection:

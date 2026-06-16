@@ -32,7 +32,13 @@ from functions.encryption import (
 )
 from functions.model_persistence import load_model, save_model
 from functions.proba import MultivariateGaussian
-from functions.streamz_tools import _filt, _func, to_mqtt  # noqa: F401
+from functions.streamz_tools import (  # noqa: F401
+    _filt,
+    _func,
+    from_nats,
+    to_mqtt,
+    to_nats,
+)
 from functions.typing_extras import (
     EmailConfig,
     FileClient,
@@ -40,6 +46,7 @@ from functions.typing_extras import (
     KafkaClient,
     ModelConfig,
     MQTTClient,
+    NATSClient,
     PulsarClient,
     SetupConfig,
     istypedinstance,
@@ -51,6 +58,12 @@ logger = logging.getLogger(__name__)
 # CONSTANTS
 
 _exit_stack: contextlib.ExitStack = contextlib.ExitStack()
+
+# Union of every supported transport configuration accepted by the
+# source/sink dispatch methods.
+_ClientConfig = (
+    FileClient | MQTTClient | KafkaClient | PulsarClient | NATSClient
+)
 
 
 # DEFINITIONS
@@ -371,7 +384,7 @@ class RpcOutlierDetector:
 
     def get_source(
         self,
-        config: FileClient | MQTTClient | KafkaClient | PulsarClient,
+        config: _ClientConfig,
         topics: list,
         debug: bool = False,
     ) -> Stream:
@@ -435,6 +448,22 @@ class RpcOutlierDetector:
                 subscription_name="detection_service",
             )
             self._raw_source = source
+        elif istypedinstance(config, NATSClient):
+            source = Stream.from_nats(
+                servers=config.get("servers"),
+                topic=topics,
+            )
+            # Capture the raw broker node before wrapping: run() polls
+            # its ``stopped`` flag, which the accumulate/filter nodes
+            # below do not expose. The NATSMessage adapter exposes the
+            # same ``.topic``/``.payload`` interface as MQTTMessage, so
+            # the accumulate/_func/filter chain is identical to MQTT.
+            self._raw_source = source
+            source = source.accumulate(
+                _func,
+                start={},
+                topics=topics,
+            ).filter(_filt, topics)
         else:
             msg = f"Wrong client: {config}"
             raise RuntimeError(msg)
@@ -442,7 +471,7 @@ class RpcOutlierDetector:
 
     def get_sink(
         self,
-        config: FileClient | MQTTClient | KafkaClient | PulsarClient,
+        config: _ClientConfig,
         topics: list,
         detector: Stream,
         out_topics: list[str] | str | None = None,
@@ -504,12 +533,17 @@ class RpcOutlierDetector:
                 topic,
                 producer_config={"schema": JsonSchema(Example)},
             )
+        elif istypedinstance(config, NATSClient):
+            detector.to_nats(
+                servers=config.get("servers"),
+                topic=prefix,
+            )
 
         return detector
 
     def run(
         self,
-        config: FileClient | MQTTClient | KafkaClient | PulsarClient,
+        config: _ClientConfig,
         source: Stream,
         detector: Stream,
         debug: bool,
@@ -546,7 +580,7 @@ class RpcOutlierDetector:
 
     def start(
         self,
-        client: FileClient | MQTTClient | KafkaClient | PulsarClient,
+        client: _ClientConfig,
         io: IOConfig,
         model_params: ModelConfig,
         setup: SetupConfig,

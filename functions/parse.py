@@ -21,6 +21,7 @@ from functions.typing_extras import (
     KafkaClient,
     ModelConfig,
     MQTTClient,
+    NATSClient,
     PulsarClient,
     SetupConfig,
 )
@@ -37,7 +38,15 @@ class Config(TypedDict):
     mqtt: NotRequired[MQTTClient]
     kafka: NotRequired[KafkaClient]
     pulsar: NotRequired[PulsarClient]
-    client: FileClient | MQTTClient | KafkaClient | PulsarClient | None
+    nats: NotRequired[NATSClient]
+    client: (
+        FileClient
+        | MQTTClient
+        | KafkaClient
+        | PulsarClient
+        | NATSClient
+        | None
+    )
 
 
 def get_args() -> Namespace:
@@ -187,6 +196,12 @@ def get_args() -> Namespace:
         "Pulsar source related parameters",
     )
     pulsar_arg_grp.add_argument("--service-url", type=str)
+
+    nats_arg_grp = parser.add_argument_group(
+        "nats client",
+        "NATS source related parameters",
+    )
+    nats_arg_grp.add_argument("--servers", type=str)
 
     return parser.parse_args()
 
@@ -347,16 +362,16 @@ def get_valid_client(config: Config) -> Config:
     ...     "io": {"in_topics": ["t1", "t2"], "out_topics": ["o1"]},
     ...     "mqtt": {"host": "mqtt-server", "port": None},
     ... }
-    >>> get_valid_client(config)
+    >>> get_valid_client(config)  # doctest: +ELLIPSIS
     Traceback (most recent call last):
     ...
-    ValueError: Specify one of the clients: ['file', 'mqtt', 'kafka', 'pulsar']
+    ValueError: Specify one of the clients: [...]
 
     """
     config_ = config.copy()
     config_dyn: dict[str, Any] = cast("dict[str, Any]", config_)
     active_clients = []
-    clients = ["file", "mqtt", "kafka", "pulsar"]
+    clients = ["file", "mqtt", "kafka", "pulsar", "nats"]
     for client in clients:
         if client in config_dyn:
             missing_args = any(
@@ -426,6 +441,7 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
         "mqtt": MQTTClient,
         "kafka": KafkaClient,
         "pulsar": PulsarClient,
+        "nats": NATSClient,
     }
     args_ = vars(args)
     config: Config = {}  # ty: ignore[missing-typed-dict-key]
