@@ -37,6 +37,7 @@ around with open-source example data:
 1. [Case Study 1: Anomaly Detection on BESS Temperature](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/03_conditional_ae_2023.ipynb)
 2. [Case Study 2: Anomaly Detection on Battery Module Temperature](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/04_eco_pack_presov.ipynb)
 3. [Comparison Study: One-Class SVM and HalfSpace Trees on SKAB Dataset](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/comparison.ipynb)
+4. [Benchmark Study: AID on the TSB-AD benchmark (VUS-PR protocol)](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/06_tsb_ad_benchmark.ipynb)
 
 ## 🏃 Run the services
 
@@ -100,7 +101,7 @@ Query service responds with printed messages as follows:
 
 <!-- markdownlint-disable MD013 -->
 ```bash
-Received message: {"time": "1970-01-01 03:17:11", "anomaly": "0", "level_high":"658.396223558289", "level_low": "635.8731097750442"}
+Received message: {"time": "1970-01-01 03:17:11", "anomaly": 0, "level_high": 658.396223558289, "level_low": 635.8731097750442}
 ```
 <!-- markdownlint-enable MD013 -->
 
