@@ -310,6 +310,10 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         window_size (int or None): Size of the rolling window.
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.
+        t_a (timedelta or int or None): Adaptation period sizing the
+        changepoint buffer used for re-adaptation. When None, defaults
+        to ``t_e / 4`` (the paper's guidance), where ``t_e`` is the
+        rolling window/period. Pass ``0`` to disable re-adaptation.
         physical_limits (tuple[float, float] or None): Known static
         bounds of the modeled signal. Reported dynamic limits are
         clipped into them, and observations outside them are flagged
@@ -516,7 +520,15 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
 
         self.protect_anomaly_detector = protect_anomaly_detector
         if self.protect_anomaly_detector:
-            self.t_a = t_a or self.t_e
+            # Paper guidance: t_a = t_e / 4 (proposed_method). Use
+            # "is not None" so an explicit t_a=0 (disable re-adaptation)
+            # is honored rather than silently replaced.
+            if t_a is not None:
+                self.t_a = t_a
+            elif isinstance(self.t_e, timedelta):
+                self.t_a = self.t_e / 4
+            else:
+                self.t_a = max(1, round(self.t_e / 4))
             # The filter owns the protection internals (buffer +
             # changepoint test + learn gate); the scorer only asks it
             # whether learning proceeds, so no call cycle arises.
@@ -609,7 +621,7 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         >>> from river.proba import Gaussian
         >>> from river.utils import Rolling
         >>> scorer = GaussianScorer(Rolling(Gaussian(), 3),
-        ...     grace_period=2)
+        ...     grace_period=2, t_a=3)
         >>> for x in [1.0, 1.1, 0.9]:
         ...     scorer = scorer.learn_one(x)
         >>> scorer.drift_detected

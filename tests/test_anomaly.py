@@ -195,7 +195,10 @@ class TestDriftDetected:
 
     def test_visible_around_changepoint(self) -> None:
         """drift_detected flips once anomalies dominate the buffer."""
-        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2)
+        # Explicit t_a so the buffer accumulates several flags; the
+        # paper default (t_e/4) would re-adapt before three flags pile
+        # up, which this test is not exercising.
+        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2, t_a=3)
         for value in [1.0, 1.1, 0.9]:
             scorer.learn_one(value)
         assert scorer.drift_detected is False
@@ -366,7 +369,14 @@ class TestSingleProtectionLayer:
 
     def make_trained_scorer(self) -> GaussianScorer:
         """Build a protected scorer trained on three normal samples."""
-        scorer = GaussianScorer(Rolling(Gaussian(), 3), grace_period=2)
+        # Explicit t_a=3 so the changepoint buffer holds three flags;
+        # the paper default (t_e/4 == 1) would re-adapt on the first
+        # anomaly, which these tests are not exercising.
+        scorer = GaussianScorer(
+            Rolling(Gaussian(), 3),
+            grace_period=2,
+            t_a=3,
+        )
         for value in [1.0, 1.1, 0.9]:
             scorer.learn_one(value)
         return scorer
@@ -665,3 +675,35 @@ class TestLegacyPickleProtection:
             (collections.deque, TimeRollingBuffer),
         )
         assert scorer.drift_detected is False
+
+
+class TestTaDefault:
+    """The adaptation period t_a defaults to t_e / 4 (paper guidance)."""
+
+    def test_int_default_is_quarter_of_window(self) -> None:
+        """Count-based t_e defaults t_a to max(1, round(t_e / 4))."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 8), grace_period=2)
+        assert scorer.t_a == 2
+
+    def test_int_default_floored_at_one(self) -> None:
+        """A tiny window still yields a usable (>= 1) adaptation period."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 2), grace_period=1)
+        assert scorer.t_a == 1
+
+    def test_timedelta_default_is_quarter_of_period(self) -> None:
+        """Time-based t_e defaults t_a to t_e / 4."""
+        period = dt.timedelta(hours=4)
+        scorer = GaussianScorer(
+            TimeRolling(Gaussian(), period=period),
+            grace_period=dt.timedelta(hours=1),
+        )
+        assert scorer.t_a == period / 4
+
+    def test_explicit_zero_is_honored(self) -> None:
+        """t_a=0 (disable re-adaptation) is not overwritten by the default."""
+        scorer = GaussianScorer(
+            Rolling(Gaussian(), 8),
+            grace_period=2,
+            t_a=0,
+        )
+        assert scorer.t_a == 0
