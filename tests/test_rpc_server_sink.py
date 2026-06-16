@@ -19,6 +19,7 @@ if TYPE_CHECKING:
         FileClient,
         KafkaClient,
         MQTTClient,
+        NATSClient,
         PulsarClient,
     )
 
@@ -101,6 +102,51 @@ class TestGetSinkMqtt:
             port=1883,
             topic="custom/",
             publish_kwargs={"retain": True},
+        )
+
+
+class TestGetSinkNats:
+    """Tests for the NATS sink branch."""
+
+    def test_nats_sink_uses_common_prefix(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The NATS subject prefix is derived from the input topics."""
+        to_nats = MagicMock()
+        monkeypatch.setattr(Stream, "to_nats", to_nats)
+        config: NATSClient = {"servers": "nats://localhost:4222"}
+
+        RpcOutlierDetector().get_sink(
+            config,
+            ["plant/a", "plant/b"],
+            Stream(),
+        )
+
+        to_nats.assert_called_once_with(
+            servers="nats://localhost:4222",
+            topic="plant/",
+        )
+
+    def test_nats_sink_honors_out_topics(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Configured out_topics override the input-derived prefix."""
+        to_nats = MagicMock()
+        monkeypatch.setattr(Stream, "to_nats", to_nats)
+        config: NATSClient = {"servers": "nats://localhost:4222"}
+
+        RpcOutlierDetector().get_sink(
+            config,
+            ["plant/a", "plant/b"],
+            Stream(),
+            out_topics=["custom/limits"],
+        )
+
+        to_nats.assert_called_once_with(
+            servers="nats://localhost:4222",
+            topic="custom/",
         )
 
 
