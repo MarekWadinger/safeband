@@ -39,7 +39,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version, changelog, and tag
+      - name: Bump version, changelog, lockfile, and tag
         id: bump
         run: |
           set -euo pipefail
@@ -50,9 +50,22 @@ jobs:
             echo "bumped=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          uv run cz bump --yes
+          prev="$(uv run cz version --project)"
+          # --files-only bumps pyproject + CHANGELOG without committing or
+          # tagging, so we can fold the regenerated lockfile into the SAME
+          # release commit. Otherwise uv.lock's project version lags the
+          # bump and every later `uv run` pre-commit hook rewrites it,
+          # aborting commits/pushes on the stash conflict.
+          uv run cz bump --yes --files-only
+          version="$(uv run cz version --project)"
+          uv lock
+          git add pyproject.toml CHANGELOG.md uv.lock
+          # Message keeps cz's `bump:` prefix so the skip guard above
+          # still matches and the release merge never re-triggers.
+          git commit -m "bump: version $prev → $version"
+          git tag "$version"
           echo "bumped=true" >> "$GITHUB_OUTPUT"
-          echo "version=$(uv run cz version --project)" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Open and auto-merge release PR (main requires PRs)
         if: steps.bump.outputs.bumped == 'true'
