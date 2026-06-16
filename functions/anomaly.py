@@ -528,13 +528,31 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         cast("Rolling", self.gaussian).update(x, **kwargs)
         return self
 
+    def _get_protection(self) -> "AdaptiveThresholdFilter":
+        """Return the protection filter, rebuilding it for legacy pickles.
+
+        Models pickled before ``_protection`` existed lack the attribute;
+        reconstruct it on demand so ``buffer``/``drift_detected`` degrade
+        gracefully instead of raising ``AttributeError``.
+        """
+        protection = getattr(self, "_protection", None)
+        if protection is None:
+            protection = AdaptiveThresholdFilter(
+                anomaly_detector=self,
+                threshold=getattr(self, "threshold", 0.99735),
+                t_a=getattr(self, "t_a", 0),
+                protect_anomaly_detector=True,
+            )
+            self._protection = protection
+        return protection
+
     @property
     def buffer(self) -> "collections.deque[int] | TimeRollingBuffer":
         """Anomaly-flag buffer owned by the protection filter."""
-        return self._protection.buffer
+        return self._get_protection().buffer
 
     def _drift_detected(self) -> bool:
-        return self._protection.drift_detected
+        return self._get_protection().drift_detected
 
     def _physical_violation(self, x: float | dict[str, float]) -> bool:
         # getattr keeps models recovered from pre-physical-limits

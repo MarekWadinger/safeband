@@ -617,3 +617,21 @@ class TestPhysicalLimitsConditional:
         assert scorer.gaussian.n_samples == n
         scorer.learn_one({"a": 0.5, "b": 0.5})
         assert scorer.gaussian.n_samples == n + 1
+
+
+class TestLegacyPickleProtection:
+    """Models pickled before _protection existed degrade gracefully."""
+
+    def test_buffer_and_drift_survive_missing_protection(self) -> None:
+        """A model without _protection rebuilds it instead of raising."""
+        scorer = GaussianScorer(Rolling(Gaussian(), 4), grace_period=2)
+        for value in [1.0, 1.1, 0.9]:
+            scorer.learn_one(value)
+        # Simulate a legacy pickle lacking the protection attribute.
+        del scorer._protection
+        # Access must not raise AttributeError.
+        assert isinstance(
+            scorer.buffer,
+            (collections.deque, TimeRollingBuffer),
+        )
+        assert scorer.drift_detected is False
