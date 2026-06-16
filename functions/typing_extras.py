@@ -92,8 +92,11 @@ class ModelConfig(BaseModel):
     t_e: Timedelta | None = None
     t_a: Timedelta | None = None
     t_g: Timedelta | None = None
-    # JSON object string in config files, parsed mapping in code.
-    physical_limits: str | dict[str, tuple[float, float]] | None = None
+    # JSON object string in config files, parsed value in code. The strict
+    # mapping/(low, high) shape is enforced where the value is consumed
+    # (rpc_server._parse_physical_limits), so the loaded JSON is accepted
+    # loosely here and a malformed shape fails at use, not construction.
+    physical_limits: object | None = None
 
     @field_validator("t_e", "t_a", "t_g", mode="before")
     @classmethod
