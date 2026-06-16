@@ -16,14 +16,21 @@ sys.path.insert(1, str(Path(__file__).parent.parent))
 
 from functions.anomaly import GaussianScorer
 from functions.model_persistence import load_model, save_model
-from functions.typing_extras import ModelConfig
+from functions.typing_extras import (
+    EmailConfig,
+    FileClient,
+    IOConfig,
+    ModelConfig,
+    MQTTClient,
+    SetupConfig,
+)
 from rpc_server import RpcOutlierDetector, expand_model_params
 
 
 class TestExpandModelParamsPhysicalLimits:
     """physical_limits config entries parse into per-signal bounds."""
 
-    BASE: ClassVar[ModelConfig] = {
+    BASE: ClassVar[dict[str, Any]] = {
         "threshold": 0.99735,
         "t_e": Timedelta("1d"),
         "t_a": None,
@@ -32,20 +39,23 @@ class TestExpandModelParamsPhysicalLimits:
 
     def test_absent_yields_none(self) -> None:
         """A configuration without physical_limits parses to None."""
-        *_, limits = expand_model_params(self.BASE)
+        *_, limits = expand_model_params(ModelConfig(**self.BASE))
         assert limits is None
 
     def test_json_string_parses_to_bounds(self) -> None:
         """A JSON object string maps signal names to (low, high) pairs."""
         *_, limits = expand_model_params(
-            {**self.BASE, "physical_limits": '{"plant/a": [0.0, 100.0]}'},
+            ModelConfig(
+                **self.BASE,
+                physical_limits='{"plant/a": [0.0, 100.0]}',
+            ),
         )
         assert limits == {"plant/a": (0.0, 100.0)}
 
     def test_mapping_passes_through_coerced(self) -> None:
         """An already-built mapping is coerced to float tuples."""
         *_, limits = expand_model_params(
-            {**self.BASE, "physical_limits": {"plant/a": (0, 100)}},
+            ModelConfig(**self.BASE, physical_limits={"plant/a": (0, 100)}),
         )
         assert limits == {"plant/a": (0.0, 100.0)}
 
@@ -53,14 +63,14 @@ class TestExpandModelParamsPhysicalLimits:
         """A JSON value that is not an object is rejected."""
         with pytest.raises(TypeError, match="physical_limits"):
             expand_model_params(
-                {**self.BASE, "physical_limits": "[0.0, 100.0]"},
+                ModelConfig(**self.BASE, physical_limits="[0.0, 100.0]"),
             )
 
     def test_wrong_arity_raises(self) -> None:
         """Bounds that are not a (low, high) pair are rejected."""
         with pytest.raises(ValueError, match="physical_limits"):
             expand_model_params(
-                {**self.BASE, "physical_limits": '{"plant/a": [0.0]}'},
+                ModelConfig(**self.BASE, physical_limits='{"plant/a": [0.0]}'),
             )
 
 
@@ -81,16 +91,16 @@ class TestStartWiresPhysicalLimits:
         )
 
         RpcOutlierDetector().start(
-            {"path": "unused.csv", "output": str(tmp_path / "out.json")},
-            io={"in_topics": ["plant/a"], "out_topics": None},
-            model_params={
-                "threshold": 0.99735,
-                "t_e": Timedelta("1d"),
-                "t_a": Timedelta("1d"),
-                "t_g": Timedelta("1d"),
-                "physical_limits": '{"plant/a": [0.0, 100.0]}',
-            },
-            setup={"debug": True, "recovery_path": str(recovery)},
+            FileClient(path="unused.csv", output=str(tmp_path / "out.json")),
+            io=IOConfig(in_topics=["plant/a"], out_topics=None),
+            model_params=ModelConfig(
+                threshold=0.99735,
+                t_e=Timedelta("1d"),
+                t_a=Timedelta("1d"),
+                t_g=Timedelta("1d"),
+                physical_limits='{"plant/a": [0.0, 100.0]}',
+            ),
+            setup=SetupConfig(debug=True, recovery_path=str(recovery)),
         )
 
         model = load_model(str(recovery), ["plant/a"])
@@ -121,16 +131,19 @@ class TestStartWiresPhysicalLimits:
 
         with caplog.at_level(logging.WARNING, logger="rpc_server"):
             RpcOutlierDetector().start(
-                {"path": "unused.csv", "output": str(tmp_path / "out.json")},
-                io={"in_topics": ["plant/a"], "out_topics": None},
-                model_params={
-                    "threshold": 0.99735,
-                    "t_e": Timedelta("1d"),
-                    "t_a": Timedelta("1d"),
-                    "t_g": Timedelta("1d"),
-                    "physical_limits": '{"plant/a": [0.0, 100.0]}',
-                },
-                setup={"debug": True, "recovery_path": str(recovery)},
+                FileClient(
+                    path="unused.csv",
+                    output=str(tmp_path / "out.json"),
+                ),
+                io=IOConfig(in_topics=["plant/a"], out_topics=None),
+                model_params=ModelConfig(
+                    threshold=0.99735,
+                    t_e=Timedelta("1d"),
+                    t_a=Timedelta("1d"),
+                    t_g=Timedelta("1d"),
+                    physical_limits='{"plant/a": [0.0, 100.0]}',
+                ),
+                setup=SetupConfig(debug=True, recovery_path=str(recovery)),
             )
 
         assert "physical_limits" in caplog.text
@@ -144,15 +157,15 @@ class TestStartDebugGuard:
         """Combining debug mode with an MQTT broker config is rejected."""
         with pytest.raises(ValueError, match="requires a file client"):
             RpcOutlierDetector().start(
-                {"host": "broker", "port": 1883},
-                io={"in_topics": ["plant/a"], "out_topics": None},
-                model_params={
-                    "threshold": 0.99735,
-                    "t_e": Timedelta("1d"),
-                    "t_a": None,
-                    "t_g": None,
-                },
-                setup={"debug": True},
+                MQTTClient(host="broker", port=1883),
+                io=IOConfig(in_topics=["plant/a"], out_topics=None),
+                model_params=ModelConfig(
+                    threshold=0.99735,
+                    t_e=Timedelta("1d"),
+                    t_a=None,
+                    t_g=None,
+                ),
+                setup=SetupConfig(debug=True),
             )
 
 
@@ -180,15 +193,15 @@ class TestStartSkipsBadMessages:
         output = tmp_path / "out.json"
 
         RpcOutlierDetector().start(
-            {"path": "unused.csv", "output": str(output)},
-            io={"in_topics": ["plant/a"], "out_topics": None},
-            model_params={
-                "threshold": 0.99735,
-                "t_e": Timedelta("1d"),
-                "t_a": Timedelta("1d"),
-                "t_g": Timedelta("1d"),
-            },
-            setup={"debug": True},
+            FileClient(path="unused.csv", output=str(output)),
+            io=IOConfig(in_topics=["plant/a"], out_topics=None),
+            model_params=ModelConfig(
+                threshold=0.99735,
+                t_e=Timedelta("1d"),
+                t_a=Timedelta("1d"),
+                t_g=Timedelta("1d"),
+            ),
+            setup=SetupConfig(debug=True),
         )
 
         lines = output.read_text().strip().splitlines()
@@ -229,20 +242,20 @@ class TestStartEmailWithEncryption:
         monkeypatch.setattr(RpcOutlierDetector, "run", fake_run)
 
         RpcOutlierDetector().start(
-            {"path": "unused.csv", "output": str(tmp_path / "out.json")},
-            io={"in_topics": ["plant/a"], "out_topics": None},
-            model_params={
-                "threshold": 0.99735,
-                "t_e": Timedelta("1d"),
-                "t_a": Timedelta("1d"),
-                "t_g": Timedelta("1d"),
-            },
-            setup={"debug": True, "key_path": str(tmp_path / "keys")},
-            email={
-                "sender_email": "sender@example.com",
-                "sender_password": "secret",
-                "recipient_email": "ops@example.com",
-            },
+            FileClient(path="unused.csv", output=str(tmp_path / "out.json")),
+            io=IOConfig(in_topics=["plant/a"], out_topics=None),
+            model_params=ModelConfig(
+                threshold=0.99735,
+                t_e=Timedelta("1d"),
+                t_a=Timedelta("1d"),
+                t_g=Timedelta("1d"),
+            ),
+            setup=SetupConfig(debug=True, key_path=str(tmp_path / "keys")),
+            email=EmailConfig(
+                sender_email="sender@example.com",
+                sender_password="secret",  # noqa: S106
+                recipient_email="ops@example.com",
+            ),
         )
 
         assert received
@@ -270,15 +283,15 @@ class TestStartRecoveredModelParams:
 
     def _start(self, tmp_path: Path, recovery: Path) -> None:
         RpcOutlierDetector().start(
-            {"path": "unused.csv", "output": str(tmp_path / "out.json")},
-            io={"in_topics": ["plant/a"], "out_topics": None},
-            model_params={
-                "threshold": 0.99735,
-                "t_e": Timedelta("1d"),
-                "t_a": Timedelta("1d"),
-                "t_g": Timedelta("1d"),
-            },
-            setup={"debug": True, "recovery_path": str(recovery)},
+            FileClient(path="unused.csv", output=str(tmp_path / "out.json")),
+            io=IOConfig(in_topics=["plant/a"], out_topics=None),
+            model_params=ModelConfig(
+                threshold=0.99735,
+                t_e=Timedelta("1d"),
+                t_a=Timedelta("1d"),
+                t_g=Timedelta("1d"),
+            ),
+            setup=SetupConfig(debug=True, recovery_path=str(recovery)),
         )
 
     def test_start_recovered_params_mismatch_warns(
@@ -360,15 +373,18 @@ class TestStartClosesFiles:
 
         with pytest.raises(RuntimeError, match="boom"):
             RpcOutlierDetector().start(
-                {"path": "unused.csv", "output": str(tmp_path / "out.json")},
-                io={"in_topics": ["plant/a"], "out_topics": None},
-                model_params={
-                    "threshold": 0.99735,
-                    "t_e": Timedelta("1d"),
-                    "t_a": Timedelta("1d"),
-                    "t_g": Timedelta("1d"),
-                },
-                setup={"debug": True},
+                FileClient(
+                    path="unused.csv",
+                    output=str(tmp_path / "out.json"),
+                ),
+                io=IOConfig(in_topics=["plant/a"], out_topics=None),
+                model_params=ModelConfig(
+                    threshold=0.99735,
+                    t_e=Timedelta("1d"),
+                    t_a=Timedelta("1d"),
+                    t_g=Timedelta("1d"),
+                ),
+                setup=SetupConfig(debug=True),
             )
 
         assert opened

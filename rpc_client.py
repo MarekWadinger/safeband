@@ -12,11 +12,11 @@ if __name__ == "__main__":
     config = get_params()
 
     client: RpcOutlierDetector = RpcOutlierDetector()
-    assert config["client"] is not None
+    assert config.client is not None
     client.start(
-        client=config["client"],
-        io=config["io"],
-        model_params=config["model"],
-        setup=config["setup"],
-        email=config["email"],
+        client=config.client,
+        io=config.io,
+        model_params=config.model,
+        setup=config.setup,
+        email=config.email,
     )

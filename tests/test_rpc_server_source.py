@@ -2,7 +2,6 @@
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,10 +10,13 @@ from streamz import Stream
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
 import rpc_server
+from functions.typing_extras import (
+    KafkaClient,
+    MQTTClient,
+    NATSClient,
+    PulsarClient,
+)
 from rpc_server import RpcOutlierDetector
-
-if TYPE_CHECKING:
-    from functions.typing_extras import KafkaClient, NATSClient
 
 
 class TestGetSourcePulsar:
@@ -30,7 +32,7 @@ class TestGetSourcePulsar:
         monkeypatch.setattr(Stream, "from_pulsar", from_pulsar)
 
         source = RpcOutlierDetector().get_source(
-            {"service_url": "pulsar://localhost:6650"},
+            PulsarClient(service_url="pulsar://localhost:6650"),
             ["topic_a"],
             debug=False,
         )
@@ -54,7 +56,7 @@ class TestGetSourcePulsar:
             match="pulsar-client is not installed",
         ):
             RpcOutlierDetector().get_source(
-                {"service_url": "pulsar://localhost:6650"},
+                PulsarClient(service_url="pulsar://localhost:6650"),
                 ["topic_a"],
                 debug=False,
             )
@@ -72,11 +74,11 @@ class TestGetSourceKafka:
         from_kafka = MagicMock(return_value=sentinel)
         monkeypatch.setattr(Stream, "from_kafka", from_kafka)
 
-        # The "group.id" key is extra w.r.t. the KafkaClient TypedDict,
+        # The "group.id" key is extra w.r.t. the KafkaClient model,
         # mirroring how confluent-kafka options arrive from config files.
-        config = cast(
-            "KafkaClient",
-            {"bootstrap_servers": "localhost:9092", "group.id": "my_group"},
+        config = KafkaClient(
+            bootstrap_servers="localhost:9092",
+            **{"group.id": "my_group"},
         )
         source = RpcOutlierDetector().get_source(
             config,
@@ -102,7 +104,7 @@ class TestGetSourceKafka:
         monkeypatch.setattr(Stream, "from_kafka", from_kafka)
 
         RpcOutlierDetector().get_source(
-            {"bootstrap_servers": "localhost:9092"},
+            KafkaClient(bootstrap_servers="localhost:9092"),
             ["topic_a"],
             debug=False,
         )
@@ -124,7 +126,7 @@ class TestGetSourceNats:
         monkeypatch.setattr(Stream, "from_nats", from_nats)
         detector = RpcOutlierDetector()
 
-        config: NATSClient = {"servers": "nats://localhost:4222"}
+        config = NATSClient(servers="nats://localhost:4222")
         source = detector.get_source(config, ["topic_a"], debug=False)
 
         from_nats.assert_called_once_with(
@@ -151,7 +153,7 @@ class TestRawSourceStopDetection:
         detector = RpcOutlierDetector()
 
         source = detector.get_source(
-            {"host": "broker", "port": 1883},
+            MQTTClient(host="broker", port=1883),
             ["topic_a"],
             debug=False,
         )
@@ -177,7 +179,7 @@ class TestRawSourceStopDetection:
         # A bare Stream has no ``stopped`` and no usable upstream chain;
         # passing it proves run() does not probe the wrapped source.
         detector.run(
-            {"host": "broker", "port": 1883},
+            MQTTClient(host="broker", port=1883),
             Stream(),
             pipeline,
             debug=False,

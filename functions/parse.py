@@ -1,5 +1,7 @@
 """Argument parsing and configuration building for the consumer pipeline."""
 
+from __future__ import annotations
+
 from argparse import (
     ArgumentParser,
     FileType,  # ty: ignore[deprecated]
@@ -8,45 +10,46 @@ from argparse import (
 from configparser import ConfigParser
 from os import getenv
 from pathlib import Path
-from types import GenericAlias
-from typing import IO, Any, NotRequired, cast
+from typing import IO, TYPE_CHECKING, Any
 
 from pandas import Timedelta
-from typing_extensions import TypedDict
 
 from functions.typing_extras import (
-    EmailConfig,
+    Config,
     FileClient,
-    IOConfig,
     KafkaClient,
-    ModelConfig,
     MQTTClient,
     NATSClient,
     PulsarClient,
-    SetupConfig,
 )
 
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
-class Config(TypedDict):
-    """Top-level configuration dictionary for the consumer application."""
+# Fields of each config section, used to gather values from CLI args and the
+# config file. Mirrors the (non-client) fields of the Pydantic models.
+_SECTION_FIELDS: dict[str, list[str]] = {
+    "setup": ["recovery_path", "key_path", "debug"],
+    "email": ["sender_email", "sender_password", "recipient_email"],
+    "model": ["threshold", "t_e", "t_a", "t_g", "physical_limits"],
+    "io": ["in_topics", "out_topics"],
+    "file": ["path", "output"],
+    "mqtt": ["host", "port"],
+    "kafka": ["bootstrap_servers"],
+    "pulsar": ["service_url"],
+    "nats": ["servers"],
+}
 
-    setup: SetupConfig
-    email: NotRequired[EmailConfig]
-    model: ModelConfig
-    io: IOConfig
-    file: NotRequired[FileClient]
-    mqtt: NotRequired[MQTTClient]
-    kafka: NotRequired[KafkaClient]
-    pulsar: NotRequired[PulsarClient]
-    nats: NotRequired[NATSClient]
-    client: (
-        FileClient
-        | MQTTClient
-        | KafkaClient
-        | PulsarClient
-        | NATSClient
-        | None
-    )
+# Transport sections, in dispatch precedence order.
+_CLIENTS: list[str] = ["file", "mqtt", "kafka", "pulsar", "nats"]
+
+_CLIENT_MODELS: dict[str, type[BaseModel]] = {
+    "file": FileClient,
+    "mqtt": MQTTClient,
+    "kafka": KafkaClient,
+    "pulsar": PulsarClient,
+    "nats": NATSClient,
+}
 
 
 def get_args() -> Namespace:
@@ -206,198 +209,110 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 
-def get_valid_type(type_: type | GenericAlias | object) -> type | GenericAlias:
-    """Return a valid type from a given type hint.
+def _gather_section(
+    section: str,
+    fields: list[str],
+    args_: dict[str, Any],
+    config_parser: ConfigParser,
+) -> dict[str, Any]:
+    """Merge CLI args and config-file options for a single config section.
 
-    This function takes a type hint and returns a valid Python type that
-    can be used to annotate variables and function return types.
-
-    Args:
-        type_ (type or typing hint): The type hint to be converted to a valid
-        type.
-
-    Returns:
-        type: A valid Python type that can be used for type annotations.
-
-    Raises:
-        ValueError: Provided type hint is not valid or cannot be converted.
-
-    Example:
-        >>> get_valid_type(int)
-        <class 'int'>
-        >>> get_valid_type(float)
-        <class 'float'>
-        >>> get_valid_type(str)
-        <class 'str'>
-        >>> get_valid_type(bool)
-        <class 'bool'>
-        >>> get_valid_type(list[int])
-        list[int]
-        >>> from typing import Union
-        >>> get_valid_type(Union[int, float])
-        <class 'int'>
-        >>> from typing import Optional
-        >>> get_valid_type(Optional[str])
-        <class 'str'>
-        >>> get_valid_type(Union[None, int])
-        <class 'int'>
-        >>> get_valid_type(Union[Timedelta, None])
-        <class 'pandas._libs.tslibs.timedeltas.Timedelta'>
-        >>> get_valid_type(NotRequired[bool])
-        <class 'bool'>
-        >>> get_valid_type(NotRequired[dict[str, int]])
-        dict[str, int]
-        >>> get_valid_type(tuple[int, str])
-        tuple[int, str]
-        >>> get_valid_type(list[Union[int, str]])
-        list[typing.Union[int, str]]
-        >>> get_valid_type(list[NotRequired[Union[int, str]]])
-        list[typing....NotRequired[typing.Union[int, str]]]
-        >>> get_valid_type(None)
-        Traceback (most recent call last):
-        ...
-        ValueError: Invalid type: None
-
-    """
-    if isinstance(type_, (type, GenericAlias)):
-        return type_
-    if hasattr(type_, "__args__"):
-        for arg in cast("tuple[type, ...]", type_.__args__):
-            if arg is type(None):
-                continue
-            try:
-                return get_valid_type(arg)
-            except ValueError:
-                continue
-    msg = f"Invalid type: {type_}"
-    raise ValueError(msg)
-
-
-def _to_bool(value: object) -> bool:
-    """Parse a boolean from a bool or a common string representation.
+    CLI values win; an arg that is ``None`` falls back to the config-file
+    option, then to ``None``. The literal strings ``"None"`` and ``""``
+    coming from a config file are normalised to ``None``.
 
     Args:
-        value (object): A bool (returned as-is) or a string such as
-        "true"/"false", "1"/"0", "yes"/"no" (case-insensitive).
+        section: Section name (for example ``"model"``).
+        fields: Field names belonging to the section.
+        args_: Parsed CLI arguments as a mapping.
+        config_parser: The configuration file parser.
 
     Returns:
-        bool: The parsed boolean value.
-
-    Raises:
-        ValueError: If the value cannot be interpreted as a boolean.
-
-    Example:
-        >>> _to_bool(True)
-        True
-        >>> _to_bool("False")
-        False
-        >>> _to_bool("yes")
-        True
-        >>> _to_bool("0")
-        False
-        >>> _to_bool("maybe")
-        Traceback (most recent call last):
-        ...
-        ValueError: Invalid boolean value: 'maybe'
+        dict: Mapping of field name to its resolved value (or ``None``).
 
     """
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"true", "1", "yes"}:
-            return True
-        if normalized in {"false", "0", "no"}:
-            return False
-    msg = f"Invalid boolean value: {value!r}"
-    raise ValueError(msg)
+    gathered: dict[str, Any] = {}
+    for field in fields:
+        if args_.get(field) is not None:
+            value: Any = args_[field]
+        elif config_parser.has_option(section, field):
+            value = config_parser[section][field]
+        else:
+            value = None
+        if value in ("None", ""):
+            value = None
+        gathered[field] = value
+    return gathered
 
 
 def get_valid_client(config: Config) -> Config:
-    """Check validity of client configuration in the given ``config``.
+    """Resolve the single active transport client in ``config``.
 
-    The 'config' dictionary contains configuration information for different
-    client types such as 'file', 'mqtt', 'kafka', and 'pulsar'. This function
-    checks if one and only one client type is specified, and moves the client
-    configuration into the 'client' key in 'config'.
+    Exactly one fully specified transport section (``file``, ``mqtt``,
+    ``kafka``, ``pulsar`` or ``nats``) must be present; that section is
+    moved into ``config.client``. A section whose required fields are not
+    all specified is treated as absent.
 
     Args:
-        config (Dict): A dictionary containing configuration information fo
-        different client types.
+        config: The configuration whose client sections are inspected.
+
+    Returns:
+        Config: The same configuration with ``client`` set to the resolved
+        transport model.
 
     Raises:
-        ValueError: If multiple or no clients are specified or if the
-        configuration is invalid.
+        ValueError: If multiple clients are fully specified or none is.
 
     Example:
-    >>> config = {
-    ...     "setup": {"recovery_path": "/recovery", "key_path": "/keys"},
-    ...     "model": {"threshold": 0.5, "t_e": "2h", "t_a": None, "t_g": "1h"},
-    ...     "io": {"in_topics": ["t1", "t2"], "out_topics": ["o1"]},
-    ...     "mqtt": {"host": "mqtt-server", "port": 1883},
-    ... }
-    >>> get_valid_client(config)
-    {'setup': {'recovery_path': '/recovery', 'key_path': '/keys'},
-        'model': {'threshold': 0.5, 't_e': '2h', 't_a': None, 't_g': '1h'},
-        'io': {'in_topics': ['t1', 't2'], 'out_topics': ['o1']},
-        'client': {'host': 'mqtt-server', 'port': 1883}}
+    >>> config = build_config(
+    ...     Namespace(host="mqtt-server", port=1883),
+    ...     ConfigParser(),
+    ... )
+    >>> config = get_valid_client(config)
+    >>> config.client
+    MQTTClient(host='mqtt-server', port=1883)
 
     Multiple clients specified:
-    >>> config = {
-    ...     "setup": {"recovery_path": "/recovery", "key_path": "/keys"},
-    ...     "model": {"threshold": 0.5, "t_e": "2h", "t_a": None, "t_g": "1h"},
-    ...     "io": {"in_topics": ["t1", "t2"], "out_topics": ["o1"]},
-    ...     "mqtt": {"host": "mqtt-server", "port": 1883},
-    ...     "kafka": {"bootstrap_servers": "kafka-server"},
-    ... }
+    >>> config = build_config(
+    ...     Namespace(
+    ...         host="mqtt-server", port=1883,
+    ...         bootstrap_servers="kafka-server",
+    ...     ),
+    ...     ConfigParser(),
+    ... )
     >>> get_valid_client(config)
     Traceback (most recent call last):
     ...
     ValueError: Multiple clients specified: ['mqtt', 'kafka']
 
     No valid client specified:
-    >>> config = {
-    ...     "setup": {"recovery_path": "/recovery", "key_path": "/keys"},
-    ...     "model": {"threshold": 0.5, "t_e": "2h", "t_a": None, "t_g": "1h"},
-    ...     "io": {"in_topics": ["t1", "t2"], "out_topics": ["o1"]},
-    ...     "mqtt": {"host": "mqtt-server", "port": None},
-    ... }
+    >>> config = build_config(Namespace(host="mqtt-server"), ConfigParser())
     >>> get_valid_client(config)  # doctest: +ELLIPSIS
     Traceback (most recent call last):
     ...
     ValueError: Specify one of the clients: [...]
 
     """
-    config_ = config.copy()
-    config_dyn: dict[str, Any] = cast("dict[str, Any]", config_)
-    active_clients = []
-    clients = ["file", "mqtt", "kafka", "pulsar", "nats"]
-    for client in clients:
-        if client in config_dyn:
-            missing_args = any(
-                arg is None for arg in config_dyn[client].values()
-            )
-            if missing_args:
-                del config_dyn[client]
-            else:
-                active_clients.append(client)
+    active_clients = [
+        client for client in _CLIENTS if getattr(config, client) is not None
+    ]
     if len(active_clients) > 1:
         msg = f"Multiple clients specified: {active_clients}"
         raise ValueError(msg)
     if len(active_clients) == 0:
-        msg = f"Specify one of the clients: {clients}"
+        msg = f"Specify one of the clients: {_CLIENTS}"
         raise ValueError(msg)
-    if len(active_clients) == 1:
-        config_dyn["client"] = config_dyn.pop(active_clients[0])
-
-    return config_
+    config.client = getattr(config, active_clients[0])
+    return config
 
 
 def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
-    """Build a configuration dictionary from CLI arguments and a config file.
+    """Build and validate a :class:`Config` from CLI args and a config file.
 
-    Constructs a Config following the TypedDict structure, preferring CLI
-    values and falling back to values from config_parser.
+    Values are merged section by section, preferring CLI arguments and
+    falling back to the config file. The resulting nested mapping is then
+    validated into a Pydantic :class:`Config`; a transport client section
+    is only constructed when all of its required fields are present.
 
     Args:
         args (Namespace): Parsed command line arguments.
@@ -405,8 +320,7 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
         configuration file.
 
     Returns:
-        Config: The configuration dictionary representing the application's
-        settings.
+        Config: The validated configuration model.
 
     Example:
     >>> from argparse import Namespace
@@ -415,58 +329,46 @@ def build_config(args: Namespace, config_parser: ConfigParser) -> Config:
     ...     recovery_path='/recovery',
     ...     threshold=0.75,
     ...     in_topics=['topic1', 'topic2'],
-    ...     path='/data/file.txt'
+    ...     path='/data/file.txt',
+    ...     output='/data/out.json',
     ... )
     >>> config_parser = ConfigParser()
     >>> config_parser['setup'] = {'key_path': '/keys', 'debug': 'True'}
     >>> config = build_config(args, config_parser)
-    >>> config['setup']['recovery_path']
+    >>> config.setup.recovery_path
     '/recovery'
-    >>> config['setup']['key_path']
+    >>> config.setup.key_path
     '/keys'
-    >>> config['model']['threshold']
+    >>> config.setup.debug
+    True
+    >>> config.model.threshold
     0.75
-    >>> config['io']['in_topics']
+    >>> config.io.in_topics
     ['topic1', 'topic2']
-    >>> config['file']['path']
+    >>> config.file.path
     '/data/file.txt'
 
     """
-    config_struct = {
-        "setup": SetupConfig,
-        "email": EmailConfig,
-        "model": ModelConfig,
-        "io": IOConfig,
-        "file": FileClient,
-        "mqtt": MQTTClient,
-        "kafka": KafkaClient,
-        "pulsar": PulsarClient,
-        "nats": NATSClient,
-    }
     args_ = vars(args)
-    config: Config = {}  # ty: ignore[missing-typed-dict-key]
-    config_dyn: dict[str, Any] = cast("dict[str, Any]", config)
-    for section, struct in config_struct.items():
-        config_dyn[section] = {}
-        for param, type_ann in struct.__annotations__.items():
-            type_ = cast("type", get_valid_type(type_ann))
-            if args_.get(param) is not None:
-                param_value = args_[param]
-            elif config_parser.has_option(section, param):
-                param_value = config_parser[section][param]
-            else:
-                param_value = None
-
-            if param_value is not None and param_value not in ("None", ""):
-                config_dyn[section][param] = (
-                    _to_bool(param_value)
-                    if type_ is bool
-                    else type_(param_value)
-                )
-            elif param_value is None or param_value in ("None", ""):
-                config_dyn[section][param] = None
-
-    return config
+    raw: dict[str, Any] = {}
+    for section, fields in _SECTION_FIELDS.items():
+        gathered = _gather_section(section, fields, args_, config_parser)
+        if section in _CLIENT_MODELS:
+            # A transport section is only kept when every required field
+            # is specified; partial sections are treated as absent so the
+            # exactly-one-client rule can be enforced downstream.
+            model = _CLIENT_MODELS[section]
+            required = [
+                name
+                for name, info in model.model_fields.items()
+                if info.is_required()
+            ]
+            if any(gathered.get(name) is None for name in required):
+                continue
+        # Drop absent fields (gathered as None) so the model's own field
+        # defaults apply instead of forcing None onto required fields.
+        raw[section] = {k: v for k, v in gathered.items() if v is not None}
+    return Config.model_validate(raw)
 
 
 def get_params() -> Config:  # pragma: no cover

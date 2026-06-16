@@ -7,7 +7,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import IO, cast
+from typing import IO, Any, cast
 
 import pandas as pd
 from paho.mqtt.client import MQTTMessage
@@ -49,7 +49,6 @@ from functions.typing_extras import (
     NATSClient,
     PulsarClient,
     SetupConfig,
-    istypedinstance,
 )
 from functions.utils import common_prefix
 
@@ -68,7 +67,7 @@ _ClientConfig = (
 
 # DEFINITIONS
 def _parse_physical_limits(
-    value: str | dict[str, tuple[float, float]] | None,
+    value: object,
 ) -> dict[str, tuple[float, float]] | None:
     """Parse a physical_limits config entry into per-signal bounds.
 
@@ -86,7 +85,8 @@ def _parse_physical_limits(
         )
         raise TypeError(msg)
     limits: dict[str, tuple[float, float]] = {}
-    for name, bounds in value.items():
+    items = cast("dict[Any, Any]", value).items()
+    for name, bounds in items:
         try:
             phys_low, phys_high = bounds
         except (TypeError, ValueError) as exc:
@@ -120,15 +120,19 @@ def expand_model_params(
         static (low, high) operating bounds.
 
     Examples:
-        >>> *_, limits = expand_model_params({
-        ...     "t_e": pd.Timedelta("1d"),
-        ...     "physical_limits": '{"plant/a": [0.0, 100.0]}',
-        ... })
+        >>> *_, limits = expand_model_params(ModelConfig(
+        ...     t_e=pd.Timedelta("1d"),
+        ...     physical_limits='{"plant/a": [0.0, 100.0]}',
+        ... ))
         >>> limits
         {'plant/a': (0.0, 100.0)}
 
     """
-    threshold = model_params.get("threshold", 0.99735)
+    threshold = (
+        model_params.threshold
+        if model_params.threshold is not None
+        else 0.99735
+    )
 
     def period_to_timedelta(
         period: str | dt.timedelta | pd.Timedelta,
@@ -157,18 +161,15 @@ def expand_model_params(
             raise TypeError(msg)
         return period
 
-    t_e = model_params.get("t_e")
-    if t_e is None:
+    if model_params.t_e is None:
         msg = "t_e cannot be None"
         raise ValueError(msg)
-    t_e = period_to_timedelta(t_e)
-    t_a = cast("pd.Timedelta", model_params.get("t_a", t_e))
-    t_a = period_to_timedelta(t_a)
-    t_g = cast("pd.Timedelta", model_params.get("t_g", t_e))
-    t_g = period_to_timedelta(t_g)
-    physical_limits = _parse_physical_limits(
-        model_params.get("physical_limits"),
-    )
+    t_e = period_to_timedelta(model_params.t_e)
+    t_a_raw = model_params.t_a if model_params.t_a is not None else t_e
+    t_a = period_to_timedelta(t_a_raw)
+    t_g_raw = model_params.t_g if model_params.t_g is not None else t_e
+    t_g = period_to_timedelta(t_g_raw)
+    physical_limits = _parse_physical_limits(model_params.physical_limits)
     return threshold, t_e, t_a, t_g, physical_limits
 
 
@@ -408,17 +409,17 @@ class RpcOutlierDetector:
                 transport key is found in config.
 
         """
-        if istypedinstance(config, FileClient):
+        if isinstance(config, FileClient):
             if debug:
                 source = Stream()
             else:
-                data = pd.read_csv(config.get("path", ""), index_col=0)
+                data = pd.read_csv(config.path, index_col=0)
                 data.index = pd.to_datetime(data.index, utc=True)
                 source = Stream.from_iterable(data.iterrows())
             self._raw_source = source
-        elif istypedinstance(config, MQTTClient):
+        elif isinstance(config, MQTTClient):
             source = Stream.from_mqtt(
-                **config,
+                **config.model_dump(),
                 topic=[(topic, 0) for topic in topics],
             )
             # Capture the raw broker node before wrapping: run() polls
@@ -430,27 +431,27 @@ class RpcOutlierDetector:
                 start={},
                 topics=topics,
             ).filter(_filt, topics)
-        elif istypedinstance(config, KafkaClient):
+        elif isinstance(config, KafkaClient):
             # "detection_service" is only a default: a user-supplied
             # group.id in the config must win.
             source = Stream.from_kafka(
                 topics,
-                {"group.id": "detection_service", **config},
+                {"group.id": "detection_service", **config.model_dump()},
             )
             self._raw_source = source
-        elif istypedinstance(config, PulsarClient):
+        elif isinstance(config, PulsarClient):
             if not _PULSAR_AVAILABLE:
                 msg = "pulsar-client is not installed"
                 raise RuntimeError(msg)
             source = Stream.from_pulsar(
-                config.get("service_url"),
+                config.service_url,
                 topics,
                 subscription_name="detection_service",
             )
             self._raw_source = source
-        elif istypedinstance(config, NATSClient):
+        elif isinstance(config, NATSClient):
             source = Stream.from_nats(
-                servers=config.get("servers"),
+                servers=config.servers,
                 topic=topics,
             )
             # Capture the raw broker node before wrapping: run() polls
@@ -465,8 +466,10 @@ class RpcOutlierDetector:
                 topics=topics,
             ).filter(_filt, topics)
         else:
+            # Unrecognised transport: a runtime configuration error, not a
+            # static type error, so RuntimeError (as before) is preserved.
             msg = f"Wrong client: {config}"
-            raise RuntimeError(msg)
+            raise RuntimeError(msg)  # noqa: TRY004
         return source
 
     def get_sink(
@@ -501,23 +504,23 @@ class RpcOutlierDetector:
             prefix = common_prefix(topics)
             topic = f"{prefix}dynamic_limits"
         logger.info("Sinking to '%s'\n", topic)
-        if istypedinstance(config, FileClient):
-            output_path = Path(config.get("output", ""))
+        if isinstance(config, FileClient):
+            output_path = Path(config.output)
             f = output_path.open("a")
             _exit_stack.callback(f.close)
             detector.sink(self.dump_to_file, f)
-        elif istypedinstance(config, MQTTClient):
+        elif isinstance(config, MQTTClient):
             detector.to_mqtt(
-                **config,
+                **config.model_dump(),
                 topic=prefix,
                 publish_kwargs={"retain": True},
             )
-        elif istypedinstance(config, KafkaClient):
+        elif isinstance(config, KafkaClient):
             detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(
                 topic,
-                config,
+                config.model_dump(),
             )
-        elif istypedinstance(config, PulsarClient):
+        elif isinstance(config, PulsarClient):
             if not _PULSAR_AVAILABLE:
                 msg = "pulsar-client is not installed"
                 raise RuntimeError(msg)
@@ -529,13 +532,13 @@ class RpcOutlierDetector:
                 level_low = PulsarString()
 
             detector.map(lambda x: Example(**x)).to_pulsar(
-                config.get("service_url"),
+                config.service_url,
                 topic,
                 producer_config={"schema": JsonSchema(Example)},
             )
-        elif istypedinstance(config, NATSClient):
+        elif isinstance(config, NATSClient):
             detector.to_nats(
-                servers=config.get("servers"),
+                servers=config.servers,
                 topic=prefix,
             )
 
@@ -559,9 +562,9 @@ class RpcOutlierDetector:
                 combination of debug mode and a remote broker upfront.
 
         """
-        if debug and istypedinstance(config, FileClient):
+        if debug and isinstance(config, FileClient):
             logger.info("=== Debugging started... ===")
-            data = pd.read_csv(cast("FileClient", config)["path"], index_col=0)
+            data = pd.read_csv(config.path, index_col=0)
             data.index = pd.to_datetime(data.index, utc=True)
             for row in data.head().iterrows():
                 source.emit(row)
@@ -608,18 +611,18 @@ class RpcOutlierDetector:
                 requires a file client.
 
         """
-        recovery_path = setup.get("recovery_path", "")
-        key_path = setup.get("key_path", "")
-        debug = setup.get("debug", False)
-        if debug and not istypedinstance(client, FileClient):
+        recovery_path = setup.recovery_path or ""
+        key_path = setup.key_path or ""
+        debug = bool(setup.debug)
+        if debug and not isinstance(client, FileClient):
             msg = (
                 "Debug mode replays a CSV file and requires a file "
                 "client; got a remote broker configuration instead."
             )
             raise ValueError(msg)
 
-        in_topics = io.get("in_topics", [])
-        out_topics = io.get("out_topics", None)
+        in_topics = io.in_topics
+        out_topics = io.out_topics
 
         threshold, t_e, t_a, t_g, physical_limits = expand_model_params(
             model_params,
@@ -685,8 +688,8 @@ class RpcOutlierDetector:
                 .map(decode_data)
             )
         detector = self.get_sink(client, in_topics, detector, out_topics)
-        if email is not None and email.get("sender_email") is not None:
-            email_client = EmailClient(**email)
+        if email is not None and email.sender_email is not None:
+            email_client = EmailClient(**email.model_dump())
             plain.sliding_window(2).sink(
                 self.send_anomaly_email,
                 email_client,
