@@ -46,8 +46,15 @@
 \usepackage{algorithmic}
 %% The images
 \usepackage{graphicx}
-%% Verbatim with URL-sensitive line breaks
+%% Verbatim with URL-sensitive line breaks.
 \usepackage{url}
+%% Render ~ in URLs (e.g. the author homepage) as a full-size tilde
+%% sitting on the math axis -- vertically centered -- instead of the
+%% url package's small raised default.
+\makeatletter
+\def\UrlTildeSpecial{\do\~{\hbox{\m@th$\sim$}}}
+\let\Url@force@Tilde\UrlTildeSpecial
+\makeatother
 % upright sub-index
 \newcommand{\ui}[2]{#1 _{\text{#2}}}
 % upright sub-index with variable
@@ -79,8 +86,7 @@
     \author[aff1]{Marek Wadinger\corref{cor1}}
     \ead{marek.wadinger@stuba.sk}
     \cortext[cor1]{\textit{Phone numbers:} +421 902 810 324 (Marek Wadinger)}
-    % TODO: Center the tilde vertically
-    % \ead[url]{uiam.sk/~wadinger}
+    \ead[url]{uiam.sk/~wadinger}
 
     \author[aff1]{Michal Kvasnica}
     \ead{michal.kvasnica@stuba.sk}
