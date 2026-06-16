@@ -1,3 +1,12 @@
+## 2.4.3 (2026-06-16)
+
+### Fix
+
+- harden recovery model load against pickle-RCE (perms + HMAC)
+- sanitize feature names before MQTT topic/NATS subject interpolation
+- redact decrypted payloads from INFO logs and resolve key_path
+- write RSA private keys 0600 and reject key_path traversal
+
 ## 2.4.2 (2026-06-16)
 
 ### Refactor
