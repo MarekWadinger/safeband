@@ -1,3 +1,15 @@
+## 2.4.1 (2026-06-16)
+
+### Fix
+
+- unify dynamic-limit tuple order
+- stop nulling grace_period during scoring
+- default t_a to t_e/4 per the paper
+- evict timedelta changepoint buffer by time
+- guard legacy pickles without protection state
+- exclude frozen residuals from fault baselines
+- floor Reunanen calibration patience
+
 ## 2.4.0 (2026-06-16)
 
 ### Feat
