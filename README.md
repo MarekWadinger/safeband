@@ -47,8 +47,13 @@ publish-subscribe services:
 * [**MQTT**](https://mqtt.org)
 * [**Apache Kafka**](https://kafka.apache.org)
 * [**Apache Pulsar**](https://pulsar.apache.org)
+* [**NATS**](https://nats.io)
 * Streamed [**DataFrame**](https://pandas.pydata.org)
-* TODO: [**NATS**](https://nats.io)
+
+NATS is a first-class transport: configure a `[nats]` section with a
+`servers` URL (for example `nats://localhost:4222`; comma-separate the
+value for a cluster) to source feature subjects and sink dynamic limits,
+exactly like MQTT.
 
 **NOTE**: Messaging can be **signed** and **encrypted** for most of the
 services. If you find any related bugs, feel free to

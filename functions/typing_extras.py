@@ -41,6 +41,18 @@ class PulsarClient(TypedDict):
     service_url: str
 
 
+class NATSClient(TypedDict):
+    """NATS client connection parameters.
+
+    The ``servers`` field holds one or more NATS URLs (for example
+    ``nats://localhost:4222``). Multiple servers may be supplied as a
+    single comma-separated string; the source and sink split it into a
+    ``list[str]`` before handing it to ``nats.connect``.
+    """
+
+    servers: str
+
+
 class IOConfig(TypedDict):
     """Input and output topic names for the messaging pipeline."""
 
