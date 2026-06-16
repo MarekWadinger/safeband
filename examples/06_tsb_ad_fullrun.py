@@ -35,6 +35,7 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 import sys
 import time
@@ -182,9 +183,24 @@ def stream_scores(
             if columns is not None
             else float(row[0])
         )
-        raw.append(model.score_one(x))
-        preds.append(int(model.predict_one(x)))
-        model.learn_one(x)
+        # river's Gaussian can produce a complex sigma when its running
+        # variance dips slightly negative numerically; neutralise such a
+        # point (and any non-finite score) instead of failing the whole
+        # series, which would otherwise spuriously score it zero.
+        try:
+            score_val = float(model.score_one(x))
+            if not np.isfinite(score_val):
+                score_val = 0.5
+        except (TypeError, ValueError):
+            score_val = 0.5
+        try:
+            pred_val = int(model.predict_one(x))
+        except (TypeError, ValueError):
+            pred_val = 0
+        raw.append(score_val)
+        preds.append(pred_val)
+        with contextlib.suppress(TypeError, ValueError):
+            model.learn_one(x)
     runtime = time.perf_counter() - start
     score = 2 * np.abs(np.asarray(raw, dtype=float) - 0.5)
     return score, np.asarray(preds, dtype=bool), runtime
@@ -206,9 +222,24 @@ def stream_reunanen(
     start = time.perf_counter()
     for row in data:
         x = {name: float(row[j]) for j, name in enumerate(names)}
-        raw.append(model.score_one(x))
-        preds.append(int(model.predict_one(x)))
-        model.learn_one(x)
+        # river's Gaussian can produce a complex sigma when its running
+        # variance dips slightly negative numerically; neutralise such a
+        # point (and any non-finite score) instead of failing the whole
+        # series, which would otherwise spuriously score it zero.
+        try:
+            score_val = float(model.score_one(x))
+            if not np.isfinite(score_val):
+                score_val = 0.5
+        except (TypeError, ValueError):
+            score_val = 0.5
+        try:
+            pred_val = int(model.predict_one(x))
+        except (TypeError, ValueError):
+            pred_val = 0
+        raw.append(score_val)
+        preds.append(pred_val)
+        with contextlib.suppress(TypeError, ValueError):
+            model.learn_one(x)
     runtime = time.perf_counter() - start
     return np.asarray(raw, dtype=float), np.asarray(preds, dtype=bool), runtime
 
