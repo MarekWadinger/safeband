@@ -1,3 +1,9 @@
+## 2.3.1 (2026-06-16)
+
+### Fix
+
+- pin bayes_opt <3 and drop stale 3.x type-ignore directives
+
 ## 2.3.0 (2026-06-12)
 
 ### Feat
