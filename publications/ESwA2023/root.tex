@@ -46,10 +46,15 @@
 \usepackage{algorithmic}
 %% The images
 \usepackage{graphicx}
-%% Verbatim with URL-sensitive line breaks. The 'lowtilde' option
-%% renders ~ as a vertically centered tilde (e.g. in author URLs)
-%% rather than the default raised diacritic.
-\usepackage[lowtilde]{url}
+%% Verbatim with URL-sensitive line breaks.
+\usepackage{url}
+%% Render ~ in URLs (e.g. the author homepage) as a full-size tilde
+%% sitting on the math axis -- vertically centered -- instead of the
+%% url package's small raised default.
+\makeatletter
+\def\UrlTildeSpecial{\do\~{\hbox{\m@th$\sim$}}}
+\let\Url@force@Tilde\UrlTildeSpecial
+\makeatother
 % upright sub-index
 \newcommand{\ui}[2]{#1 _{\text{#2}}}
 % upright sub-index with variable
