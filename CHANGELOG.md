@@ -1,3 +1,11 @@
+## 2.4.2 (2026-06-16)
+
+### Refactor
+
+- accept physical_limits loosely in ModelConfig
+- dispatch transports via isinstance on Pydantic models
+- model config with Pydantic v2
+
 ## 2.4.1 (2026-06-16)
 
 ### Fix
