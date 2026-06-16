@@ -264,8 +264,8 @@ class TestPatienceFloor:
     def test_wide_input_keeps_patience_at_least_one(self) -> None:
         """A high-dimensional input cannot drive M*decmin/d below 1."""
         # M*decmin = 5 here; with d=40 features the raw value 5/40 = 0.125
-        # would end calibration after a single point. The floor keeps it
-        # at >= 1.
+        # would end calibration after a single point. The floor keeps
+        # patience at one or greater.
         scorer = ReunanenScorer(n_hidden=3, M=500, decmin=0.01, seed=0)
         d = 40
         x = {f"f{i}": float(i % 3) for i in range(d)}
