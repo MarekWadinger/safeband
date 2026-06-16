@@ -15,7 +15,7 @@ resolution-markers = [
 
 [[package]]
 name = "adaptive-interpretable-ad"
-version = "2.2.4"
+version = "2.3.0"
 source = { virtual = "." }
 dependencies = [
     { name = "cryptography" },
@@ -89,7 +89,7 @@ dev = [
     { name = "ty", specifier = ">=0.0.48" },
 ]
 example = [
-    { name = "bayesian-optimization", specifier = ">=2.0.4" },
+    { name = "bayesian-optimization", specifier = ">=2.0.4,<3" },
     { name = "numpy", specifier = ">=2.3.2" },
 ]
 
