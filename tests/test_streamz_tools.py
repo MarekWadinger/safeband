@@ -13,7 +13,7 @@ sys.path.insert(1, str(Path(__file__).parent.parent))
 
 # Importing registers the custom ``map`` operator on Stream.
 import functions.streamz_tools  # noqa: F401
-from functions.streamz_tools import _safe_subject_token, to_mqtt
+from functions.streamz_tools import _fan_out, _safe_subject_token, to_mqtt
 
 
 class TestSafeSubjectToken:
@@ -31,6 +31,66 @@ class TestSafeSubjectToken:
         """MQTT wildcards and MQTT/NATS separators are rejected."""
         with pytest.raises(ValueError, match="Unsafe subject token"):
             _safe_subject_token(bad)
+
+
+class TestFanOut:
+    """Shared dict fan-out is the single source of truth for both sinks."""
+
+    @pytest.mark.parametrize(
+        ("x", "expected"),
+        [
+            (
+                {"anomaly": 1, "level_high": 0.5, "level_low": -0.5},
+                [
+                    ("tanomaly", 1),
+                    ("t_DOL_high", 0.5),
+                    ("t_DOL_low", -0.5),
+                ],
+            ),
+            (
+                {
+                    "anomaly": 1,
+                    "level_high": {"a": 0.5, "b": 0.6},
+                    "level_low": {"a": -0.5, "b": -0.4},
+                    "root_cause": "b",
+                },
+                [
+                    ("tanomaly", 1),
+                    ("a_DOL_high", 0.5),
+                    ("a_DOL_low", -0.5),
+                    ("a_root_cause", 0),
+                    ("b_DOL_high", 0.6),
+                    ("b_DOL_low", -0.4),
+                    ("b_root_cause", 1),
+                ],
+            ),
+        ],
+    )
+    def test_fan_out_subjects_and_payloads(
+        self,
+        x: dict,
+        expected: list[tuple[str, object]],
+    ) -> None:
+        """Scalar and per-signal limits fan out to the expected messages."""
+        publish = MagicMock()
+
+        _fan_out(publish, "t", x)
+
+        calls = [(c.args[0], c.args[1]) for c in publish.call_args_list]
+        assert calls == expected
+
+    def test_fan_out_applies_sanitization(self) -> None:
+        """An unsafe per-signal name is rejected by the shared sanitizer."""
+        publish = MagicMock()
+        x = {
+            "anomaly": 1,
+            "level_high": {"a/b": 0.5},
+            "level_low": {"a/b": -0.5},
+            "root_cause": "a/b",
+        }
+
+        with pytest.raises(ValueError, match="Unsafe subject token"):
+            _fan_out(publish, "t", x)
 
 
 def _reciprocal(x: int) -> float:
