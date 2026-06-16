@@ -1,0 +1,6 @@
+type,precision,recall,f1,support,delay_median,delay_p90
+normal,0.938,0.938,0.938,80,,
+bias,0.667,0.4,0.5,5,234.5,247.7
+drift,0.571,0.8,0.667,5,80.0,134.0
+accuracy_loss,0.8,0.8,0.8,5,4.0,5.2
+freezing,1.0,1.0,1.0,5,25.0,25.0
