@@ -12,7 +12,7 @@ from human_security import HumanRSA
 
 from functions.encryption import init_rsa_security, verify_and_decrypt_data
 from functions.parse import get_params
-from functions.typing_extras import FileClient, MQTTClient, istypedinstance
+from functions.typing_extras import FileClient, MQTTClient
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ def query_file(config: FileClient, **kwargs: HumanRSA | None) -> None:
     """
     receiver = kwargs.get("receiver")
     # Load the JSON file as a list of dictionaries
-    with Path(config.get("output", "")).open(encoding="utf-8") as f:
+    with Path(config.output).open(encoding="utf-8") as f:
         data: list[dict[str, Any]] = [json.loads(line) for line in f]
 
     # Convert the time strings to datetime objects
@@ -128,7 +128,7 @@ def query_mqtt(config: MQTTClient) -> mqtt.Client:
     client.on_message = on_message
 
     # Connect to the MQTT broker
-    client.connect(config["host"], PORT, 60)
+    client.connect(config.host, PORT, 60)
     return client
 
 
@@ -137,12 +137,12 @@ if __name__ == "__main__":
     config = get_params()
 
     receiver: HumanRSA | None = None
-    if config["setup"].get("key_path"):
-        _, receiver = init_rsa_security(config["setup"]["key_path"])
+    if config.setup.key_path:
+        _, receiver = init_rsa_security(config.setup.key_path)
 
-    client = config["client"]
-    if istypedinstance(cast("FileClient", client), FileClient):
-        query_file(cast("FileClient", client), receiver=receiver)
-    elif istypedinstance(cast("MQTTClient", client), MQTTClient):
-        client = query_mqtt(cast("MQTTClient", client))
-        client.loop_forever()
+    client = config.client
+    if isinstance(client, FileClient):
+        query_file(client, receiver=receiver)
+    elif isinstance(client, MQTTClient):
+        mqtt_client = query_mqtt(client)
+        mqtt_client.loop_forever()
