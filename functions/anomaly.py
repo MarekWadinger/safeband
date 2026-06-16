@@ -888,7 +888,11 @@ class ConditionalGaussianScorer(GaussianScorer):
 
     Parameters
     ----------
-        threshold (float): Anomaly threshold.
+        threshold (float): Two-sided probability threshold (the paper's
+        T). The per-tail significance is derived as
+        alpha equals one minus threshold, divided by two, splitting the
+        complementary tail mass symmetrically across the lower and upper
+        tails of the conditional per-signal test.
         window_size (int or None): Size of the rolling window.
         period (int or None): Time period for time rolling.
         grace_period (int): Grace period before scoring starts.

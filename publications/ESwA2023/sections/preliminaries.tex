@@ -127,20 +127,20 @@ In empirical fields like machine learning, the three-sigma rule ($3\sigma$) prov
 
 The \(3\sigma\) rule establishes the probability that any sample \(x_a\) of a random vector \({X}\) falls within a given CDF over a semi-closed interval as the distance from the conditional mean \(\mu_{a \mid \boldsymbol{b}} \) of 3 conditional variances \(\sigma_{a \mid \boldsymbol{b}}^2\) and gives an approximate value of $q$ as
 \begin{equation}
-  q=P\{|x_a-\mu_{a \mid \boldsymbol{b}} |<3\sigma_{a \mid \boldsymbol{b}}^2\}=0.99735
+  q=P\{|x_a-\mu_{a \mid \boldsymbol{b}} |<3\sigma_{a \mid \boldsymbol{b}}\}=0.99735
   \text{.}\label{eq:q}
 \end{equation}
 
 Utilizing a probabilistic model of normal behavior, we can determine threshold values ${\ui{x}{l}}$ and ${\ui{x}{u}}$ corresponding to the closed interval of the CDF where this probability is established. The inversion of Equation \eqref{eq:cdf} facilitates this calculation, yielding:
 
 \begin{equation}
-  {\ui{x}{l}} = F((1 - P\{|x_a-\mu_{a \mid \boldsymbol{b}}|<3\sigma_{a \mid \boldsymbol{b}}^2\}); \mu_{a \mid \boldsymbol{b}}, \sigma_{a \mid \boldsymbol{b}}^2)^{-1}\text{,}\label{eq:thresh_low}
+  {\ui{x}{l}} = F((1 - P\{|x_a-\mu_{a \mid \boldsymbol{b}}|<3\sigma_{a \mid \boldsymbol{b}}\}); \mu_{a \mid \boldsymbol{b}}, \sigma_{a \mid \boldsymbol{b}}^2)^{-1}\text{,}\label{eq:thresh_low}
 \end{equation}
 
 for the lower limit, and
 
 \begin{equation}
-  {\ui{x}{u}} = F((P\{|x_a-\mu_{a \mid \boldsymbol{b}}|<3\sigma_{a \mid \boldsymbol{b}}^2\}); \mu_{a \mid \boldsymbol{b}}, \sigma_{a \mid \boldsymbol{b}}^2)^{-1}\text{,}\label{eq:thresh_high}
+  {\ui{x}{u}} = F((P\{|x_a-\mu_{a \mid \boldsymbol{b}}|<3\sigma_{a \mid \boldsymbol{b}}\}); \mu_{a \mid \boldsymbol{b}}, \sigma_{a \mid \boldsymbol{b}}^2)^{-1}\text{,}\label{eq:thresh_high}
 \end{equation}
 
 for the upper limit. These lower and upper limits together form vectors $\boldsymbol{\ui{x}{l}}$ and $\boldsymbol{\ui{x}{u}}$, respectively, defining the region of normal system operation. This region is conceptualized as a hypercube in the feature space, with each dimension bounded by the corresponding feature limits, as computed using Equations \eqref{eq:thresh_low} and \eqref{eq:thresh_high} for all $a = 1,...,k;~ \boldsymbol{b} = \{1, 2, \ldots, k\}$ where $a \notin \boldsymbol{b}$. The approximation of a confidence ellipse as a hypercube can be employed to represent the region of normal system operation for individual variables of a multivariate system, rendering it as an aid for visual representation.
