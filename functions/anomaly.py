@@ -1342,13 +1342,13 @@ class ConditionalGaussianScorer(GaussianScorer):
         self,
         x: dict[str, float] | None = None,
     ) -> dict[str, tuple[float, float]]:
-        """Return per-signal (lower, upper) limits keyed by feature name.
+        """Return per-signal (upper, lower) limits keyed by feature name.
 
         Public view of the dynamic operating limits computed from the
         conditional moments — the paper's dynamic signal limits
-        diagnostic. The values agree with ``limit_one``, which returns
-        the same limits grouped as (upper, lower) dicts instead, and
-        are clipped into any configured per-feature ``physical_limits``.
+        diagnostic. The tuple order matches ``limit_one`` exactly:
+        ``(upper, lower)``. The limits are clipped into any configured
+        per-feature ``physical_limits``.
 
         Examples:
         --------
@@ -1361,8 +1361,8 @@ class ConditionalGaussianScorer(GaussianScorer):
         ...           {"a": 0.5, "b": 2.}]:
         ...     scorer = scorer.learn_one(x)
         >>> scorer.get_limits({"a": 1., "b": 2.})
-        {'a': (np.float64(-0.001...), np.float64(1.501...)),
-         'b': (np.float64(0.198...), np.float64(2.801...))}
+        {'a': (np.float64(1.501...), np.float64(-0.001...)),
+         'b': (np.float64(2.801...), np.float64(0.198...))}
         """
         ths, tls = self.limit_one(x)
-        return {key: (tls[key], ths[key]) for key in ths}
+        return {key: (ths[key], tls[key]) for key in ths}

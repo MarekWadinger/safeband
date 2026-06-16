@@ -437,15 +437,15 @@ class TestGetLimits:
     """Public per-signal dynamic limits keyed by feature name."""
 
     def test_keys_and_values_match_limit_one(self) -> None:
-        """get_limits regroups limit_one's (upper, lower) per feature."""
+        """get_limits and limit_one agree on the (upper, lower) order."""
         scorer = make_conditional_scorer()
         x = {"a": 0.4, "b": 0.5}
         ths, tls = scorer.limit_one(x)
         limits = scorer.get_limits(x)
         assert set(limits) == set(ths) == set(tls)
-        for key, (lower, upper) in limits.items():
-            assert lower == tls[key]
+        for key, (upper, lower) in limits.items():
             assert upper == ths[key]
+            assert lower == tls[key]
             assert lower < upper
 
     def test_unfitted_scorer_returns_nan_limits(self) -> None:
@@ -637,8 +637,9 @@ class TestPhysicalLimitsConditional:
         x = {"a": 0.4, "b": 0.5}
         free_limits = free.get_limits(x)
         limits = bounded.get_limits(x)
-        assert limits["b"][0] == max(free_limits["b"][0], 0.3)
-        assert limits["b"][1] == min(free_limits["b"][1], 0.6)
+        # get_limits returns (upper, lower), matching limit_one.
+        assert limits["b"][0] == min(free_limits["b"][0], 0.6)
+        assert limits["b"][1] == max(free_limits["b"][1], 0.3)
         assert limits["a"] == free_limits["a"]
 
     def test_learning_exclusion_flag(self) -> None:
