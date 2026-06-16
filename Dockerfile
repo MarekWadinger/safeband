@@ -33,8 +33,13 @@ RUN apt-get -qq update && apt-get install -y git curl
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="${PATH}:/root/.cargo/bin"
 
-# Install the project's dependencies using the lockfile and settings
-# TODO: Add comments on mount types and why we use them
+# Install the project's dependencies using the lockfile and settings.
+# Mount types keep the dependency layer fast and lean:
+#  - cache mount: persists uv's download/build cache across builds, so
+#    unchanged wheels are not re-downloaded or re-compiled.
+#  - bind mounts: expose uv.lock and pyproject.toml to the sync without
+#    COPYing them into this layer, so editing project source does not
+#    invalidate the cached dependency layer.
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
