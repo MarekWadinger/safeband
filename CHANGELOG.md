@@ -1,3 +1,9 @@
+## 2.4.4 (2026-06-16)
+
+### Fix
+
+- verify signature over ciphertext before decrypting (format v2)
+
 ## 2.4.3 (2026-06-16)
 
 ### Fix
