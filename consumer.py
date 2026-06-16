@@ -10,7 +10,11 @@ from typing import Any, cast
 import paho.mqtt.client as mqtt
 from human_security import HumanRSA
 
-from functions.encryption import init_rsa_security, verify_and_decrypt_data
+from functions.encryption import (
+    init_rsa_security,
+    resolve_key_path,
+    verify_and_decrypt_data,
+)
 from functions.parse import get_params
 from functions.typing_extras import FileClient, MQTTClient
 
@@ -54,17 +58,27 @@ def on_message(
     """
     receiver = getattr(userdata, "receiver", None)
     if receiver is not None:
-        item = verify_and_decrypt_data(
+        decoded = verify_and_decrypt_data(
             json.loads(msg.payload.decode()),
             receiver,
         )
-        item = json.dumps(item)
+        item = json.dumps(decoded)
+        field_count = len(decoded)
     else:
         item = msg.payload.decode()
+        field_count = None
     t = dt.datetime.fromtimestamp(msg.timestamp, tz=dt.UTC).replace(
         microsecond=0,
     )
-    logger.info("Received message at %s: %s", t, item)
+    # Log only metadata at INFO; the full decrypted payload may carry
+    # sensitive values, so it is emitted at DEBUG instead.
+    logger.info(
+        "Received message at %s on %s (%s fields)",
+        t,
+        msg.topic,
+        field_count if field_count is not None else "n/a",
+    )
+    logger.debug("Message payload at %s: %s", t, item)
 
 
 def query_file(config: FileClient, **kwargs: HumanRSA | None) -> None:
@@ -107,7 +121,17 @@ def query_file(config: FileClient, **kwargs: HumanRSA | None) -> None:
             closest_item = item
             break
 
-    logger.info("%s", closest_item)
+    # Log only metadata at INFO; the full (possibly decrypted) entry may
+    # carry sensitive values, so it is emitted at DEBUG instead.
+    if closest_item is not None:
+        logger.info(
+            "Closest entry at %s (%s fields)",
+            closest_item["time"],
+            len(closest_item),
+        )
+    else:
+        logger.info("No entry at or before now.")
+    logger.debug("Closest entry payload: %s", closest_item)
 
 
 def query_mqtt(config: MQTTClient) -> mqtt.Client:
@@ -138,7 +162,8 @@ if __name__ == "__main__":
 
     receiver: HumanRSA | None = None
     if config.setup.key_path:
-        _, receiver = init_rsa_security(config.setup.key_path)
+        safe_key_path = resolve_key_path(config.setup.key_path)
+        _, receiver = init_rsa_security(str(safe_key_path))
 
     client = config.client
     if isinstance(client, FileClient):
