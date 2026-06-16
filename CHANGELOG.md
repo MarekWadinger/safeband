@@ -1,3 +1,9 @@
+## 2.4.5 (2026-06-16)
+
+### Refactor
+
+- extract shared dict fan-out helper for MQTT/NATS sinks
+
 ## 2.4.4 (2026-06-16)
 
 ### Fix
