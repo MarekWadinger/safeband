@@ -3,7 +3,6 @@
 import json
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,16 +11,14 @@ from streamz import Stream
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
 import rpc_server
+from functions.typing_extras import (
+    FileClient,
+    KafkaClient,
+    MQTTClient,
+    NATSClient,
+    PulsarClient,
+)
 from rpc_server import RpcOutlierDetector
-
-if TYPE_CHECKING:
-    from functions.typing_extras import (
-        FileClient,
-        KafkaClient,
-        MQTTClient,
-        NATSClient,
-        PulsarClient,
-    )
 
 
 class TestDumpToFile:
@@ -46,7 +43,7 @@ class TestGetSinkFile:
     def test_file_sink_appends_json_lines(self, tmp_path: Path) -> None:
         """Emitted results are appended to the output file as JSON."""
         output = tmp_path / "out.json"
-        config: FileClient = {"path": "unused.csv", "output": str(output)}
+        config = FileClient(path="unused.csv", output=str(output))
         detector = Stream()
 
         RpcOutlierDetector().get_sink(config, ["plant/a"], detector)
@@ -66,7 +63,7 @@ class TestGetSinkMqtt:
         """The MQTT topic prefix is derived from the input topics."""
         to_mqtt = MagicMock()
         monkeypatch.setattr(Stream, "to_mqtt", to_mqtt)
-        config: MQTTClient = {"host": "broker", "port": 1883}
+        config = MQTTClient(host="broker", port=1883)
 
         RpcOutlierDetector().get_sink(
             config,
@@ -88,7 +85,7 @@ class TestGetSinkMqtt:
         """Configured out_topics override the input-derived prefix."""
         to_mqtt = MagicMock()
         monkeypatch.setattr(Stream, "to_mqtt", to_mqtt)
-        config: MQTTClient = {"host": "broker", "port": 1883}
+        config = MQTTClient(host="broker", port=1883)
 
         RpcOutlierDetector().get_sink(
             config,
@@ -115,7 +112,7 @@ class TestGetSinkNats:
         """The NATS subject prefix is derived from the input topics."""
         to_nats = MagicMock()
         monkeypatch.setattr(Stream, "to_nats", to_nats)
-        config: NATSClient = {"servers": "nats://localhost:4222"}
+        config = NATSClient(servers="nats://localhost:4222")
 
         RpcOutlierDetector().get_sink(
             config,
@@ -135,7 +132,7 @@ class TestGetSinkNats:
         """Configured out_topics override the input-derived prefix."""
         to_nats = MagicMock()
         monkeypatch.setattr(Stream, "to_nats", to_nats)
-        config: NATSClient = {"servers": "nats://localhost:4222"}
+        config = NATSClient(servers="nats://localhost:4222")
 
         RpcOutlierDetector().get_sink(
             config,
@@ -160,7 +157,7 @@ class TestGetSinkKafka:
         """Without out_topics, the sink topic comes from the input prefix."""
         to_kafka = MagicMock()
         monkeypatch.setattr(Stream, "to_kafka", to_kafka)
-        config: KafkaClient = {"bootstrap_servers": "localhost:9092"}
+        config = KafkaClient(bootstrap_servers="localhost:9092")
 
         RpcOutlierDetector().get_sink(
             config,
@@ -168,7 +165,10 @@ class TestGetSinkKafka:
             Stream(),
         )
 
-        to_kafka.assert_called_once_with("plant/dynamic_limits", config)
+        to_kafka.assert_called_once_with(
+            "plant/dynamic_limits",
+            {"bootstrap_servers": "localhost:9092"},
+        )
 
     def test_kafka_topic_honors_out_topics(
         self,
@@ -177,7 +177,7 @@ class TestGetSinkKafka:
         """The first configured out_topic names the Kafka sink topic."""
         to_kafka = MagicMock()
         monkeypatch.setattr(Stream, "to_kafka", to_kafka)
-        config: KafkaClient = {"bootstrap_servers": "localhost:9092"}
+        config = KafkaClient(bootstrap_servers="localhost:9092")
 
         RpcOutlierDetector().get_sink(
             config,
@@ -186,7 +186,10 @@ class TestGetSinkKafka:
             out_topics=["custom/limits"],
         )
 
-        to_kafka.assert_called_once_with("custom/limits", config)
+        to_kafka.assert_called_once_with(
+            "custom/limits",
+            {"bootstrap_servers": "localhost:9092"},
+        )
 
     def test_kafka_topic_honors_out_topics_string(
         self,
@@ -195,7 +198,7 @@ class TestGetSinkKafka:
         """A single out_topic configured as a plain string is honored."""
         to_kafka = MagicMock()
         monkeypatch.setattr(Stream, "to_kafka", to_kafka)
-        config: KafkaClient = {"bootstrap_servers": "localhost:9092"}
+        config = KafkaClient(bootstrap_servers="localhost:9092")
 
         RpcOutlierDetector().get_sink(
             config,
@@ -204,7 +207,10 @@ class TestGetSinkKafka:
             out_topics="custom/limits",
         )
 
-        to_kafka.assert_called_once_with("custom/limits", config)
+        to_kafka.assert_called_once_with(
+            "custom/limits",
+            {"bootstrap_servers": "localhost:9092"},
+        )
 
 
 class TestGetSinkPulsar:
@@ -217,7 +223,7 @@ class TestGetSinkPulsar:
         """A PulsarClient config dispatches to Stream.to_pulsar."""
         to_pulsar = MagicMock()
         monkeypatch.setattr(Stream, "to_pulsar", to_pulsar)
-        config: PulsarClient = {"service_url": "pulsar://localhost:6650"}
+        config = PulsarClient(service_url="pulsar://localhost:6650")
 
         RpcOutlierDetector().get_sink(config, ["plant/a"], Stream())
 
@@ -239,7 +245,7 @@ class TestGetSinkPulsar:
             match="pulsar-client is not installed",
         ):
             RpcOutlierDetector().get_sink(
-                {"service_url": "pulsar://localhost:6650"},
+                PulsarClient(service_url="pulsar://localhost:6650"),
                 ["plant/a"],
                 Stream(),
             )

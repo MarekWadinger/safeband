@@ -7,6 +7,7 @@ import pytest
 from pandas import Timedelta
 
 from functions.parse import build_config, get_valid_client
+from functions.typing_extras import MQTTClient
 
 
 class TestBuildConfigDebug:
@@ -73,7 +74,7 @@ class TestGetValidClient:
             ConfigParser(),
         )
         config = get_valid_client(config)
-        assert config.client is not None
+        assert isinstance(config.client, MQTTClient)
         assert config.client.host == "broker"
 
     def test_multiple_clients_raise(self) -> None:

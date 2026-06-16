@@ -13,8 +13,6 @@ import pytest
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from typing import TYPE_CHECKING
-
 from consumer import on_message, query_file
 from functions.encryption import (
     decode_data,
@@ -22,10 +20,8 @@ from functions.encryption import (
     sign_data,
 )
 from functions.model_persistence import load_model, save_model
+from functions.typing_extras import FileClient
 from functions.utils import common_prefix
-
-if TYPE_CHECKING:
-    from functions.typing_extras import FileClient
 
 
 class TestConsumer:
@@ -34,10 +30,10 @@ class TestConsumer:
     def setup_class(self) -> None:
         """Create receiver keys and write encrypted message to output file."""
         self.parent_path = Path(__file__).parent
-        self.config: FileClient = {
-            "path": "",
-            "output": str(self.parent_path / "test.json"),
-        }
+        self.config: FileClient = FileClient(
+            path="",
+            output=str(self.parent_path / "test.json"),
+        )
         self.args = argparse.Namespace()
         self.args.receiver = HumanRSA()
         self.args.receiver.generate()
@@ -48,12 +44,12 @@ class TestConsumer:
         ciphertext = encrypt_data(signed_msg, self.args.receiver)
         ciphertext = decode_data(ciphertext)
         self.encrypted_msg = json.dumps(ciphertext)
-        with Path(self.config["output"]).open("w") as f:
+        with Path(self.config.output).open("w") as f:
             json.dump(ciphertext, f)
 
     def teardown_class(self) -> None:
         """Remove the temporary output JSON file."""
-        output_path = Path(self.config["output"])
+        output_path = Path(self.config.output)
         if output_path.exists():
             output_path.unlink()
 
@@ -101,7 +97,7 @@ class TestConsumerPlaintext:
         """A plaintext output file is queried without any key configured."""
         output = tmp_path / "out.json"
         output.write_text(json.dumps({"time": "2022-01-01 00:00:00"}) + "\n")
-        config: FileClient = {"path": "", "output": str(output)}
+        config: FileClient = FileClient(path="", output=str(output))
 
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(config)
@@ -116,7 +112,7 @@ class TestConsumerPlaintext:
         """An explicit receiver=None must not attempt decryption."""
         output = tmp_path / "out.json"
         output.write_text(json.dumps({"time": "2022-01-01 00:00:00"}) + "\n")
-        config: FileClient = {"path": "", "output": str(output)}
+        config: FileClient = FileClient(path="", output=str(output))
 
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(config, receiver=None)
@@ -147,7 +143,7 @@ class TestConsumerPlaintext:
 
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(
-                {"path": "", "output": str(output)},
+                FileClient(path="", output=str(output)),
                 receiver=receiver,
             )
 
