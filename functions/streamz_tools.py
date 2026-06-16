@@ -58,6 +58,50 @@ def _safe_subject_token(key: str) -> str:
     return key
 
 
+def _fan_out(
+    publish: Callable[[str, object], None],
+    topic: str,
+    x: dict,
+) -> None:
+    """Publish a dict result over the shared output-subject scheme.
+
+    This is the single source of truth for how a dict payload is split
+    into transport subjects, shared by :class:`to_mqtt` and
+    :class:`to_nats` so the two sinks cannot drift. The bytes-passthrough
+    path stays in each sink's ``update``; only the dict branch routes here.
+
+    The ``anomaly`` value always publishes to ``{topic}anomaly``. When the
+    limits are flat floats they fan out to ``{topic}_DOL_high`` and
+    ``{topic}_DOL_low``. When the limits are per-signal dicts, each signal
+    fans out to ``{key}_DOL_high``, ``{key}_DOL_low`` and
+    ``{key}_root_cause`` (the latter ``1`` for the matched ``root_cause``
+    signal, ``0`` otherwise), with every signal name validated by
+    :func:`_safe_subject_token` here so sanitization can never be forgotten
+    at a call site.
+
+    Args:
+        publish: Bound publisher accepting ``(subject, payload)``; pass the
+            sink's own ``self._publish``.
+        topic: The configured subject prefix for the sink.
+        x: The dict result with ``anomaly``, ``level_high``, ``level_low``
+            and (for per-signal limits) ``root_cause`` keys.
+
+    """
+    publish(f"{topic}anomaly", x["anomaly"])
+    if isinstance(x["level_high"], dict):
+        for key in x["level_high"]:
+            safe_key = _safe_subject_token(key)
+            publish(f"{safe_key}_DOL_high", x["level_high"][key])
+            publish(f"{safe_key}_DOL_low", x["level_low"][key])
+            publish(
+                f"{safe_key}_root_cause",
+                1 if key == x["root_cause"] else 0,
+            )
+    else:
+        publish(f"{topic}_DOL_high", x["level_high"])
+        publish(f"{topic}_DOL_low", x["level_low"])
+
+
 class TopicMessage(Protocol):
     """Structural type for messages keyed by topic with a byte payload.
 
@@ -348,19 +392,7 @@ class to_mqtt(Sink):
         if isinstance(x, bytes):
             self._publish(self.topic, x)
         else:
-            self._publish(f"{self.topic}anomaly", x["anomaly"])
-            if isinstance(x["level_high"], dict):
-                for key in x["level_high"]:
-                    safe_key = _safe_subject_token(key)
-                    self._publish(f"{safe_key}_DOL_high", x["level_high"][key])
-                    self._publish(f"{safe_key}_DOL_low", x["level_low"][key])
-                    self._publish(
-                        f"{safe_key}_root_cause",
-                        1 if key == x["root_cause"] else 0,
-                    )
-            else:
-                self._publish(f"{self.topic}_DOL_high", x["level_high"])
-                self._publish(f"{self.topic}_DOL_low", x["level_low"])
+            _fan_out(self._publish, self.topic, x)
 
     def destroy(self) -> None:
         """Disconnect the MQTT client and destroy the sink."""
@@ -634,19 +666,7 @@ class to_nats(Sink):
         if isinstance(x, bytes):
             self._publish(self.topic, x)
         else:
-            self._publish(f"{self.topic}anomaly", x["anomaly"])
-            if isinstance(x["level_high"], dict):
-                for key in x["level_high"]:
-                    safe_key = _safe_subject_token(key)
-                    self._publish(f"{safe_key}_DOL_high", x["level_high"][key])
-                    self._publish(f"{safe_key}_DOL_low", x["level_low"][key])
-                    self._publish(
-                        f"{safe_key}_root_cause",
-                        1 if key == x["root_cause"] else 0,
-                    )
-            else:
-                self._publish(f"{self.topic}_DOL_high", x["level_high"])
-                self._publish(f"{self.topic}_DOL_low", x["level_low"])
+            _fan_out(self._publish, self.topic, x)
 
     def destroy(self) -> None:
         """Drain and close the NATS connection, then destroy the sink."""
