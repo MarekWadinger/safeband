@@ -23,6 +23,40 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Characters that carry routing meaning in MQTT topics or NATS subjects:
+# the MQTT single/multi-level wildcards, the MQTT level separator, and the
+# NATS token separator. A feature name must not smuggle any of these into a
+# published subject (topic injection / unintended fan-out).
+_UNSAFE_SUBJECT_CHARS = frozenset({"+", "#", "/", "."})
+
+
+def _safe_subject_token(key: str) -> str:
+    """Return ``key`` unchanged or reject it as an unsafe subject token.
+
+    A feature name is interpolated into MQTT topics and NATS subjects, so
+    it must not contain characters with routing meaning: the MQTT
+    wildcards, the MQTT level separator, or the NATS token separator.
+    Such a name could subscribe-match unintended topics or split into
+    extra subject levels.
+
+    Args:
+        key: The feature name to validate.
+
+    Returns:
+        str: The validated token, unchanged.
+
+    Raises:
+        ValueError: If ``key`` contains a wildcard or level separator.
+
+    """
+    if _UNSAFE_SUBJECT_CHARS.intersection(key):
+        msg = (
+            f"Unsafe subject token {key!r}: feature names must not contain "
+            "MQTT/NATS wildcards or level separators."
+        )
+        raise ValueError(msg)
+    return key
+
 
 class TopicMessage(Protocol):
     """Structural type for messages keyed by topic with a byte payload.
@@ -317,10 +351,11 @@ class to_mqtt(Sink):
             self._publish(f"{self.topic}anomaly", x["anomaly"])
             if isinstance(x["level_high"], dict):
                 for key in x["level_high"]:
-                    self._publish(f"{key}_DOL_high", x["level_high"][key])
-                    self._publish(f"{key}_DOL_low", x["level_low"][key])
+                    safe_key = _safe_subject_token(key)
+                    self._publish(f"{safe_key}_DOL_high", x["level_high"][key])
+                    self._publish(f"{safe_key}_DOL_low", x["level_low"][key])
                     self._publish(
-                        f"{key}_root_cause",
+                        f"{safe_key}_root_cause",
                         1 if key == x["root_cause"] else 0,
                     )
             else:
@@ -602,10 +637,11 @@ class to_nats(Sink):
             self._publish(f"{self.topic}anomaly", x["anomaly"])
             if isinstance(x["level_high"], dict):
                 for key in x["level_high"]:
-                    self._publish(f"{key}_DOL_high", x["level_high"][key])
-                    self._publish(f"{key}_DOL_low", x["level_low"][key])
+                    safe_key = _safe_subject_token(key)
+                    self._publish(f"{safe_key}_DOL_high", x["level_high"][key])
+                    self._publish(f"{safe_key}_DOL_low", x["level_low"][key])
                     self._publish(
-                        f"{key}_root_cause",
+                        f"{safe_key}_root_cause",
                         1 if key == x["root_cause"] else 0,
                     )
             else:

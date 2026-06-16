@@ -13,7 +13,24 @@ sys.path.insert(1, str(Path(__file__).parent.parent))
 
 # Importing registers the custom ``map`` operator on Stream.
 import functions.streamz_tools  # noqa: F401
-from functions.streamz_tools import to_mqtt
+from functions.streamz_tools import _safe_subject_token, to_mqtt
+
+
+class TestSafeSubjectToken:
+    """Feature names interpolated into subjects must be sanitized."""
+
+    def test_plain_key_passes_through(self) -> None:
+        """A plain feature name is returned unchanged."""
+        assert _safe_subject_token("plant_a") == "plant_a"
+
+    @pytest.mark.parametrize(
+        "bad",
+        ["plant+a", "plant#a", "plant/a", "plant.a"],
+    )
+    def test_wildcard_or_separator_rejected(self, bad: str) -> None:
+        """MQTT wildcards and MQTT/NATS separators are rejected."""
+        with pytest.raises(ValueError, match="Unsafe subject token"):
+            _safe_subject_token(bad)
 
 
 def _reciprocal(x: int) -> float:

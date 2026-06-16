@@ -18,12 +18,34 @@ from functions.encryption import (
     generate_keys,
     load_private_key,
     load_public_key,
+    resolve_key_path,
     save_private_key,
     save_public_key,
     sign_data,
     verify_and_decrypt_data,
     verify_signature,
 )
+
+
+class TestResolveKeyPath:
+    """key_path containment guards against directory traversal."""
+
+    def test_contained_path_resolves(self, tmp_path: Path) -> None:
+        """A path inside the base resolves to its absolute location."""
+        keys = tmp_path / "keys"
+        resolved = resolve_key_path(keys, base=tmp_path)
+        assert resolved == keys.resolve()
+
+    def test_base_itself_is_allowed(self, tmp_path: Path) -> None:
+        """The base directory itself is a valid key_path."""
+        assert resolve_key_path(tmp_path, base=tmp_path) == tmp_path.resolve()
+
+    def test_traversal_escape_rejected(self, tmp_path: Path) -> None:
+        """A ``../`` path that climbs out of the base is rejected."""
+        base = tmp_path / "base"
+        base.mkdir()
+        with pytest.raises(ValueError, match="escapes the allowed"):
+            resolve_key_path(base / ".." / ".." / "etc", base=base)
 
 
 class TestSecurity:
@@ -77,6 +99,21 @@ class TestSecurity:
         load_public_key(self.security_dir / "r_pem.pub", remote_sender)
         assert self.sender.public_pem() == remote_receiver.public_pem()
         assert self.receiver.public_pem() == remote_sender.public_pem()
+
+    def test_private_key_file_is_owner_only(self) -> None:
+        """save_private_key writes 0o600 (owner-only) permission bits."""
+        priv = self.security_dir / "s_pem"
+        save_private_key(priv, self.sender)
+        mode = priv.stat().st_mode
+        assert mode & 0o777 == 0o600
+
+    def test_private_key_tightens_preexisting_loose_perms(self) -> None:
+        """A pre-existing world-readable key file is tightened to 0o600."""
+        priv = self.security_dir / "s_pem"
+        priv.write_text("stale")
+        priv.chmod(0o644)
+        save_private_key(priv, self.sender)
+        assert priv.stat().st_mode & 0o777 == 0o600
 
     def test_key_retaining(self) -> None:
         """Saving and loading private PEM files preserves the key material."""

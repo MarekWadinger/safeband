@@ -57,32 +57,41 @@ class TestConsumer:
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Processing an encrypted MQTT message logs the decrypted payload."""
+        """Encrypted MQTT message logs only metadata at INFO, payload DEBUG."""
         obj = mqtt.Client()
         msg = mqtt.MQTTMessage()
         msg.payload = self.encrypted_msg.encode("latin-1")
         with caplog.at_level(logging.INFO, logger="consumer"):
             on_message(obj, self.args, msg)
-        assert (
-            re.search(
-                (
-                    r"Received message at 1970-01-01 \d{2}:\d{2}:\d{2}"
-                    r"[+\-]\d{2}:\d{2}: "
-                    r'{"time": "2022-01-01 00:00:00"}'
-                ),
-                caplog.text,
-            )
-            is not None
-        )
+        # Metadata (field count) is logged, the decrypted value is not.
+        assert re.search(r"Received message at .* \(1 fields\)", caplog.text)
+        assert "2022-01-01 00:00:00" not in caplog.text
+
+    def test_verify_mqtt_message_payload_at_debug(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """The decrypted payload is emitted at DEBUG, not at INFO."""
+        obj = mqtt.Client()
+        msg = mqtt.MQTTMessage()
+        msg.payload = self.encrypted_msg.encode("latin-1")
+        with caplog.at_level(logging.DEBUG, logger="consumer"):
+            on_message(obj, self.args, msg)
+        debug_records = [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelno == logging.DEBUG
+        ]
+        assert any("2022-01-01 00:00:00" in m for m in debug_records)
 
     def test_verify_file_message(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Verifying an encrypted file logs timestamp and strips signature."""
+        """An encrypted file logs only metadata at INFO; no signature/value."""
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(self.config, receiver=self.args.receiver)
-        assert "2022, 1, 1, 0, 0" in caplog.text
+        assert "Closest entry at 2022-01-01 00:00:00" in caplog.text
         assert "signature" not in caplog.text
 
 
@@ -102,7 +111,7 @@ class TestConsumerPlaintext:
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(config)
 
-        assert "2022, 1, 1, 0, 0" in caplog.text
+        assert "Closest entry at 2022-01-01 00:00:00" in caplog.text
 
     def test_query_file_receiver_none_skips_decryption(
         self,
@@ -117,7 +126,7 @@ class TestConsumerPlaintext:
         with caplog.at_level(logging.INFO, logger="consumer"):
             query_file(config, receiver=None)
 
-        assert "2022, 1, 1, 0, 0" in caplog.text
+        assert "Closest entry at 2022-01-01 00:00:00" in caplog.text
 
     def test_query_file_mixed_lines_decrypts_only_signed_items(
         self,
@@ -149,7 +158,7 @@ class TestConsumerPlaintext:
 
         decrypt.assert_called_once()
         assert decrypt.call_args[0][0]["signature"] == "sig"
-        assert "2022, 1, 1, 0, 0" in caplog.text
+        assert "Closest entry at" in caplog.text
 
     def test_on_message_receiver_none_logs_plaintext(
         self,
@@ -161,10 +170,20 @@ class TestConsumerPlaintext:
         msg = mqtt.MQTTMessage()
         msg.payload = b'{"time": "2022-01-01 00:00:00"}'
 
-        with caplog.at_level(logging.INFO, logger="consumer"):
+        with caplog.at_level(logging.DEBUG, logger="consumer"):
             on_message(mqtt.Client(), userdata, msg)
 
-        assert '{"time": "2022-01-01 00:00:00"}' in caplog.text
+        info_text = "\n".join(
+            r.getMessage() for r in caplog.records if r.levelno == logging.INFO
+        )
+        debug_text = "\n".join(
+            r.getMessage()
+            for r in caplog.records
+            if r.levelno == logging.DEBUG
+        )
+        # Payload only at DEBUG; INFO carries metadata without the value.
+        assert '{"time": "2022-01-01 00:00:00"}' not in info_text
+        assert '{"time": "2022-01-01 00:00:00"}' in debug_text
 
 
 class TestModelPresistence:
@@ -178,14 +197,11 @@ class TestModelPresistence:
 
     def teardown_class(self) -> None:
         """Delete saved model pickles and remove the recovery directory."""
-        models = list(
-            Path(self.path).glob(
-                f"model_{common_prefix(self.topics)}_*.pkl",
-            ),
-        )
-        for model in models:
-            model.unlink()
-        Path(self.path).rmdir()
+        recovery_dir = Path(self.path)
+        if recovery_dir.exists():
+            for child in recovery_dir.iterdir():
+                child.unlink()
+            recovery_dir.rmdir()
 
     def test_load_model(self) -> None:
         """Loading from a directory with no matching pickles returns None."""

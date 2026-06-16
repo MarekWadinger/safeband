@@ -90,7 +90,11 @@ def save_public_key(file: str | os.PathLike, key: HumanRSA) -> None:
 
 
 def save_private_key(file: str | os.PathLike, key: HumanRSA) -> None:
-    """Save the private key to a file.
+    """Save the private key to a file with owner-only permissions.
+
+    The file is created with mode ``0o600`` (owner read/write only) via
+    :func:`os.open` so the private key material is never briefly readable
+    by other users at the default umask before a post-hoc ``chmod``.
 
     Args:
         file (str or Path): Path to the key file.
@@ -103,7 +107,12 @@ def save_private_key(file: str | os.PathLike, key: HumanRSA) -> None:
         >>> save_private_key('private_key.pem', key)  # doctest: +SKIP
 
     """
-    with Path(file).open("w") as private:
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    fd = os.open(file, flags, 0o600)
+    # Enforce 0o600 on the open descriptor so a pre-existing file with
+    # looser permissions (O_CREAT does not reset those) is tightened too.
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w") as private:
         private.write(key.private_pem())
 
 
@@ -558,6 +567,37 @@ def decode_data(
     raise ValueError(
         msg,
     )
+
+
+def resolve_key_path(
+    key_path: str | os.PathLike,
+    base: str | os.PathLike | None = None,
+) -> Path:
+    """Resolve ``key_path`` and reject directory-traversal escapes.
+
+    The path is resolved to an absolute, symlink-free location. When
+    ``base`` is given the resolved path must stay inside it, so a value
+    such as ``../../etc`` that climbs out of the allowed directory is
+    rejected before any key material is read or written.
+
+    Args:
+        key_path: User- or config-supplied path to the key directory.
+        base: Directory the resolved path must remain within. Defaults to
+            the current working directory.
+
+    Returns:
+        Path: The safe, resolved absolute path.
+
+    Raises:
+        ValueError: If the resolved path escapes ``base``.
+
+    """
+    base_resolved = Path(base).resolve() if base is not None else Path.cwd()
+    resolved = Path(key_path).resolve()
+    if resolved != base_resolved and base_resolved not in resolved.parents:
+        msg = f"key_path {key_path!r} escapes the allowed directory."
+        raise ValueError(msg)
+    return resolved
 
 
 def init_rsa_security(key_path: str) -> tuple[HumanRSA, HumanRSA]:
