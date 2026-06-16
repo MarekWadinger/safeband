@@ -50,10 +50,28 @@ publish-subscribe services:
 * [**NATS**](https://nats.io)
 * Streamed [**DataFrame**](https://pandas.pydata.org)
 
-NATS is a first-class transport: configure a `[nats]` section with a
-`servers` URL (for example `nats://localhost:4222`; comma-separate the
-value for a cluster) to source feature subjects and sink dynamic limits,
-exactly like MQTT.
+[**NATS**](https://nats.io) is a first-class transport. Add a `[nats]`
+section pointing at your server(s) and run the service just like the
+MQTT example below:
+
+<!-- markdownlint-disable MD013 -->
+```ini
+[nats]
+servers=nats://localhost:4222   ; comma-separate the value for a cluster
+```
+
+```bash
+uv run python rpc_client.py -f example.ini -t "plant/temperature"
+uv run python consumer.py  -f example.ini -t "plant/temperature"
+```
+<!-- markdownlint-enable MD013 -->
+
+The detector subscribes to each input subject (`-t` / `in_topics`) and
+publishes results to derived subjects: `<topic>anomaly` for the flag and
+`<topic>_DOL_high` / `<topic>_DOL_low` for the dynamic limits in the
+univariate case, or per-signal `<signal>_DOL_high` / `<signal>_DOL_low` /
+`<signal>_root_cause` in the multivariate case. As with the other
+transports, messages can be signed and encrypted.
 
 **NOTE**: Messaging can be **signed** and **encrypted** for most of the
 services. If you find any related bugs, feel free to
