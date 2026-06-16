@@ -25,10 +25,8 @@ except ImportError:
 from functions.anomaly import ConditionalGaussianScorer, GaussianScorer
 from functions.email_client import EmailClient
 from functions.encryption import (
-    decode_data,
-    encrypt_data,
+    encrypt_and_sign_data,
     init_rsa_security,
-    sign_data,
 )
 from functions.model_persistence import load_model, save_model
 from functions.proba import MultivariateGaussian
@@ -682,11 +680,9 @@ class RpcOutlierDetector:
 
         if key_path:
             sender, _ = init_rsa_security(key_path)
-            detector = (
-                detector.map(sign_data, sender)
-                .map(encrypt_data, sender)
-                .map(decode_data)
-            )
+            # Encrypt-then-sign-over-ciphertext (format version 2): the
+            # consumer verifies the signature before decrypting.
+            detector = detector.map(encrypt_and_sign_data, sender)
         detector = self.get_sink(client, in_topics, detector, out_topics)
         if email is not None and email.sender_email is not None:
             email_client = EmailClient(**email.model_dump())

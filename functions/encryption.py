@@ -11,6 +11,18 @@ from human_security import HumanRSA
 
 LEN_LIMIT = 214
 
+# Envelope wire-format marker. Version 2 signs the CIPHERTEXT so the
+# signature is verified before any RSA decryption (decrypt-after-verify).
+# Absence of this field means the legacy format that signs the plaintext
+# (verify-after-decrypt); see :func:`verify_and_decrypt_data`.
+FORMAT_VERSION = 2
+FORMAT_VERSION_FIELD = "format_version"
+
+# Defense-in-depth caps applied before any RSA work on a received
+# envelope, to bound work an attacker can force per message.
+MAX_FIELD_COUNT = 256
+MAX_CIPHERTEXT_BYTES = 1 << 20  # 1 MiB of latin1 ciphertext per envelope
+
 
 def serialize_value(value: object) -> str:
     """Serialize one payload value to its JSON wire representation.
@@ -414,11 +426,81 @@ def verify_signature(
     return key.verify(data, signature)
 
 
+def encrypt_and_sign_data(
+    data: Mapping[str, object],
+    key: HumanRSA,
+) -> dict[str, str | list[str]]:
+    """Encrypt ``data`` then sign the ciphertext (format version 2).
+
+    This is the producer counterpart of the decrypt-after-verify path:
+    the payload is encrypted first, the latin1-decoded ciphertext wire
+    strings are signed, and a :data:`FORMAT_VERSION` marker is added.
+    The consumer can therefore verify the signature over the ciphertext
+    before performing any RSA decryption.
+
+    Args:
+        data: The plaintext payload mapping to protect.
+        key: The signing/encrypting key (the sender's key).
+
+    Returns:
+        dict: A wire envelope of latin1 ciphertext strings plus a
+        ``signature`` field and a ``format_version`` marker.
+
+    """
+    ciphertext = encrypt_data(data, key)
+    wire = decode_data(ciphertext)
+    # Sign the ciphertext wire strings (excluding the marker we are about
+    # to add) so the consumer verifies before decrypting.
+    signature = key.sign(json.dumps(wire).encode("utf-8"))
+    envelope: dict[str, str | list[str]] = dict(wire)
+    envelope["signature"] = (
+        signature if isinstance(signature, str) else signature.decode("utf-8")
+    )
+    envelope[FORMAT_VERSION_FIELD] = str(FORMAT_VERSION)
+    return envelope
+
+
+def _check_envelope_caps(item: Mapping[str, object]) -> None:
+    """Reject oversized envelopes before any RSA work (defense-in-depth).
+
+    Args:
+        item: The received wire envelope.
+
+    Raises:
+        ValueError: If the field count or total ciphertext size exceeds
+            the configured caps.
+
+    """
+    if len(item) > MAX_FIELD_COUNT:
+        msg = f"Envelope has {len(item)} fields (cap {MAX_FIELD_COUNT})."
+        raise ValueError(msg)
+    total = 0
+    for v in item.values():
+        if isinstance(v, str):
+            total += len(v)
+        elif isinstance(v, list):
+            total += sum(len(s) for s in v if isinstance(s, str))
+    if total > MAX_CIPHERTEXT_BYTES:
+        msg = (
+            f"Envelope ciphertext {total} bytes (cap {MAX_CIPHERTEXT_BYTES})."
+        )
+        raise ValueError(msg)
+
+
 def verify_and_decrypt_data(
     item: dict[str, str | list[str]],
     key: HumanRSA,
+    *,
+    allow_legacy_signature: bool = True,
 ) -> dict[str, object]:
-    """Verify the signature of the item, and return the decrypted data.
+    """Verify an envelope's signature, then return the decrypted data.
+
+    For format-version-2 envelopes the signature is verified over the
+    *ciphertext* BEFORE any RSA decryption, so attacker-controlled
+    ciphertext is never fed to the private key unless it is authentic.
+    Envelopes without a ``format_version`` marker use the legacy path
+    that decrypts first and verifies the plaintext; that path is gated by
+    ``allow_legacy_signature`` so a downgrade can be refused.
 
     Each decrypted value is parsed with :func:`deserialize_value`, so
     floats, dicts, ints, bools, and ``None`` come back with the types the
@@ -426,17 +508,67 @@ def verify_and_decrypt_data(
     payloads produced by older versions that coerced values with
     ``str()`` — are returned as strings.
 
+    Rollout note: producers and consumers must co-upgrade. While legacy
+    producers remain deployed keep ``allow_legacy_signature=True`` (the
+    default); once every producer emits format version 2, set it to
+    ``False`` to refuse downgrade to the verify-after-decrypt path.
+
     Args:
-        item: The item to verify and decrypt.
-        key: The key object or key used for decryption.
+        item: The wire envelope to verify and decrypt.
+        key: The key object used for verification and decryption.
+        allow_legacy_signature: When True (default) accept legacy
+            verify-after-decrypt envelopes; when False reject them.
 
     Raises:
-        InvalidSignature: If the signature verification fails.
+        InvalidSignature: If signature verification fails, or a legacy
+            envelope arrives while ``allow_legacy_signature`` is False.
+        ValueError: If the envelope exceeds the size/field-count caps.
 
     Returns:
         dict: The decrypted data with original value types restored.
 
     """
+    _check_envelope_caps(item)
+    if str(item.get(FORMAT_VERSION_FIELD, "")) == str(FORMAT_VERSION):
+        return _verify_then_decrypt(item, key)
+    if not allow_legacy_signature:
+        msg = "Legacy-format signature rejected (downgrade disabled)."
+        raise InvalidSignature(msg)
+    return _decrypt_then_verify(item, key)
+
+
+def _verify_then_decrypt(
+    item: Mapping[str, str | list[str]],
+    key: HumanRSA,
+) -> dict[str, object]:
+    """Verify the ciphertext signature first, then decrypt (version 2)."""
+    wire: dict[str, str | list[str]] = {
+        k: v
+        for k, v in item.items()
+        if k not in ("signature", FORMAT_VERSION_FIELD)
+    }
+    sign = item["signature"]
+    if not isinstance(sign, str):
+        msg = "Malformed signature field."
+        raise InvalidSignature(msg)
+    if key.verify(json.dumps(wire).encode("utf-8"), sign) is not True:
+        msg = "Signature verification failed."
+        raise InvalidSignature(msg)
+    item_enc = cast("dict[str, bytes | Sequence[bytes]]", encode_data(wire))
+    item_dec: dict[str, bytes] = decrypt_data(item_enc, key)  # type: ignore[assignment]
+    return {
+        k: deserialize_value(
+            v.decode("latin1") if isinstance(v, bytes) else v,
+        )
+        for k, v in item_dec.items()
+    }
+
+
+def _decrypt_then_verify(
+    item: dict[str, str | list[str]],
+    key: HumanRSA,
+) -> dict[str, object]:
+    """Legacy path: decrypt first, then verify the plaintext signature."""
     item_enc = cast("dict[str, bytes | Sequence[bytes]]", encode_data(item))
     item_dec: dict[str, bytes] = decrypt_data(item_enc, key)  # type: ignore[assignment]
     item_ser: dict[str, str] = {

@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from cryptography.exceptions import InvalidSignature
@@ -11,9 +12,11 @@ from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 from functions.encryption import (
+    MAX_CIPHERTEXT_BYTES,
     decode_data,
     decrypt_data,
     deserialize_value,
+    encrypt_and_sign_data,
     encrypt_data,
     generate_keys,
     load_private_key,
@@ -276,3 +279,78 @@ class TestSecurity:
         assert item["time"] == "2023-01-01 00:00:00"
         assert item["anomaly"] == 0
         assert item["level_high"] == 0.5
+
+
+class TestVerifyFirstFormat:
+    """Format version 2: signature verified over ciphertext before decrypt."""
+
+    def setup_class(self) -> None:
+        """Generate sender/receiver key pairs and exchange public keys."""
+        self.sender, self.receiver = generate_keys()
+        sender_pub = self.sender.public_pem()
+        receiver_pub = self.receiver.public_pem()
+        self.receiver.load_public_pem(sender_pub)
+        self.sender.load_public_pem(receiver_pub)
+
+    def test_new_format_round_trip(self) -> None:
+        """encrypt_and_sign_data round-trips through verify_and_decrypt."""
+        msg = {
+            "time": "2023-01-01 00:00:00",
+            "anomaly": 0,
+            "level_high": 0.5,
+            "level_low": -0.5,
+        }
+        envelope = encrypt_and_sign_data(msg, self.sender)
+        assert envelope["format_version"] == "2"
+        wire = json.loads(json.dumps(envelope))
+        item = dict(verify_and_decrypt_data(wire, self.receiver))
+        assert item == msg
+
+    def test_tampered_ciphertext_rejected_before_decrypt(self) -> None:
+        """A modified ciphertext fails verification before any RSA decrypt."""
+        msg = {"time": "2023-01-01 00:00:00", "anomaly": 0}
+        envelope = encrypt_and_sign_data(msg, self.sender)
+        wire = json.loads(json.dumps(envelope))
+        # Flip a byte in the ciphertext of one field.
+        tampered = wire["time"]
+        wire["time"] = ("X" if tampered[0] != "X" else "Y") + tampered[1:]
+        with (
+            patch(
+                "functions.encryption.decrypt_data",
+            ) as mock_decrypt,
+            pytest.raises(InvalidSignature),
+        ):
+            verify_and_decrypt_data(wire, self.receiver)
+        # The private key must never touch attacker-controlled ciphertext.
+        mock_decrypt.assert_not_called()
+
+    def test_legacy_accepted_when_allowed_rejected_when_not(self) -> None:
+        """A legacy (no format_version) envelope honours the gate flag."""
+        msg = {"time": "2023-01-01 00:00:00", "anomaly": 0}
+        signed = sign_data(msg, self.sender)
+        ciphertext = encrypt_data(signed, self.sender)
+        wire = json.loads(json.dumps(decode_data(ciphertext)))
+        # Legacy allowed by default.
+        item = dict(verify_and_decrypt_data(wire, self.receiver))
+        assert item == msg
+        # Legacy refused when the downgrade gate is closed.
+        with pytest.raises(InvalidSignature, match="downgrade disabled"):
+            verify_and_decrypt_data(
+                wire,
+                self.receiver,
+                allow_legacy_signature=False,
+            )
+
+    def test_size_cap_rejected_before_rsa(self) -> None:
+        """An oversized envelope is rejected before any RSA decryption."""
+        oversized: dict[str, str | list[str]] = {
+            "payload": "A" * (MAX_CIPHERTEXT_BYTES + 1),
+        }
+        with (
+            patch(
+                "functions.encryption.decrypt_data",
+            ) as mock_decrypt,
+            pytest.raises(ValueError, match="ciphertext"),
+        ):
+            verify_and_decrypt_data(oversized, self.receiver)
+        mock_decrypt.assert_not_called()
