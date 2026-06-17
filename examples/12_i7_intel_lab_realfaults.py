@@ -25,9 +25,15 @@ battery-depleted span (voltage < 2.3 V). The strict freeze configuration
 (``freeze_eps=1e-4``) -- recommended by the quiescent-signal ablation --
 is used throughout.
 
-Artifacts: ``i7_intel_lab_summary.csv`` (per-mote + pooled rates) and
-``i7_intel_lab_fault_types.csv`` (assigned type distribution on the real
-fault span).
+A ``mean_threshold`` sweep traces the operating curve: raising it from 3
+to 8 sigma cuts the healthy FP rate from ~0.22 to ~0.07 while real-fault
+detection barely moves (~0.93 -> ~0.90), because the real faults are
+tens of sigma while the healthy diurnal ramps the two-signal conditional
+model cannot fully cancel are only a few sigma.
+
+Artifacts: ``i7_intel_lab_operating_points.csv`` (FP / detect rate per
+mean_threshold) and ``i7_intel_lab_fault_types.csv`` (assigned type
+distribution on the real fault span).
 
 Run::
 
@@ -122,24 +128,22 @@ def load_motes() -> dict[int, pd.DataFrame]:
     return out
 
 
-def score_mote(
-    g: pd.DataFrame,
-) -> tuple[int, int, int, int, Counter[FaultLabel]]:
-    """Return (healthy_fp, healthy_n, fault_hit, fault_n, type_counts).
+Step = tuple[dict[str, float], dict[str, tuple[float, float]], bool, float]
 
-    The scorer runs in its intended ONLINE adaptive mode: at each step it
-    yields residuals (predict), the classifier labels, then the scorer
-    learns from the sample -- with ``protect_anomaly_detector=True`` it
-    adapts to legitimate non-stationary drift (Intel-Lab is diurnal) but
-    gates out anomalies, so it does not absorb the fault. A read-only
-    model fit on a short prefix instead false-alarms on healthy drift
-    (verified: ~0.97 healthy FP), which is why adaptation is essential
-    on real non-stationary data.
 
-    A healthy false positive is any non-``normal`` label on a healthy
-    row; a real-fault hit is any non-``normal`` label on a temp/humidity
-    signal during the battery-depleted span; ``type_counts`` tallies the
-    assigned fault types on the faulted temp/humidity readings.
+def scorer_pass(g: pd.DataFrame) -> list[Step]:
+    """One ONLINE adaptive scorer pass; cache per-step inputs.
+
+    The scorer runs in its intended online mode -- at each step it yields
+    residuals (predict), then learns the sample with
+    ``protect_anomaly_detector=True`` so it tracks legitimate
+    non-stationary drift (Intel-Lab is diurnal) while gating out the
+    fault. A static model fit on a short prefix instead false-alarms on
+    healthy drift (~0.97 healthy FP), which is why adaptation is
+    essential on real non-stationary data. Returns, per step, the raw
+    observation, the conditional residuals, the change-point flag and the
+    voltage, so the lightweight classifier can be re-run at several
+    thresholds without repeating this expensive pass.
     """
     sig = {s: g[s].to_numpy(dtype=float) for s in SIGNALS}
     volt = g["voltage"].to_numpy(dtype=float)
@@ -148,6 +152,27 @@ def score_mote(
         grace_period=200,
         protect_anomaly_detector=True,
     )
+    cache: list[Step] = []
+    for i in range(len(volt)):
+        x = {s: float(sig[s][i]) for s in SIGNALS}
+        res = scorer.residuals_one(x)
+        cache.append((x, res, scorer.drift_detected, float(volt[i])))
+        scorer.learn_one(x)
+    return cache
+
+
+def classify_pass(
+    cache: list[Step],
+    mean_threshold: float,
+) -> tuple[int, int, int, int, Counter[FaultLabel], Counter[FaultLabel]]:
+    """Run the classifier over a cached scorer pass at one threshold.
+
+    Returns (healthy_fp, healthy_n, fault_hit, fault_n, fault_types,
+    healthy_fp_types). A healthy false positive is any non-``normal``
+    label on a healthy row (voltage >= ``HEALTHY_V``); a real-fault hit
+    is any non-``normal`` temp/humidity label on the battery-depleted
+    span (voltage < ``FAULT_V``).
+    """
     # Strict freeze config (recommended by the quiescent-signal ablation).
     clf = SensorFaultClassifier(
         window=25,
@@ -155,22 +180,20 @@ def score_mote(
         freeze_eps=1e-4,
         freeze_var_ratio=5e-3,
         freeze_abs_scale=5.0,
+        mean_threshold=mean_threshold,
     )
     healthy_fp = healthy_n = fault_hit = fault_n = 0
     types: Counter[FaultLabel] = Counter()
-    for i in range(len(volt)):
-        x = {s: float(sig[s][i]) for s in SIGNALS}
-        # predict (residuals) -> classify -> adapt (gated learn).
-        labels = clf.process_one(
-            x, scorer.residuals_one(x), scorer.drift_detected
-        )
-        scorer.learn_one(x)
+    hp_types: Counter[FaultLabel] = Counter()
+    for i, (x, res, drift, v) in enumerate(cache):
+        labels = clf.process_one(x, res, drift)
         if i < N_FIT:
             continue  # skip the online warm-up
-        v = float(volt[i])
         if v >= HEALTHY_V:
             healthy_n += 1
-            healthy_fp += int(any(labels[s] != "normal" for s in SIGNALS))
+            fp_labels = [labels[s] for s in SIGNALS if labels[s] != "normal"]
+            healthy_fp += int(bool(fp_labels))
+            hp_types.update(fp_labels)
         elif v < FAULT_V:
             fault_n += 1
             faulted = [
@@ -180,7 +203,15 @@ def score_mote(
             ]
             fault_hit += int(bool(faulted))
             types.update(faulted)
-    return healthy_fp, healthy_n, fault_hit, fault_n, types
+    return healthy_fp, healthy_n, fault_hit, fault_n, types, hp_types
+
+
+# mean_threshold operating points. The real faults are tens of sigma, so
+# raising the threshold separates them from the few-sigma healthy diurnal
+# ramps that leak into drift/bias labels when only two signals are
+# available to cancel the common-mode drift.
+MEAN_THRESHOLDS = [3.0, 4.0, 5.0, 6.0, 8.0]
+REPORT_AT = 6.0  # threshold for the per-type breakdown artifacts
 
 
 def main() -> None:
@@ -194,67 +225,68 @@ def main() -> None:
         logger.error("no usable motes found")
         sys.exit(1)
 
-    rows: list[dict[str, object]] = []
-    pooled: Counter[FaultLabel] = Counter()
-    tot_hfp = tot_hn = tot_fh = tot_fn = 0
+    # Pooled counters per threshold, plus per-type breakdowns at REPORT_AT.
+    pool = {
+        mt: {"hfp": 0, "hn": 0, "fh": 0, "fn": 0} for mt in MEAN_THRESHOLDS
+    }
+    pooled_types: Counter[FaultLabel] = Counter()
+    pooled_hp: Counter[FaultLabel] = Counter()
     for mote, g in motes.items():
-        hfp, hn, fh, fn, types = score_mote(g)
-        tot_hfp += hfp
-        tot_hn += hn
-        tot_fh += fh
-        tot_fn += fn
-        pooled.update(types)
-        rows.append(
-            {
-                "mote": mote,
-                "healthy_n": hn,
-                "healthy_fp_rate": round(hfp / hn, 4) if hn else float("nan"),
-                "fault_n": fn,
-                "fault_detect_rate": (
-                    round(fh / fn, 4) if fn else float("nan")
-                ),
-            }
-        )
-        logger.info(
-            "mote %s: healthy_fp=%.4f (n=%d)  fault_detect=%.4f (n=%d)",
-            mote,
-            rows[-1]["healthy_fp_rate"],
-            hn,
-            rows[-1]["fault_detect_rate"],
-            fn,
-        )
+        cache = scorer_pass(g)  # one expensive online pass per mote
+        for mt in MEAN_THRESHOLDS:
+            hfp, hn, fh, fn, types, hp_types = classify_pass(cache, mt)
+            pool[mt]["hfp"] += hfp
+            pool[mt]["hn"] += hn
+            pool[mt]["fh"] += fh
+            pool[mt]["fn"] += fn
+            if mt == REPORT_AT:
+                pooled_types.update(types)
+                pooled_hp.update(hp_types)
+        logger.info("mote %s scored (n=%d)", mote, len(cache))
 
-    rows.append(
+    op_rows = [
         {
-            "mote": "POOLED",
-            "healthy_n": tot_hn,
-            "healthy_fp_rate": round(tot_hfp / tot_hn, 4) if tot_hn else None,
-            "fault_n": tot_fn,
-            "fault_detect_rate": round(tot_fh / tot_fn, 4) if tot_fn else None,
+            "mean_threshold": mt,
+            "healthy_fp_rate": round(p["hfp"] / p["hn"], 4)
+            if p["hn"]
+            else None,
+            "fault_detect_rate": round(p["fh"] / p["fn"], 4)
+            if p["fn"]
+            else None,
+            "healthy_n": p["hn"],
+            "fault_n": p["fn"],
         }
-    )
-    summary = pd.DataFrame(rows)
+        for mt, p in pool.items()
+    ]
+    op = pd.DataFrame(op_rows)
     types_df = pd.DataFrame(
         [
             {
                 "fault_type": k,
                 "count": v,
-                "frac": round(v / sum(pooled.values()), 4),
+                "frac": round(v / (sum(pooled_types.values()) or 1), 4),
             }
-            for k, v in pooled.most_common()
+            for k, v in pooled_types.most_common()
         ]
     )
     logger.info(
-        "\n=== Intel-Lab real-fault validation ===\n%s",
-        summary.to_string(index=False),
+        "\n=== Intel-Lab operating points (mean_threshold sweep) ===\n%s",
+        op.to_string(index=False),
     )
     logger.info(
-        "\n=== Assigned type on real (battery-depletion) faults ===\n%s",
+        "\n=== Assigned fault type at mean_threshold=%s ===\n%s",
+        REPORT_AT,
         types_df.to_string(index=False),
     )
+    hp_total = sum(pooled_hp.values()) or 1
+    logger.info(
+        "\n=== Healthy FP composition at mean_threshold=%s ===", REPORT_AT
+    )
+    for k, v in pooled_hp.most_common():
+        logger.info("  %-14s %8d  %.3f", k, v, v / hp_total)
 
     BENCH_DIR.mkdir(parents=True, exist_ok=True)
-    summary.to_csv(BENCH_DIR / "i7_intel_lab_summary.csv", index=False)
+    op.to_csv(BENCH_DIR / "i7_intel_lab_operating_points.csv", index=False)
     types_df.to_csv(BENCH_DIR / "i7_intel_lab_fault_types.csv", index=False)
     logger.info("\nArtifacts written under %s", BENCH_DIR)
 
