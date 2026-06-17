@@ -19,6 +19,13 @@ On the Intel Berkeley Lab deployment, the composed system detects real battery-d
     \end{tabular}
 \end{table}
 
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/fig_operating_curve.pdf}
+    \caption{Operating curve on the Intel Berkeley Lab battery-depletion faults (online adaptive detector, pooled over motes). Raising the mean threshold trades a lower healthy false-positive rate against a marginal drop in real-fault detection. Source: \texttt{i7\_intel\_lab\_operating\_points.csv}.}
+    \label{fig:operating}
+\end{figure}
+
 Online adaptation is mandatory on this stream, not a convenience. A static model fit on a short prefix of the same diurnal signal false-alarms at a rate of $0.97$: the daily temperature and humidity cycle alone is enough to push a fixed model permanently out of distribution. The adaptive detector tracks the diurnal baseline and reserves its alarms for the battery-depletion excursions.
 
 The types assigned to the detected real faults are dominated by freezing, as a stuck-at-degraded-value failure should be. Table~\ref{tab:realtypes} reports the type distribution over detected real-fault samples (\texttt{i7\_intel\_lab\_fault\_types.csv}): $93.2\%$ are typed freezing, $5.1\%$ drift, $1.7\%$ bias, and $0.06\%$ accuracy loss. The freezing label corresponds to the physical reality of a transmitter pinned at a corrupted reading as its battery fails, so the typing layer converts the detector's alarm into the maintenance-relevant diagnosis ``replace the mote'' rather than ``investigate the process.''
@@ -80,6 +87,13 @@ The aggregate bias recall of $0.518$ is not an unexplained weakness; it is the m
     \end{tabular}
 \end{table}
 
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/fig_bias_vs_sigma.pdf}
+    \caption{Bias recall is monotone in conditional $\sigma$: a constant offset is isolated on weakly coupled (small-$\sigma$) channels and absorbed by the conditional mean on strongly coupled (large-$\sigma$) channels. Error bars are Wilson 95\% intervals. Source: \texttt{i7\_scaled\_bias\_by\_channel.csv}.}
+    \label{fig:biascoupling}
+\end{figure}
+
 \subsection{Freezing is type attribution, not detection capability}
 \label{sec:freeze}
 We initially expected freezing to be a detection blind spot of the base detector, on the reasoning that a signal stuck at a value within its normal range would not trigger a conditional-CDF alarm. This claim is refuted by our own validation. Table~\ref{tab:freeze} reports, per channel, the base CDF detection rate, the dedicated freeze-test detection rate, their median detection delays, and the fraction of trials in which the freeze test fired earlier (\texttt{i7\_freeze\_latency.csv}). The base CDF detector catches \emph{every} injected freeze on \emph{every} channel ($\texttt{cdf\_detect\_rate}=1.0$, $\texttt{frac\_cdf\_never}=0.00$ throughout), because the conditional expectation keeps moving while the frozen signal does not, driving the residual out of bounds. Moreover, the CDF detector is usually \emph{faster}: its median delay ranges from $2$ to $28$ steps, and the freeze test---whose fixed $25$-step confirmation window sets its median delay at exactly $25$---fires earlier in only about half the trials, and only on the most isolated channel (bed2, $\texttt{frac\_freeze\_earlier}=0.529$); on the most coupled channels it never beats the CDF detector ($0.0$).
@@ -132,6 +146,13 @@ We also expected the conditional residual to cancel coordinated shifts---a fault
 
 The adapt-into-drift robustness of the composed system therefore rests on mechanism~2, the graded change-point suppression, and not on the conditional-residual cancellation we originally credited. This matters operationally: the suppression scale is the parameter the operator must set, and it has a measurable cost, quantified next.
 
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/fig_regime_fp.pdf}
+    \caption{Without change-point suppression, conditional-residual cancellation (mechanism~1) fails at low correlation: a large coordinated shift produces false fault labels until $\rho$ is high. The default graded suppression (mechanism~2) drives the rate to zero in every cell. Source: \texttt{i7\_regime\_fp.csv}.}
+    \label{fig:regime}
+\end{figure}
+
 \subsection{The cost of suppression: dead-band and freeze-on-quiescent ablations}
 \label{sec:ablation}
 Suppression suppresses real faults too. Table~\ref{tab:deadband} reports the detection of a genuine drift that co-occurs with a change point, as a function of suppression scale (\texttt{i7\_deadband.csv}, $5$ seeds). With no suppression ($\texttt{scale}=1$) the drift is detected once it reaches $5.2\sigma$; at the default $\texttt{scale}=5$ detection is delayed until $17.6\sigma$; at $\texttt{scale}=\infty$ the drift is never detected. The default suppression thus opens a masking dead-band of roughly $[3\sigma, 15\sigma]$ for faults that happen to coincide with a change point---the measured price of the robustness reported in Section~\ref{sec:regime}.
@@ -150,6 +171,13 @@ Suppression suppresses real faults too. Table~\ref{tab:deadband} reports the det
         \bottomrule
     \end{tabular}
 \end{table}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/fig_deadband.pdf}
+    \caption{The co-occurring-fault dead-band: a drift co-occurring with a change point must grow from $5.2\sigma$ (no suppression) to $17.6\sigma$ (default suppression) before detection, and is never detected under full suppression. Source: \texttt{i7\_deadband.csv}.}
+    \label{fig:deadband}
+\end{figure}
 
 The freeze test similarly requires calibration on steady-state signals. Table~\ref{tab:quiescent} reports the false freeze-label rate on a genuinely live but very quiet signal (noise at $0.5\%$ of the marginal standard deviation) under three freeze-constant settings (\texttt{i7\_freeze\_quiescent.csv}, $5$ seeds). With the default constants, such a signal is falsely labelled frozen $72\%$ of the time; the loose constants make it worse ($\approx 88\%$); the strict constants ($\texttt{freeze\_eps}=10^{-4}$, $\texttt{freeze\_var\_ratio}=5\times10^{-3}$, $\texttt{freeze\_abs\_scale}=5$) eliminate the false label entirely ($0.0$). We therefore recommend the strict constants, or per-signal calibration, for deployments containing steady-state signals.
 
