@@ -1,0 +1,123 @@
+%%
+%% Template article for Elsevier's document class `elsarticle'
+%% with harvard style bibliographic references
+%%
+
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+
+%% The amssymb package provides various useful mathematical symbols
+\usepackage{amssymb}
+%% The amsmath package provides equation environment
+\usepackage{amsmath}
+%% The algorithms
+\usepackage{algorithm}
+\usepackage{algorithmic}
+%% The images
+\usepackage{graphicx}
+%% Booktabs for professional tables
+\usepackage{booktabs}
+%% Verbatim with URL-sensitive line breaks.
+\usepackage{url}
+%% Render ~ in URLs as a full-size tilde on the math axis.
+\makeatletter
+\def\UrlTildeSpecial{\do\~{\hbox{\m@th$\sim$}}}
+\let\Url@force@Tilde\UrlTildeSpecial
+\makeatother
+% upright sub-index
+\newcommand{\ui}[2]{#1 _{\text{#2}}}
+% upright sub-index with variable
+\newcommand{\uis}[3]{#1 _{\text{#2}, #3}}
+
+%% The lineno package adds line numbers.
+\usepackage{lineno}
+
+\journal{Expert Systems with Applications}
+
+\begin{document}
+
+\begin{frontmatter}
+
+    \title{From Detection to Maintenance Action: Streaming Sensor-Fault Typing for Self-Supervised Anomaly Detection in Industrial Systems}
+
+    \author[aff1]{Marek Wadinger\corref{cor1}}
+    \ead{marek.wadinger@stuba.sk}
+    \cortext[cor1]{\textit{Phone numbers:} +421 902 810 324 (Marek Wadinger)}
+    \ead[url]{uiam.sk/~wadinger}
+
+    \author[aff1]{Michal Kvasnica}
+    \ead{michal.kvasnica@stuba.sk}
+
+    \affiliation[aff1]{organization={Institute of Information Engineering, Automation and Mathematics, Slovak University of Technology in Bratislava},
+        addressline={Radlinskeho 9},
+        postcode={812 37},
+        state={Bratislava},
+        country={Slovakia}
+    }
+
+    \begin{abstract}
+        \input{sections/abstract.tex}
+    \end{abstract}
+
+    %%Research highlights
+    \begin{highlights}
+        \item Streaming detector attributes each flagged sensor to a maintenance-relevant fault type
+        \item Reaches 90\% real-fault detection at 7.4\% healthy false-positive rate on battery-depletion faults
+        \item O(1)-memory conditional-residual typing composed with a self-supervised online detector
+        \item Operating envelope characterized: bias absorption, dead-band, and correlation limits made explicit
+        \item Online adaptation is mandatory; a static prefix model false-alarms at 0.97 on a diurnal stream
+    \end{highlights}
+
+    \begin{keyword}
+        Fault diagnosis \sep Sensor fault classification \sep Online learning \sep Anomaly detection \sep Self-supervised learning \sep Streaming algorithms
+    \end{keyword}
+
+\end{frontmatter}
+
+\linenumbers
+
+\section{Introduction}
+\label{Introduction}
+\input{sections/introduction.tex}
+
+\section{Related Work}
+\label{Related Work}
+\input{sections/related_work.tex}
+
+\section{Method}
+\label{Method}
+\input{sections/method.tex}
+
+\section{Experimental Setup}
+\label{Experimental Setup}
+\input{sections/experimental_setup.tex}
+
+\section{Results}
+\label{Results}
+\input{sections/results.tex}
+
+\section{Discussion}
+\label{Discussion}
+\input{sections/discussion.tex}
+
+\section{Conclusion}
+\label{Conclusion}
+\input{sections/conclusion.tex}
+
+\section*{Additional information}
+The classifier and all evaluation artifacts are openly accessible on GitHub at the following URL: \url{https://github.com/MarekWadinger/online_outlier_detection}.
+
+\section*{CRediT authorship contribution statement}
+\textbf{Marek Wadinger:} Conceptualization; Data curation; Formal analysis; Investigation; Methodology; Software; Validation; Visualization; Writing - original draft; and Writing - review \& editing. \textbf{Michal Kvasnica:} Conceptualization; Funding acquisition; Project administration; Resources; Supervision; Validation.
+
+\section*{Declaration of Competing Interest}
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\section*{Acknowledgements}
+The authors gratefully acknowledge the contribution of the Slovak Research and Development Agency under the project APVV-20-0261. The authors gratefully acknowledge the contribution of the Scientific Grant Agency of the Slovak Republic under the grant 1/0490/23. This paper was funded by the European Union under Horizon Europe Grant Agreement number 101079342 (Fostering Opportunities Towards Slovak Excellence in Advanced Control for Smart Industries).
+
+\bibliographystyle{elsarticle-harv}
+\bibliography{main}
+
+\end{document}
+
+\endinput
