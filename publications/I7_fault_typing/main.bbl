@@ -35,7 +35,8 @@
 \newblock \bibinfo{title}{Revisiting time series outlier detection: Definitions
   and benchmarks}, in: \bibinfo{booktitle}{Advances in Neural Information
   Processing Systems (NeurIPS) Datasets and Benchmarks Track}.
-%Type = Inproceedings
+\newblock \URLprefix \url{https://openreview.net/forum?id=r8IvOsnHchr}.
+%Type = Article
 \bibitem[{Ni et~al.(2009)Ni, Ramanathan, Chehade, Balzano, Nair, Zahedi,
   Kohler, Pottie, Hansen and Srivastava}]{Ni2009}
 \bibinfo{author}{Ni, K.}, \bibinfo{author}{Ramanathan, N.},
@@ -44,8 +45,9 @@
   \bibinfo{author}{Kohler, E.}, \bibinfo{author}{Pottie, G.},
   \bibinfo{author}{Hansen, M.}, \bibinfo{author}{Srivastava, M.},
   \bibinfo{year}{2009}.
-\newblock \bibinfo{title}{Sensor network data fault types}, pp.
-  \bibinfo{pages}{1--29}.
+\newblock \bibinfo{title}{Sensor network data fault types}.
+\newblock \bibinfo{journal}{ACM Transactions on Sensor Networks}
+  \bibinfo{volume}{5}, \bibinfo{pages}{1--29}.
 \newblock \DOIprefix\doi{10.1145/1525856.1525863}.
 %Type = Article
 \bibitem[{Sharma et~al.(2010)Sharma, Golubchik and Govindan}]{Sharma2010}
