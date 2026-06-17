@@ -1,0 +1,6 @@
+signal,cond_sigma,freeze_detect_rate,cdf_detect_rate,freeze_delay_median,cdf_delay_median,frac_freeze_earlier,frac_cdf_never,n
+bed2,0.2158,1.0,1.0,25.0,28.0,0.529,0.0,17
+bed1,0.4801,1.0,1.0,25.0,9.0,0.294,0.0,17
+bso1,1.4386,1.0,1.0,25.0,17.0,0.412,0.0,17
+bfo2,1.4433,1.0,1.0,25.0,3.0,0.0,0.0,17
+cso1,1.4711,1.0,1.0,25.0,2.0,0.0,0.0,17
