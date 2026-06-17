@@ -6,6 +6,7 @@ import datetime as dt
 import json
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import IO, Any, cast
 
@@ -381,6 +382,100 @@ class RpcOutlierDetector:
                     want,
                 )
 
+    def _source_file(
+        self,
+        config: _ClientConfig,
+        topics: list,  # noqa: ARG002
+        debug: bool,
+    ) -> Stream:
+        config = cast("FileClient", config)
+        if debug:
+            source = Stream()
+        else:
+            data = pd.read_csv(config.path, index_col=0)
+            data.index = pd.to_datetime(data.index, utc=True)
+            source = Stream.from_iterable(data.iterrows())
+        self._raw_source = source
+        return source
+
+    def _source_mqtt(
+        self,
+        config: _ClientConfig,
+        topics: list,
+        debug: bool,  # noqa: ARG002
+    ) -> Stream:
+        config = cast("MQTTClient", config)
+        source = Stream.from_mqtt(
+            **config.model_dump(),
+            topic=[(topic, 0) for topic in topics],
+        )
+        # Capture the raw broker node before wrapping: run() polls
+        # its ``stopped`` flag, which the accumulate/filter nodes
+        # below do not expose.
+        self._raw_source = source
+        return source.accumulate(
+            _func,
+            start={},
+            topics=topics,
+        ).filter(_filt, topics)
+
+    def _source_kafka(
+        self,
+        config: _ClientConfig,
+        topics: list,
+        debug: bool,  # noqa: ARG002
+    ) -> Stream:
+        config = cast("KafkaClient", config)
+        # "detection_service" is only a default: a user-supplied
+        # group.id in the config must win.
+        source = Stream.from_kafka(
+            topics,
+            {"group.id": "detection_service", **config.model_dump()},
+        )
+        self._raw_source = source
+        return source
+
+    def _source_pulsar(
+        self,
+        config: _ClientConfig,
+        topics: list,
+        debug: bool,  # noqa: ARG002
+    ) -> Stream:
+        config = cast("PulsarClient", config)
+        if not _PULSAR_AVAILABLE:
+            msg = "pulsar-client is not installed"
+            raise RuntimeError(msg)
+        source = Stream.from_pulsar(
+            config.service_url,
+            topics,
+            subscription_name="detection_service",
+        )
+        self._raw_source = source
+        return source
+
+    def _source_nats(
+        self,
+        config: _ClientConfig,
+        topics: list,
+        debug: bool,  # noqa: ARG002
+    ) -> Stream:
+        config = cast("NATSClient", config)
+        source = Stream.from_nats(
+            servers=config.servers,
+            topic=topics,
+        )
+        # Capture the raw broker node before wrapping: run() polls
+        # its ``stopped`` flag, which the accumulate/filter nodes
+        # below do not expose. The NATSMessage adapter exposes the
+        # same ``.topic``/``.payload`` interface as MQTTMessage, so
+        # the accumulate/_func/filter chain is identical to MQTT.
+        self._raw_source = source
+        return source.accumulate(
+            _func,
+            start={},
+            topics=topics,
+        ).filter(_filt, topics)
+
     def get_source(
         self,
         config: _ClientConfig,
@@ -407,68 +502,91 @@ class RpcOutlierDetector:
                 transport key is found in config.
 
         """
-        if isinstance(config, FileClient):
-            if debug:
-                source = Stream()
-            else:
-                data = pd.read_csv(config.path, index_col=0)
-                data.index = pd.to_datetime(data.index, utc=True)
-                source = Stream.from_iterable(data.iterrows())
-            self._raw_source = source
-        elif isinstance(config, MQTTClient):
-            source = Stream.from_mqtt(
-                **config.model_dump(),
-                topic=[(topic, 0) for topic in topics],
-            )
-            # Capture the raw broker node before wrapping: run() polls
-            # its ``stopped`` flag, which the accumulate/filter nodes
-            # below do not expose.
-            self._raw_source = source
-            source = source.accumulate(
-                _func,
-                start={},
-                topics=topics,
-            ).filter(_filt, topics)
-        elif isinstance(config, KafkaClient):
-            # "detection_service" is only a default: a user-supplied
-            # group.id in the config must win.
-            source = Stream.from_kafka(
-                topics,
-                {"group.id": "detection_service", **config.model_dump()},
-            )
-            self._raw_source = source
-        elif isinstance(config, PulsarClient):
-            if not _PULSAR_AVAILABLE:
-                msg = "pulsar-client is not installed"
-                raise RuntimeError(msg)
-            source = Stream.from_pulsar(
-                config.service_url,
-                topics,
-                subscription_name="detection_service",
-            )
-            self._raw_source = source
-        elif isinstance(config, NATSClient):
-            source = Stream.from_nats(
-                servers=config.servers,
-                topic=topics,
-            )
-            # Capture the raw broker node before wrapping: run() polls
-            # its ``stopped`` flag, which the accumulate/filter nodes
-            # below do not expose. The NATSMessage adapter exposes the
-            # same ``.topic``/``.payload`` interface as MQTTMessage, so
-            # the accumulate/_func/filter chain is identical to MQTT.
-            self._raw_source = source
-            source = source.accumulate(
-                _func,
-                start={},
-                topics=topics,
-            ).filter(_filt, topics)
-        else:
+        entry = _TRANSPORT_REGISTRY.get(type(config))
+        if entry is None:
             # Unrecognised transport: a runtime configuration error, not a
             # static type error, so RuntimeError (as before) is preserved.
             msg = f"Wrong client: {config}"
-            raise RuntimeError(msg)  # noqa: TRY004
-        return source
+            raise RuntimeError(msg)
+        source_handler, _ = entry
+        return source_handler(self, config, topics, debug)
+
+    def _sink_file(
+        self,
+        config: _ClientConfig,
+        detector: Stream,
+        prefix: str,  # noqa: ARG002
+        topic: str,  # noqa: ARG002
+    ) -> None:
+        config = cast("FileClient", config)
+        output_path = Path(config.output)
+        f = output_path.open("a")
+        _exit_stack.callback(f.close)
+        detector.sink(self.dump_to_file, f)
+
+    def _sink_mqtt(
+        self,
+        config: _ClientConfig,
+        detector: Stream,
+        prefix: str,
+        topic: str,  # noqa: ARG002
+    ) -> None:
+        config = cast("MQTTClient", config)
+        detector.to_mqtt(
+            **config.model_dump(),
+            topic=prefix,
+            publish_kwargs={"retain": True},
+        )
+
+    def _sink_kafka(
+        self,
+        config: _ClientConfig,
+        detector: Stream,
+        prefix: str,  # noqa: ARG002
+        topic: str,
+    ) -> None:
+        config = cast("KafkaClient", config)
+        detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(
+            topic,
+            config.model_dump(),
+        )
+
+    def _sink_pulsar(
+        self,
+        config: _ClientConfig,
+        detector: Stream,
+        prefix: str,  # noqa: ARG002
+        topic: str,
+    ) -> None:
+        config = cast("PulsarClient", config)
+        if not _PULSAR_AVAILABLE:
+            msg = "pulsar-client is not installed"
+            raise RuntimeError(msg)
+
+        class Example(Record):  # type: ignore[misc]
+            time = PulsarString()
+            anomaly = PulsarString()
+            level_high = PulsarString()
+            level_low = PulsarString()
+
+        detector.map(lambda x: Example(**x)).to_pulsar(
+            config.service_url,
+            topic,
+            producer_config={"schema": JsonSchema(Example)},
+        )
+
+    def _sink_nats(
+        self,
+        config: _ClientConfig,
+        detector: Stream,
+        prefix: str,
+        topic: str,  # noqa: ARG002
+    ) -> None:
+        config = cast("NATSClient", config)
+        detector.to_nats(
+            servers=config.servers,
+            topic=prefix,
+        )
 
     def get_sink(
         self,
@@ -502,44 +620,10 @@ class RpcOutlierDetector:
             prefix = common_prefix(topics)
             topic = f"{prefix}dynamic_limits"
         logger.info("Sinking to '%s'\n", topic)
-        if isinstance(config, FileClient):
-            output_path = Path(config.output)
-            f = output_path.open("a")
-            _exit_stack.callback(f.close)
-            detector.sink(self.dump_to_file, f)
-        elif isinstance(config, MQTTClient):
-            detector.to_mqtt(
-                **config.model_dump(),
-                topic=prefix,
-                publish_kwargs={"retain": True},
-            )
-        elif isinstance(config, KafkaClient):
-            detector.map(lambda x: (str(x), "dynamic_limits")).to_kafka(
-                topic,
-                config.model_dump(),
-            )
-        elif isinstance(config, PulsarClient):
-            if not _PULSAR_AVAILABLE:
-                msg = "pulsar-client is not installed"
-                raise RuntimeError(msg)
-
-            class Example(Record):  # type: ignore[misc]
-                time = PulsarString()
-                anomaly = PulsarString()
-                level_high = PulsarString()
-                level_low = PulsarString()
-
-            detector.map(lambda x: Example(**x)).to_pulsar(
-                config.service_url,
-                topic,
-                producer_config={"schema": JsonSchema(Example)},
-            )
-        elif isinstance(config, NATSClient):
-            detector.to_nats(
-                servers=config.servers,
-                topic=prefix,
-            )
-
+        entry = _TRANSPORT_REGISTRY.get(type(config))
+        if entry is not None:
+            _, sink_handler = entry
+            sink_handler(self, config, detector, prefix, topic)
         return detector
 
     def run(
@@ -701,3 +785,44 @@ class RpcOutlierDetector:
             _exit_stack.close()
             logger.info("=== Service stopped ===")
             save_model(recovery_path, in_topics, model)
+
+
+# Single transport dispatch table: maps each Pydantic client model to its
+# (source_factory, sink_factory) handler pair. get_source/get_sink look the
+# config type up here instead of walking an isinstance if/elif chain, so a
+# new transport is added by registering one entry. An unknown type yields
+# no entry, which get_source surfaces as the historical
+# RuntimeError("Wrong client: ...").
+_SourceHandler = Callable[
+    [RpcOutlierDetector, _ClientConfig, list, bool],
+    Stream,
+]
+_SinkHandler = Callable[
+    [RpcOutlierDetector, _ClientConfig, Stream, str, str],
+    None,
+]
+_TRANSPORT_REGISTRY: dict[
+    type,
+    tuple[_SourceHandler, _SinkHandler],
+] = {
+    FileClient: (
+        RpcOutlierDetector._source_file,
+        RpcOutlierDetector._sink_file,
+    ),
+    MQTTClient: (
+        RpcOutlierDetector._source_mqtt,
+        RpcOutlierDetector._sink_mqtt,
+    ),
+    KafkaClient: (
+        RpcOutlierDetector._source_kafka,
+        RpcOutlierDetector._sink_kafka,
+    ),
+    PulsarClient: (
+        RpcOutlierDetector._source_pulsar,
+        RpcOutlierDetector._sink_pulsar,
+    ),
+    NATSClient: (
+        RpcOutlierDetector._source_nats,
+        RpcOutlierDetector._sink_nats,
+    ),
+}
