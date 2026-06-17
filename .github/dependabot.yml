@@ -1,13 +1,13 @@
 # Dependabot configuration.
 #
-# Goal: keep the signal, kill the noise. Without a config, security
-# updates arrive as one ungrouped PR per advisory (and routine version
-# updates not at all). Here we batch them: one grouped PR for routine
-# minor/patch bumps, one for security fixes, one for GitHub Actions --
-# checked weekly. Major bumps still arrive as individual PRs because the
-# version-constraint policy (see tests/test_dependency_policy.py) only
-# allows a major through for deliberately uncapped (e.g. security)
-# libraries, so each deserves a look.
+# Goal: keep the signal, kill the noise. Updates arrive as grouped weekly
+# PRs -- one for routine minor/patch, one for security fixes, one for
+# GitHub Actions. We also refuse major bumps for the libraries the
+# version-constraint policy caps to <next-major (see
+# tests/test_dependency_policy.py): such a major would only conflict with
+# the cap and break our API usage, so Dependabot is told to ignore it.
+# Majors for deliberately-uncapped libraries (e.g. cryptography) still
+# flow as individual PRs.
 version: 2
 updates:
   - package-ecosystem: "uv"
@@ -27,6 +27,24 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    # Capped <next-major by policy: never propose a major bump for these.
+    ignore:
+      - dependency-name: "pydantic"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "pandas"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "paho-mqtt"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "nats-py"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "streamz"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "matplotlib"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "plotly"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "bayesian-optimization"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
