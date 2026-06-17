@@ -13,7 +13,7 @@ requires-python = ">=3.12"
 #  * stable cores, typing shims, stubs and plugins are lower-bound only.
 # A new dependency must be classified in that test or it fails CI.
 dependencies = [
-    "cryptography>=45.0.7",
+    "cryptography>=49.0.0",
     "human-security>=1.0",
     "matplotlib<4.0.0",
     "nats-py<3.0.0",
