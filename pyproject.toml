@@ -61,7 +61,7 @@ dev = [
 example = [
     # subscribe()/Events/JSONLogger API used in the comparison studies
     # was removed in bayes_opt 3.x; pin <3 so the locked env keeps it.
-    "bayesian-optimization>=2.0.4,<3",
+    "bayesian-optimization>=3.3.0,<4",
     "numpy>=2.3.2",
 ]
 

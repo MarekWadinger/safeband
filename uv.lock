@@ -93,7 +93,7 @@ dev = [
     { name = "ty", specifier = ">=0.0.48" },
 ]
 example = [
-    { name = "bayesian-optimization", specifier = ">=2.0.4,<3" },
+    { name = "bayesian-optimization", specifier = ">=3.3.0,<4" },
     { name = "numpy", specifier = ">=2.3.2" },
 ]
 
@@ -267,17 +267,18 @@ wheels = [
 
 [[package]]
 name = "bayesian-optimization"
-version = "2.0.4"
+version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama" },
     { name = "numpy" },
+    { name = "packaging" },
     { name = "scikit-learn" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/6c/9a872cdc13a727ef206ce08d308dd42169998205ead1fc722c133cd15e78/bayesian_optimization-2.0.4.tar.gz", hash = "sha256:32e6d5631f0e68d3e76e75b6c44d03269ed38a2fd71e4478370499bdfaa2ddc1", size = 28603, upload-time = "2025-05-12T11:55:57.172Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/d9/65c8b0b7b1e16304caff6a619cf53410393533bfe84875dc2003a387ee99/bayesian_optimization-3.3.0.tar.gz", hash = "sha256:aa37280c10b3655d7cde06760489f9b85aa8783d2a91da20bd68e292dbdc0af2", size = 31923, upload-time = "2026-05-30T18:37:48.628Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/50/81be789f402ed6cd553c2f95eb157da10037eeebdb050c499586a70c05fb/bayesian_optimization-2.0.4-py3-none-any.whl", hash = "sha256:e575c3621d551dc908af43400b48306a8efafe919b43503f0f7364d904ce746b", size = 31309, upload-time = "2025-05-12T11:55:56.216Z" },
+    { url = "https://files.pythonhosted.org/packages/26/ee/0b1a9a6f2e286d0f6a2e82a4647cf954b2b8162be8737a00ff2858aa1ef6/bayesian_optimization-3.3.0-py3-none-any.whl", hash = "sha256:9f16f4c8544a94680cdd44430edbd0dc0221612b0883f644c8d60381c104862f", size = 37063, upload-time = "2026-05-30T18:37:47.647Z" },
 ]
 
 [[package]]
