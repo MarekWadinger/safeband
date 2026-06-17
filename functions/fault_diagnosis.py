@@ -6,6 +6,16 @@ anomalous and in which direction" — to classifying the *type* of
 sensor fault from the taxonomy bias / drift / loss of accuracy /
 freezing (IDEAS I7).
 
+The taxonomy itself is not new: bias / accuracy_loss (NOISE) / freezing
+(CONSTANT/stuck-at), extended with drift, is the canonical
+instrumentation-fault taxonomy of Sharma, Golubchik & Govindan (2010,
+ACM TOSN, doi:10.1145/1754414.1754419) and Ni et al. (2009). The
+contribution here is not the taxonomy but its *streaming, O(1)-memory*
+realization on the **conditional** residuals of a self-supervised
+detector — typing the fault on the same signal the detector already
+uses for localization, with no history buffers, so detection latency
+and per-signal attribution are the levers, not the label set.
+
 The classifier consumes, per step, the raw observation together with
 the per-signal conditional residuals exposed by
 ``ConditionalGaussianScorer.residuals_one`` and maintains
