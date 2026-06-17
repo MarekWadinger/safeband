@@ -4,6 +4,14 @@ version = "2.5.1"
 description = "Online outlier detection service for industrial SCADA-based infrastructures for low-latency detection and change-point adaptation."
 readme = "README.md"
 requires-python = ">=3.12"
+# Version-constraint policy (enforced by tests/test_dependency_policy.py):
+#  * security/safety libs are NEVER upper-capped, so CVE patches flow
+#    freely without a manifest edit (e.g. cryptography);
+#  * libraries we call directly and that break across majors ARE capped
+#    to <next-major (pydantic, pandas, paho-mqtt, nats-py, streamz,
+#    matplotlib, plotly);
+#  * stable cores, typing shims, stubs and plugins are lower-bound only.
+# A new dependency must be classified in that test or it fails CI.
 dependencies = [
     "cryptography>=45.0.7",
     "human-security>=1.0",
@@ -11,16 +19,16 @@ dependencies = [
     "nats-py<3.0.0",
     "paho-mqtt<3.0.0",
     "pandas<3.0.0",
-    "pydantic>=2",
+    "pydantic>=2,<3",
     "pandas-stubs>=2.3.2.250827",
     "plotly<7.0.0",
     "river~=0.21.0 ; platform_machine != 'aarch64' and sys_platform == 'linux'",
     "river ; (implementation_version >= '3.11' and implementation_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux') or sys_platform == 'darwin'",
-    "scipy<2.0.0",
+    "scipy>=1.11",
     "streamz<1.0.0",
     "streamz-pulsar>=0.1.1",
     "types-paho-mqtt>=1.6.0.20240321",
-    "typing-extensions<5.0.0",
+    "typing-extensions>=4.12",
 ]
 
 [tool.uv.sources]
