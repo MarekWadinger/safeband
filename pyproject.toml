@@ -44,7 +44,7 @@ update_changelog_on_bump = true
 
 [dependency-groups]
 build = [
-    "setuptools>=80.9.0",
+    "setuptools>=82.0.1",
     "setuptools-rust>=1.12.0",
     "wheel>=0.45.1",
 ]
