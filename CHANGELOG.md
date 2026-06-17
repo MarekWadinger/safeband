@@ -1,3 +1,10 @@
+## 2.5.1 (2026-06-17)
+
+### Refactor
+
+- dispatch transports via a registry
+- extract a PhysicalLimits value object
+
 ## 2.5.0 (2026-06-16)
 
 ### Feat
