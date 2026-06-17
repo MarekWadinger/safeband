@@ -94,6 +94,28 @@ The aggregate bias recall of $0.518$ is not an unexplained weakness; it is the m
     \label{fig:biascoupling}
 \end{figure}
 
+\subsection{Real bias and the detection floor}
+\label{sec:lbnl}
+The bias--coupling relationship above predicts that a constant offset is isolable only when it is large relative to the conditional scale of the signal it perturbs. We confirm this on a real labelled-fault dataset: the LBNL building-FDD MZVAV-1 set~\citep{LBNL_FDD2019,Granderson2023}, in which a constant offset of $\pm 1$, $\pm 2$, or $\pm 4\,^\circ$C is imposed on the outdoor-air-temperature sensor of a simulated multi-zone air-handling unit, with a per-timestamp fault label. We run the online adaptive detector over the four coupled AHU air temperatures (supply, outdoor, mixed, return), holding out the fault label, and measure typing on the biased outdoor-air-temperature signal (\texttt{i7\_lbnl\_bias.csv}).
+
+The decisive quantity is the magnitude of the imposed bias in conditional-standard-deviation units. The outdoor-air-temperature conditional standard deviation on healthy data is $3.81\,^\circ$F, so the imposed offsets ($1.8$, $3.6$, $7.2\,^\circ$F) correspond to only $0.47$, $0.94$, and $1.89\,\sigma$ respectively---every one of them below the $3\sigma$ isolation threshold. The detector therefore correctly declines to flag them: detection of the biased signal is $0.27$--$0.33$ across the threshold sweep, and forcing detection upward by lowering the mean threshold to $2\sigma$ drives the healthy false-positive rate to $0.74$ (Table~\ref{tab:lbnl}). This is not a failure but a quantified \emph{detection floor}: a threshold-based typing layer isolates a bias only once it exceeds a few conditional standard deviations, by construction, and alarming below that floor would flood the operator with false positives. The result triangulates with the controlled study, whose injections at $4\sigma$ (above the floor) were isolable, and with the bias--coupling relationship: real sensor biases that are small relative to a signal's conditional scale are, and should be, below the alarm floor.
+
+\begin{table}[t]
+    \centering
+    \caption{Real outdoor-air-temperature bias on LBNL MZVAV-1 (online adaptive detector). The imposed offsets are $0.47$--$1.89\,\sigma$, below the $3\sigma$ floor, so detection is low and cannot be raised without an unacceptable false-positive rate. Source: \texttt{i7\_lbnl\_bias.csv}.}
+    \label{tab:lbnl}
+    \begin{tabular}{rccc}
+        \toprule
+        Mean threshold & Healthy FP rate & Bias detection & Typed as bias \\
+        \midrule
+        2.0 & 0.743 & 0.332 & 0.034 \\
+        3.0 & 0.686 & 0.302 & 0.018 \\
+        4.0 & 0.657 & 0.280 & 0.009 \\
+        5.0 & 0.634 & 0.269 & 0.006 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 \subsection{Freezing is type attribution, not detection capability}
 \label{sec:freeze}
 We initially expected freezing to be a detection blind spot of the base detector, on the reasoning that a signal stuck at a value within its normal range would not trigger a conditional-CDF alarm. This claim is refuted by our own validation. Table~\ref{tab:freeze} reports, per channel, the base CDF detection rate, the dedicated freeze-test detection rate, their median detection delays, and the fraction of trials in which the freeze test fired earlier (\texttt{i7\_freeze\_latency.csv}). The base CDF detector catches \emph{every} injected freeze on \emph{every} channel ($\texttt{cdf\_detect\_rate}=1.0$, $\texttt{frac\_cdf\_never}=0.00$ throughout), because the conditional expectation keeps moving while the frozen signal does not, driving the residual out of bounds. Moreover, the CDF detector is usually \emph{faster}: its median delay ranges from $2$ to $28$ steps, and the freeze test---whose fixed $25$-step confirmation window sets its median delay at exactly $25$---fires earlier in only about half the trials, and only on the most isolated channel (bed2, $\texttt{frac\_freeze\_earlier}=0.529$); on the most coupled channels it never beats the CDF detector ($0.0$).
