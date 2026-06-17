@@ -13,6 +13,133 @@ from river.utils import Rolling, TimeRolling
 from scipy.stats import norm
 
 
+class PhysicalLimits:
+    """Static (low, high) operating bounds of the modeled signal(s).
+
+    The univariate scorer composes a single scalar bound that applies to
+    every observed value; the conditional scorer composes per-feature
+    bounds keyed by feature name. This value object centralizes the
+    shape handling (scalar tuple vs. per-feature mapping), the
+    ``low < high`` validation, the violation test, and the clipping of
+    reported dynamic limits into the static bounds, so the scorers no
+    longer branch on ``isinstance(limits, tuple | dict)`` at each site.
+
+    A scalar bound is stored internally under the sentinel key ``None``;
+    per-feature bounds are stored under their feature names.
+    """
+
+    def __init__(self, bounds: dict[str | None, tuple[float, float]]) -> None:
+        """Store already-validated internal bounds (use ``from_value``)."""
+        self._bounds = bounds
+
+    @classmethod
+    def from_value(
+        cls,
+        value: tuple[float, float] | dict[str, tuple[float, float]] | None,
+    ) -> "PhysicalLimits | None":
+        """Build limits from a scalar tuple or per-feature mapping.
+
+        Args:
+            value: A scalar ``(low, high)`` bound, a mapping of feature
+                name to ``(low, high)``, or ``None`` for no bounds.
+
+        Returns:
+            A ``PhysicalLimits`` instance, or ``None`` when ``value`` is
+            ``None``.
+
+        Raises:
+            ValueError: If any bound does not satisfy ``low < high``.
+        """
+        if value is None:
+            return None
+        if isinstance(value, dict):
+            bounds: dict[str | None, tuple[float, float]] = {}
+            for name, bound in value.items():
+                phys_low, phys_high = bound
+                if not phys_low < phys_high:
+                    msg = (
+                        "physical_limits must satisfy low < high; got "
+                        f"{(phys_low, phys_high)} for feature {name!r}"
+                    )
+                    raise ValueError(msg)
+                bounds[name] = bound
+            return cls(bounds)
+        phys_low, phys_high = value
+        if not phys_low < phys_high:
+            msg = f"physical_limits must satisfy low < high; got {value}"
+            raise ValueError(msg)
+        return cls({None: value})
+
+    @property
+    def is_scalar(self) -> bool:
+        """Whether these are a single scalar bound (univariate scorer)."""
+        return None in self._bounds
+
+    def scalar_violation(self, x: float | dict[str, float]) -> bool:
+        """Return whether any value of ``x`` breaks the scalar bound.
+
+        Used by the univariate scorer. Returns ``False`` for per-feature
+        bounds (the conditional scorer overrides the violation test).
+        """
+        bound = self._bounds.get(None)
+        if bound is None:
+            return False
+        phys_low, phys_high = bound
+        values = x.values() if isinstance(x, dict) else [x]
+        return any(not phys_low <= v <= phys_high for v in values)
+
+    def violations(self, x: dict[str, float]) -> list[str]:
+        """Return violated feature names, worst offender first.
+
+        Used by the conditional scorer. Returns an empty list for a
+        scalar bound.
+        """
+        if None in self._bounds:
+            return []
+        violated = [
+            name
+            for name, (phys_low, phys_high) in self._bounds.items()
+            if name in x and not phys_low <= x[name] <= phys_high
+        ]
+        violated.sort(
+            key=lambda name: max(
+                self._bounds[name][0] - x[name],
+                x[name] - self._bounds[name][1],
+            ),
+            reverse=True,
+        )
+        return violated
+
+    def clip_scalar(self, value: float | np.ndarray) -> float | np.ndarray:
+        """Clip a scalar or array threshold into the scalar bound."""
+        bound = self._bounds.get(None)
+        if bound is None:
+            return value
+        phys_low, phys_high = bound
+        return np.clip(value, phys_low, phys_high)
+
+    def clip_mapping(
+        self,
+        values: dict[str, float],
+    ) -> dict[str, float]:
+        """Clip per-feature thresholds into their per-feature bounds.
+
+        For a scalar bound every value is clipped into it; for
+        per-feature bounds only keys with a configured bound are clipped.
+        """
+        bound = self._bounds.get(None)
+        if bound is not None:
+            phys_low, phys_high = bound
+            return {
+                k: np.clip(v, phys_low, phys_high) for k, v in values.items()
+            }
+        clipped = dict(values)
+        for name, (phys_low, phys_high) in self._bounds.items():
+            if name in clipped:
+                clipped[name] = np.clip(clipped[name], phys_low, phys_high)
+        return clipped
+
+
 @runtime_checkable
 class Distribution(Protocol):  # pragma: no cover
     """Protocol for a univariate or multivariate distribution estimator."""
@@ -507,14 +634,12 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
         if self.log_threshold is not None:
             self.log_threshold_top = np.log1p(-np.exp(self.log_threshold))
 
-        if physical_limits is not None:
-            phys_low, phys_high = physical_limits
-            if not phys_low < phys_high:
-                msg = (
-                    "physical_limits must satisfy low < high; "
-                    f"got {physical_limits}"
-                )
-                raise ValueError(msg)
+        # Validate eagerly (raises on low >= high) and keep the raw
+        # tuple/dict/None as the public attribute so the constructor
+        # signature and pickle layout are unchanged. The value object is
+        # the single place that knows the shape, validates, tests
+        # violations, and clips the reported limits.
+        self._physical_limits = PhysicalLimits.from_value(physical_limits)
         self.physical_limits = physical_limits
         self.learn_on_physical_violation = learn_on_physical_violation
 
@@ -588,17 +713,29 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
     def _drift_detected(self) -> bool:
         return self._get_protection().drift_detected
 
+    def _get_physical_limits(self) -> "PhysicalLimits | None":
+        """Return the limits value object, rebuilding for legacy pickles.
+
+        Models pickled before the value object existed (or before
+        physical limits existed at all) lack ``_physical_limits``;
+        reconstruct it on demand from the raw ``physical_limits``
+        attribute so the violation/clip sites have a single,
+        pickle-safe accessor.
+        """
+        vo = getattr(self, "_physical_limits", None)
+        if vo is None and getattr(self, "physical_limits", None) is not None:
+            vo = PhysicalLimits.from_value(self.physical_limits)
+            self._physical_limits = vo
+        return vo
+
     def _physical_violation(self, x: float | dict[str, float]) -> bool:
-        # getattr keeps models recovered from pre-physical-limits
-        # pickles working; the isinstance guard also excludes the
-        # dict-keyed bounds of the conditional subclass, which
-        # overrides this method.
-        limits = getattr(self, "physical_limits", None)
-        if not isinstance(limits, tuple):
+        # The value object excludes the per-feature bounds of the
+        # conditional subclass (which overrides this method) by reporting
+        # only scalar-bound violations.
+        vo = self._get_physical_limits()
+        if vo is None:
             return False
-        phys_low, phys_high = limits
-        values = x.values() if isinstance(x, dict) else [x]
-        return any(not phys_low <= v <= phys_high for v in values)
+        return vo.scalar_violation(x)
 
     def _rejects_learning(self, x: float | dict[str, float]) -> bool:
         return (
@@ -811,31 +948,20 @@ class GaussianScorer(anomaly.base.AnomalyDetector):
                     strict=False,
                 ),
             )
-        limits = getattr(self, "physical_limits", None)
-        if isinstance(limits, tuple):
-            phys_low, phys_high = limits
+        vo = self._get_physical_limits()
+        if vo is not None and vo.is_scalar:
             if isinstance(thresh_high, dict) and isinstance(
                 thresh_low,
                 dict,
             ):
-                thresh_high = {
-                    k: np.clip(v, phys_low, phys_high)
-                    for k, v in thresh_high.items()
-                }
-                thresh_low = {
-                    k: np.clip(v, phys_low, phys_high)
-                    for k, v in thresh_low.items()
-                }
+                thresh_high = vo.clip_mapping(thresh_high)
+                thresh_low = vo.clip_mapping(thresh_low)
             else:
-                thresh_high = np.clip(
+                thresh_high = vo.clip_scalar(
                     cast("float | np.ndarray", thresh_high),
-                    phys_low,
-                    phys_high,
                 )
-                thresh_low = np.clip(
+                thresh_low = vo.clip_scalar(
                     cast("float | np.ndarray", thresh_low),
-                    phys_low,
-                    phys_high,
                 )
         return thresh_high, thresh_low
 
@@ -1021,14 +1147,9 @@ class ConditionalGaussianScorer(GaussianScorer):
             protect_anomaly_detector=protect_anomaly_detector,
             learn_on_physical_violation=learn_on_physical_violation,
         )
-        if physical_limits is not None:
-            for name, (phys_low, phys_high) in physical_limits.items():
-                if not phys_low < phys_high:
-                    msg = (
-                        "physical_limits must satisfy low < high; got "
-                        f"{(phys_low, phys_high)} for feature {name!r}"
-                    )
-                    raise ValueError(msg)
+        # Per-feature bounds: the value object validates and keeps the
+        # shape handling; the raw dict stays the public attribute.
+        self._physical_limits = PhysicalLimits.from_value(physical_limits)
         self.physical_limits = physical_limits
         self.gaussian = gaussian
         self.root_cause = None
@@ -1036,24 +1157,12 @@ class ConditionalGaussianScorer(GaussianScorer):
 
     def _physical_violations(self, x: dict[str, float]) -> list[str]:
         # Violated features sorted by how far they exceed their bound,
-        # so the worst offender leads. getattr keeps models recovered
-        # from pre-physical-limits pickles working.
-        limits = getattr(self, "physical_limits", None)
-        if not isinstance(limits, dict):
+        # so the worst offender leads. The value object owns the sort
+        # and stays pickle-safe via _get_physical_limits.
+        vo = self._get_physical_limits()
+        if vo is None:
             return []
-        violated = [
-            name
-            for name, (phys_low, phys_high) in limits.items()
-            if name in x and not phys_low <= x[name] <= phys_high
-        ]
-        violated.sort(
-            key=lambda name: max(
-                limits[name][0] - x[name],
-                x[name] - limits[name][1],
-            ),
-            reverse=True,
-        )
-        return violated
+        return vo.violations(x)
 
     def _physical_violation(self, x: float | dict[str, float]) -> bool:
         if not isinstance(x, dict):
@@ -1333,12 +1442,10 @@ class ConditionalGaussianScorer(GaussianScorer):
                     cond_std,
                 )
 
-        limits = getattr(self, "physical_limits", None)
-        if isinstance(limits, dict):
-            for name, (phys_low, phys_high) in limits.items():
-                if name in ths:
-                    ths[name] = np.clip(ths[name], phys_low, phys_high)
-                    tls[name] = np.clip(tls[name], phys_low, phys_high)
+        vo = self._get_physical_limits()
+        if vo is not None and not vo.is_scalar:
+            ths = vo.clip_mapping(ths)
+            tls = vo.clip_mapping(tls)
 
         return ths, tls
 
