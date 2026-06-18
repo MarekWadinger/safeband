@@ -68,6 +68,13 @@ from functions.anomaly import (
 from functions.proba import MultivariateGaussian
 from functions.reunanen import ReunanenScorer
 
+# Silence sklearn's noisy per-window precision/recall warnings at MODULE
+# scope so the filter is also installed in every joblib (loky) worker
+# process -- workers re-import this module but never run main(), so a
+# filter set inside main() would not reach them and the warnings would
+# flood from the parallel tuning. This affects only logging, not numbers.
+warnings.filterwarnings("ignore")
+
 try:
     from TSB_AD.evaluation.metrics import get_metrics
     from TSB_AD.utils.slidingWindows import find_length_rank
@@ -922,7 +929,6 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%H:%M:%S",
     )
-    warnings.filterwarnings("ignore")
 
     splits: list[Literal["U", "M"]] = (
         ["U", "M"] if args.split == "both" else [args.split]
