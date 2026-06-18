@@ -57,6 +57,7 @@ if TYPE_CHECKING:
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from bayes_opt import BayesianOptimization
+from joblib import Parallel, delayed
 from river.proba import Gaussian
 from river.utils import Rolling
 
@@ -90,6 +91,10 @@ class _StreamScorer(Protocol):
 
 
 RANDOM_STATE = 42
+# Parallel workers for the tuning objective's per-series scoring. -1 uses
+# all cores; loky pins each worker's inner BLAS threads to 1, keeping the
+# result deterministic and order-identical to the serial computation.
+N_JOBS = -1
 
 # Repo-relative paths (resolved against this file, not the CWD).
 ROOT = Path(__file__).resolve().parent.parent
@@ -332,6 +337,32 @@ def make_reunanen(n_hidden: float, lr: float, k: float) -> ReunanenScorer:
 # --------------------------------------------------------------------------
 # Hyperparameter tuning on the TUNING split (maximise mean VUS-PR)
 # --------------------------------------------------------------------------
+def _score_tuning_series(
+    make_model: Callable[..., object],
+    stream_fn: Callable,
+    needs_tr: bool,
+    use_columns: bool,
+    params: dict[str, float],
+    item: tuple[np.ndarray, np.ndarray, list[str], int, int],
+) -> float:
+    """VUS-PR of one tuning series for a candidate HP set (0.0 on error).
+
+    Each series is scored with a fresh, deterministically seeded model and
+    is independent of the others, so this is safe to run in a worker
+    process; the caller aggregates in series order.
+    """
+    data, label, columns, sliding_window, tr = item
+    try:
+        model = make_model(tr, **params) if needs_tr else make_model(**params)
+        cols = columns if use_columns else None
+        score, pred, _ = stream_fn(model, data, cols)
+        res = evaluate_scores(score, label, pred, sliding_window)
+        return float(res["VUS-PR"])
+    except Exception:
+        logger.exception("tuning eval failed on a series; scoring 0")
+        return 0.0
+
+
 def _tuning_objective(
     make_model: Callable[..., object],
     stream_fn: Callable,
@@ -342,24 +373,22 @@ def _tuning_objective(
 ) -> float:
     """Mean VUS-PR over the tuning series for a candidate HP set.
 
-    ``use_columns`` mirrors the evaluation regime: univariate AID consumes
-    bare floats (``columns=None``); multivariate AID and Reunanen build a
-    feature dict from the columns.
+    The per-series scorings are independent and run in parallel across
+    cores (``N_JOBS``). joblib's loky backend pins each worker's inner
+    math threads to one, and results are collected in series order, so
+    the mean is identical to the serial computation -- and thus to the
+    hyperparameters the score caches were built with. ``use_columns``
+    mirrors the evaluation regime: univariate AID consumes bare floats
+    (``columns=None``); multivariate AID and Reunanen build a feature
+    dict from the columns.
     """
-    scores: list[float] = []
-    for data, label, columns, sliding_window, tr in series:
-        try:
-            model = (
-                make_model(tr, **params) if needs_tr else make_model(**params)
-            )
-            cols = columns if use_columns else None
-            score, pred, _ = stream_fn(model, data, cols)
-            res = evaluate_scores(score, label, pred, sliding_window)
-            scores.append(res["VUS-PR"])
-        except Exception:
-            logger.exception("tuning eval failed on a series; scoring 0")
-            scores.append(0.0)
-    return float(np.mean(scores)) if scores else 0.0
+    results = Parallel(n_jobs=N_JOBS)(
+        delayed(_score_tuning_series)(
+            make_model, stream_fn, needs_tr, use_columns, dict(params), item
+        )
+        for item in series
+    )
+    return float(np.mean(results)) if results else 0.0
 
 
 def tune(
