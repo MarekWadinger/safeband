@@ -217,3 +217,21 @@ The freeze test similarly requires calibration on steady-state signals. Table~\r
         \bottomrule
     \end{tabular}
 \end{table}
+
+\subsection{Detection baseline}
+\label{sec:baseline}
+Because the typing layer is only as useful as the detector beneath it, we confirm that the base detector is competitive with a published streaming alternative. Table~\ref{tab:baseline} compares it against the streaming autoencoder detector of \citet{Reunanen2020}---a one-pass, no-window outlier detector---under identical online point-wise evaluation on the SKAB multivariate benchmark ($37\,222$ points, $35.4\%$ anomalous; \texttt{i5\_reunanen\_skab.csv}). The base conditional-Gaussian detector outperforms the baseline on both threshold-free ROC AUC ($0.562$ vs $0.499$) and best-case F1 ($0.452$ vs $0.414$). Absolute values are modest because SKAB's anomalies are collective events that point-wise scoring penalises for any memory-less one-pass detector; the comparison is a relative positioning of the detector our typing layer extends, not a state-of-the-art detection claim.
+
+\begin{table}[t]
+    \centering
+    \caption{Detection head-to-head on SKAB, identical online point-wise evaluation. Source: \texttt{i5\_reunanen\_skab.csv}.}
+    \label{tab:baseline}
+    \begin{tabular}{lcc}
+        \toprule
+        Detector & ROC AUC & Best F1 \\
+        \midrule
+        Base (conditional Gaussian) & \textbf{0.562} & \textbf{0.452} \\
+        \citet{Reunanen2020} (streaming autoencoder) & 0.499 & 0.414 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
