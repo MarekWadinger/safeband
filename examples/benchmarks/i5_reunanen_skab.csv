@@ -1,0 +1,3 @@
+detector,roc_auc,best_f1
+base (conditional Gaussian),0.5624,0.4516
+Reunanen 2020 (autoencoder),0.499,0.4138
