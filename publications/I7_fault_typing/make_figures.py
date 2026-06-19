@@ -146,6 +146,27 @@ def fig_deadband() -> None:
     plt.close(fig)
 
 
+def fig_tsbad_vuspr() -> None:
+    """Per-series VUS-PR distribution by method on the TSB-AD U-split."""
+    df = pd.read_csv(BENCH / "tsb_ad_fullrun.csv")
+    df = df[df["split"] == "U"]
+    order = ["AID", "Z-score", "Reunanen", "Random"]
+    labels = ["Base (AID)", "z-score", "Reunanen", "Random"]
+    data = [df[df["method"] == m]["VUS-PR"].to_numpy() for m in order]
+    fig, ax = plt.subplots()
+    ax.boxplot(
+        data,
+        tick_labels=labels,
+        whis=(5, 95),
+        showfliers=False,
+        medianprops={"color": "tab:blue"},
+    )
+    ax.set_ylabel("VUS-PR (per series)")
+    ax.set_title("TSB-AD univariate split (350 series)")
+    fig.savefig(FIGS / "fig_tsbad_vuspr.pdf")
+    plt.close(fig)
+
+
 def main() -> None:
     """Write all figures."""
     FIGS.mkdir(parents=True, exist_ok=True)
@@ -153,6 +174,7 @@ def main() -> None:
     fig_bias_vs_sigma()
     fig_regime_fp()
     fig_deadband()
+    fig_tsbad_vuspr()
     print(f"figures written to {FIGS}")  # noqa: T201
 
 

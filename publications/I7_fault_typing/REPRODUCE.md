@@ -59,13 +59,15 @@ uv run python examples/11_i7_ablations.py              # dead-band, freeze-quies
 uv run python examples/12_i7_intel_lab_realfaults.py   # Intel-Lab operating curve
 uv run python examples/13_i7_lbnl_bias.py              # LBNL real-bias detection floor
 uv run python examples/14_i5_reunanen_headtohead.py    # detection baseline
-uv run python examples/06_tsb_ad_fullrun.py --split both  # TSB-AD (I6); resumable
+uv run python examples/06_tsb_ad_fullrun.py --split U     # TSB-AD (I6); univariate, resumable
 ```
 
 `06_tsb_ad_fullrun.py` is the long one (multi-hour). It is fully
 resumable: tuned hyperparameters cache to `.temp/tsb_ad_tuning/`, score
 arrays to `.temp/tsb_ad_scores/`, and result rows append to the output
-CSV per series — a crash loses at most the series in flight.
+CSV per series — a crash loses at most the series in flight. The paper
+reports the univariate split (`--split U`); the multivariate split
+(`--split M`) is left to future work.
 
 ## 4. Render figures and build the PDF
 

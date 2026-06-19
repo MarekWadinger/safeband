@@ -235,3 +235,32 @@ Because the typing layer is only as useful as the detector beneath it, we confir
         \bottomrule
     \end{tabular}
 \end{table}
+
+\subsection{Benchmark positioning on TSB-AD}
+\label{sec:tsbad}
+The SKAB head-to-head fixes the detector's position against one streaming alternative; we now place it on a large, public, multi-domain benchmark. We evaluate on the univariate split of TSB-AD \citep{Liu2024TSBAD} (350 evaluation series spanning 23 source domains), under the strict one-pass \emph{predict-then-learn} regime: every point is scored before the model is allowed to learn from it, so no future information leaks into any score. Hyperparameters for the base detector and the \citet{Reunanen2020} baseline are tuned on the official disjoint tuning split by Bayesian optimisation with an identical budget; the z-score and random detectors are the standard reference floors. We report VUS-PR, the metric the TSB-AD authors identify as the most reliable for ranking detectors (\texttt{tsb\_ad\_fullrun.csv}).
+
+Table~\ref{tab:tsbad} shows the base detector leads on mean VUS-PR ($0.335$ vs $0.271$ for the z-score, $0.164$ for \citet{Reunanen2020}, and $0.092$ for the random floor). The result is not driven by a few easy series: in paired per-series comparison the detector beats the z-score on $83\%$ of the 350 series, \citet{Reunanen2020} on $87\%$, and the random floor on $89\%$, and it is the single best method on $17$ of the $23$ source domains. The mean exceeds the median ($0.174$) because a minority of well-separated domains (e.g.\ Exathlon $0.80$, NEK $0.63$, YAHOO $0.59$) score highly while a long tail of hard point-anomaly domains (notably UCR, where every method scores below $0.03$) pulls the centre down. The z-score edges the detector on a handful of domains dominated by sharp, isolated spikes (MITDB, SMAP, Stock, TAO), where a memory-less point statistic is hard to beat; these are exactly the regimes least relevant to the slow sensor faults the typing layer targets. The headline, then, is that a constant-memory, one-pass detector with online adaptation is competitive with---and on average ahead of---a tuned streaming baseline across a broad public benchmark, which is the foundation the typing layer requires.
+
+\begin{table}[t]
+    \centering
+    \caption{TSB-AD univariate split (350 series), strict one-pass predict-then-learn, VUS-PR. ``AID win'' is the fraction of series on which the base detector scores higher than the row method. Source: \texttt{tsb\_ad\_fullrun.csv}.}
+    \label{tab:tsbad}
+    \begin{tabular}{lccc}
+        \toprule
+        Method & Mean VUS-PR (95\% CI) & Median & AID win \\
+        \midrule
+        Base detector (AID) & \textbf{0.335} [0.299, 0.371] & \textbf{0.174} & --- \\
+        z-score & 0.271 [0.240, 0.302] & 0.148 & 83\% \\
+        \citet{Reunanen2020} & 0.164 [0.139, 0.188] & 0.069 & 87\% \\
+        Random & 0.092 [0.074, 0.109] & 0.039 & 89\% \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/fig_tsbad_vuspr.pdf}
+    \caption{Per-series VUS-PR distribution on the TSB-AD univariate split (350 series). Boxes span the interquartile range, whiskers the $5$th--$95$th percentiles; the base detector dominates both the median and the upper tail. Source: \texttt{tsb\_ad\_fullrun.csv}.}
+    \label{fig:tsbad}
+\end{figure}
