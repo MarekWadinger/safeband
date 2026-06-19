@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import json
 import logging
 import sys
@@ -502,10 +503,18 @@ def cached_scores(
     split: str,
     series: str,
     compute: Callable[[], tuple[np.ndarray, np.ndarray, float]],
+    tag: str = "",
 ) -> tuple[np.ndarray, np.ndarray, float]:
-    """Return cached (score, pred, runtime) or compute and cache them."""
+    """Return cached (score, pred, runtime) or compute and cache them.
+
+    ``tag`` folds the tuned hyperparameters into the cache key so a cache
+    written under different params can never be silently reused (the bug
+    that previously contaminated multivariate scores). Untuned baselines
+    pass an empty tag and keep their param-free key.
+    """
     SCORE_CACHE.mkdir(parents=True, exist_ok=True)
-    stem = f"{split}__{method}__{series}".replace("/", "_")
+    suffix = f"__{tag}" if tag else ""
+    stem = f"{split}__{method}__{series}{suffix}".replace("/", "_")
     npz = SCORE_CACHE / f"{stem}.npz"
     if npz.exists():
         with np.load(npz) as d:
@@ -520,6 +529,7 @@ def bench_file(
     split: Literal["U", "M"],
     aid_factory: Callable[[int], _StreamScorer],
     reunanen_params: dict[str, float],
+    params_tag: str = "",
 ) -> list[dict[str, object]]:
     """Benchmark AID, Reunanen, z-score and random on one series."""
     data, label, columns = load_series(path)
@@ -534,12 +544,14 @@ def bench_file(
         split,
         path.name,
         lambda: stream_scores(aid_factory(tr), data, cols),
+        tag=params_tag,
     )
     re_score, re_pred, re_rt = cached_scores(
         "Reunanen",
         split,
         path.name,
         lambda: stream_reunanen(make_reunanen(**reunanen_params), data, cols),
+        tag=params_tag,
     )
     z_score, z_pred, _ = cached_scores(
         "Z-score",
@@ -848,6 +860,12 @@ def run_split(
     def aid_factory(tr: int) -> _StreamScorer:
         return aid_make(tr, **aid_params)
 
+    # Short hash of the tuned params; keys the score cache so scores from a
+    # different tuning can never be silently reused (see cached_scores).
+    params_tag = hashlib.md5(  # noqa: S324 - cache key, not security
+        json.dumps([aid_params, reunanen_params], sort_keys=True).encode()
+    ).hexdigest()[:8]
+
     # --- EVALUATE (on the eva split; resume past already-written series).
     files = read_split(split, "Eva")
     if subset is not None:
@@ -872,7 +890,9 @@ def run_split(
             continue
         t0 = time.perf_counter()
         try:
-            rows = bench_file(path, split, aid_factory, reunanen_params)
+            rows = bench_file(
+                path, split, aid_factory, reunanen_params, params_tag
+            )
             append_rows(out, rows)  # crash-safe checkpoint per series
             records += rows
             aid_vus = next(r["VUS-PR"] for r in rows if r["method"] == "AID")
