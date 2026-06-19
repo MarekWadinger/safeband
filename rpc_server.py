@@ -23,22 +23,22 @@ try:
 except ImportError:
     _PULSAR_AVAILABLE = False
 
-from functions.anomaly import ConditionalGaussianScorer, GaussianScorer
-from functions.email_client import EmailClient
-from functions.encryption import (
+from safeband.anomaly import ConditionalGaussianScorer, GaussianScorer
+from safeband.email_client import EmailClient
+from safeband.encryption import (
     encrypt_and_sign_data,
     init_rsa_security,
 )
-from functions.model_persistence import load_model, save_model
-from functions.proba import MultivariateGaussian
-from functions.streamz_tools import (  # noqa: F401
+from safeband.model_persistence import load_model, save_model
+from safeband.proba import MultivariateGaussian
+from safeband.streamz_tools import (  # noqa: F401
     _filt,
     _func,
     from_nats,
     to_mqtt,
     to_nats,
 )
-from functions.typing_extras import (
+from safeband.typing_extras import (
     EmailConfig,
     FileClient,
     IOConfig,
@@ -49,7 +49,7 @@ from functions.typing_extras import (
     PulsarClient,
     SetupConfig,
 )
-from functions.utils import common_prefix
+from safeband.utils import common_prefix
 
 logger = logging.getLogger(__name__)
 

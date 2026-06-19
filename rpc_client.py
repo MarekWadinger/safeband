@@ -2,8 +2,8 @@
 
 import logging
 
-from functions.parse import get_params
 from rpc_server import RpcOutlierDetector
+from safeband.parse import get_params
 
 RPC_ENDPOINT = "rpc_online_outlier_detection"
 

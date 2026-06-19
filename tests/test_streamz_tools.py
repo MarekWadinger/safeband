@@ -12,8 +12,8 @@ from streamz import Stream
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
 # Importing registers the custom ``map`` operator on Stream.
-import functions.streamz_tools  # noqa: F401
-from functions.streamz_tools import _fan_out, _safe_subject_token, to_mqtt
+import safeband.streamz_tools  # noqa: F401
+from safeband.streamz_tools import _fan_out, _safe_subject_token, to_mqtt
 
 
 class TestSafeSubjectToken:
@@ -111,7 +111,7 @@ class TestMapStreamOnError:
 
         with caplog.at_level(
             logging.ERROR,
-            logger="functions.streamz_tools",
+            logger="safeband.streamz_tools",
         ):
             source.emit(0)
         source.emit(1)
@@ -184,7 +184,7 @@ class TestToMqttPublishRetry:
 
         with caplog.at_level(
             logging.ERROR,
-            logger="functions.streamz_tools",
+            logger="safeband.streamz_tools",
         ):
             mqtt_sink._publish("t", b"x")
 
@@ -204,7 +204,7 @@ class TestToMqttPublishRetry:
 
         with caplog.at_level(
             logging.ERROR,
-            logger="functions.streamz_tools",
+            logger="safeband.streamz_tools",
         ):
             mqtt_sink._publish("t", b"x")
 

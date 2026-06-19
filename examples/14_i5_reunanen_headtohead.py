@@ -34,9 +34,9 @@ from river.utils import Rolling
 
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 
-from functions.anomaly import ConditionalGaussianScorer
-from functions.proba import MultivariateGaussian
-from functions.reunanen import ReunanenScorer
+from safeband.anomaly import ConditionalGaussianScorer
+from safeband.proba import MultivariateGaussian
+from safeband.reunanen import ReunanenScorer
 
 logger = logging.getLogger(__name__)
 

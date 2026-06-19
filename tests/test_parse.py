@@ -6,8 +6,8 @@ from configparser import ConfigParser
 import pytest
 from pandas import Timedelta
 
-from functions.parse import build_config, get_valid_client
-from functions.typing_extras import MQTTClient
+from safeband.parse import build_config, get_valid_client
+from safeband.typing_extras import MQTTClient
 
 
 class TestBuildConfigDebug:

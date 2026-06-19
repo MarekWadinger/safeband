@@ -11,7 +11,7 @@ from cryptography.exceptions import InvalidSignature
 from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from functions.encryption import (
+from safeband.encryption import (
     MAX_CIPHERTEXT_BYTES,
     decode_data,
     decrypt_data,
@@ -316,7 +316,7 @@ class TestVerifyFirstFormat:
         wire["time"] = ("X" if tampered[0] != "X" else "Y") + tampered[1:]
         with (
             patch(
-                "functions.encryption.decrypt_data",
+                "safeband.encryption.decrypt_data",
             ) as mock_decrypt,
             pytest.raises(InvalidSignature),
         ):
@@ -348,7 +348,7 @@ class TestVerifyFirstFormat:
         }
         with (
             patch(
-                "functions.encryption.decrypt_data",
+                "safeband.encryption.decrypt_data",
             ) as mock_decrypt,
             pytest.raises(ValueError, match="ciphertext"),
         ):

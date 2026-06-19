@@ -14,14 +14,14 @@ from human_security import HumanRSA
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 from consumer import on_message, query_file
-from functions.encryption import (
+from safeband.encryption import (
     decode_data,
     encrypt_data,
     sign_data,
 )
-from functions.model_persistence import load_model, save_model
-from functions.typing_extras import FileClient
-from functions.utils import common_prefix
+from safeband.model_persistence import load_model, save_model
+from safeband.typing_extras import FileClient
+from safeband.utils import common_prefix
 
 
 class TestConsumer:

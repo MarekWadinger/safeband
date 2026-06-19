@@ -14,9 +14,10 @@ from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
-from functions.anomaly import GaussianScorer
-from functions.model_persistence import load_model, save_model
-from functions.typing_extras import (
+from rpc_server import RpcOutlierDetector, expand_model_params
+from safeband.anomaly import GaussianScorer
+from safeband.model_persistence import load_model, save_model
+from safeband.typing_extras import (
     EmailConfig,
     FileClient,
     IOConfig,
@@ -24,7 +25,6 @@ from functions.typing_extras import (
     MQTTClient,
     SetupConfig,
 )
-from rpc_server import RpcOutlierDetector, expand_model_params
 
 
 class TestExpandModelParamsPhysicalLimits:

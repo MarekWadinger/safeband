@@ -62,12 +62,12 @@ from joblib import Parallel, delayed
 from river.proba import Gaussian
 from river.utils import Rolling
 
-from functions.anomaly import (
+from safeband.anomaly import (
     ConditionalGaussianScorer,
     GaussianScorer,
 )
-from functions.proba import MultivariateGaussian
-from functions.reunanen import ReunanenScorer
+from safeband.proba import MultivariateGaussian
+from safeband.reunanen import ReunanenScorer
 
 # Silence sklearn's noisy per-window precision/recall warnings at MODULE
 # scope so the filter is also installed in every joblib (loky) worker

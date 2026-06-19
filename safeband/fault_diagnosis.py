@@ -1,7 +1,7 @@
 """Streaming classification of sensor fault types.
 
 Extends the root-cause isolation of
-``functions.anomaly.ConditionalGaussianScorer`` — "which signal is
+``safeband.anomaly.ConditionalGaussianScorer`` — "which signal is
 anomalous and in which direction" — to classifying the *type* of
 sensor fault from the taxonomy bias / drift / loss of accuracy /
 freezing (IDEAS I7).

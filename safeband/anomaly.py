@@ -1043,7 +1043,7 @@ class ConditionalGaussianScorer(GaussianScorer):
 
     Gaussian scorer on rolling window
     >>> from river.utils import Rolling
-    >>> from functions.proba import MultivariateGaussian
+    >>> from safeband.proba import MultivariateGaussian
     >>> scorer = ConditionalGaussianScorer(Rolling(MultivariateGaussian(), 3),
     ...     grace_period=1, protect_anomaly_detector=False)
 
@@ -1246,7 +1246,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         Examples:
         --------
         >>> from river.utils import Rolling
-        >>> from functions.proba import MultivariateGaussian
+        >>> from safeband.proba import MultivariateGaussian
         >>> scorer = ConditionalGaussianScorer(
         ...     Rolling(MultivariateGaussian(), 3),
         ...     grace_period=1, protect_anomaly_detector=False)
@@ -1272,7 +1272,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         For each feature ``i`` the residual ``x_i - E[x_i | x_rest]``
         is returned together with the conditional std — the raw
         material for sensor-fault-type classification
-        (``functions.fault_diagnosis``), which the saturating CDF
+        (``safeband.fault_diagnosis``), which the saturating CDF
         scores of ``scores_one`` cannot provide. Returns ``(nan,
         nan)`` for every feature until the covariance estimate is
         defined.
@@ -1280,7 +1280,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         Examples:
         --------
         >>> from river.utils import Rolling
-        >>> from functions.proba import MultivariateGaussian
+        >>> from safeband.proba import MultivariateGaussian
         >>> scorer = ConditionalGaussianScorer(
         ...     Rolling(MultivariateGaussian(), 3),
         ...     grace_period=1, protect_anomaly_detector=False)
@@ -1332,7 +1332,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         Examples:
         --------
         >>> from river.utils import Rolling
-        >>> from functions.proba import MultivariateGaussian
+        >>> from safeband.proba import MultivariateGaussian
         >>> scorer = ConditionalGaussianScorer(
         ...     Rolling(MultivariateGaussian(), 3),
         ...     grace_period=1, protect_anomaly_detector=False)
@@ -1464,7 +1464,7 @@ class ConditionalGaussianScorer(GaussianScorer):
         Examples:
         --------
         >>> from river.utils import Rolling
-        >>> from functions.proba import MultivariateGaussian
+        >>> from safeband.proba import MultivariateGaussian
         >>> scorer = ConditionalGaussianScorer(
         ...     Rolling(MultivariateGaussian(), 3),
         ...     grace_period=1, protect_anomaly_detector=False)
