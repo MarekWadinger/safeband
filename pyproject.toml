@@ -1,6 +1,6 @@
 [project]
 name = "safeband"
-version = "2.6.0"
+version = "3.0.0"
 description = "Online outlier detection service for industrial SCADA-based infrastructures for low-latency detection and change-point adaptation."
 readme = "README.md"
 requires-python = ">=3.12"
