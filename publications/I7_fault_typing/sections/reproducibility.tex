@@ -1,0 +1,57 @@
+Every number, table, and figure in this paper is reproducible from a
+single pinned revision of the public repository
+\url{https://github.com/MarekWadinger/adaptive-interpretable-ad}, the git
+tag \texttt{i7-fault-typing-v1}. The exact software environment is
+captured by the committed \texttt{uv.lock} (resolved for Python~3.12);
+\texttt{uv sync} recreates it deterministically. No value reported here
+is transcribed by hand from a transient run: each experiment script
+writes a CSV artifact under \texttt{examples/benchmarks/}, every table
+and figure caption names its source CSV, and the four figures are
+rendered from those CSVs by a single script,
+\texttt{publications/I7\_fault\_typing/make\_figures.py}. The
+benchmark scripts are deterministic (fixed seed~42).
+
+\paragraph{Data provenance.}
+The controlled-injection carrier (CATS nominal block) and the SKAB
+detection benchmark are committed in the repository under
+\texttt{examples/data/}. The three real-fault datasets are obtained from
+their original sources into \texttt{.temp/data/} (not redistributed):
+Intel Berkeley Lab from \url{https://db.csail.mit.edu/labdata/data.txt.gz};
+the LBNL building-FDD set from OEDI submission~910,
+\texttt{doi:10.25984/1824861}; and the TSB-AD benchmark from the
+TheDatumOrg/TSB-AD repository. Each script aborts with a clear message
+if its dataset is absent.
+
+\paragraph{Artifact map.}
+Table~\ref{tab:repro} lists, for each committed CSV, the script that
+produces it; the table and figure captions in Section~\ref{Results} name
+the CSV each draws from, closing the loop from raw data to typeset
+result.
+
+\begin{table}[t]
+    \centering
+    \caption{Mapping from each result artifact (CSV) to the committed script that produces it, at tag \texttt{i7-fault-typing-v1}. Figures are rendered from these CSVs by \texttt{make\_figures.py}.}
+    \label{tab:repro}
+    \begin{tabular}{ll}
+        \toprule
+        Result CSV (\texttt{examples/benchmarks/}) & Generating script (\texttt{examples/}) \\
+        \midrule
+        \texttt{i7\_scaled\_per\_type.csv} & \texttt{08\_i7\_scaled\_validation.py} \\
+        \texttt{i7\_scaled\_bias\_by\_channel.csv} & \texttt{08\_i7\_scaled\_validation.py} \\
+        \texttt{i7\_scaled\_normal\_precision.csv} & \texttt{08\_i7\_scaled\_validation.py} \\
+        \texttt{i7\_freeze\_latency.csv} & \texttt{09\_i7\_freeze\_latency.py} \\
+        \texttt{i7\_regime\_fp.csv} & \texttt{10\_i7\_regime\_fp.py} \\
+        \texttt{i7\_deadband.csv} & \texttt{11\_i7\_ablations.py} \\
+        \texttt{i7\_freeze\_quiescent.csv} & \texttt{11\_i7\_ablations.py} \\
+        \texttt{i7\_intel\_lab\_operating\_points.csv} & \texttt{12\_i7\_intel\_lab\_realfaults.py} \\
+        \texttt{i7\_intel\_lab\_fault\_types.csv} & \texttt{12\_i7\_intel\_lab\_realfaults.py} \\
+        \texttt{i7\_lbnl\_bias.csv} & \texttt{13\_i7\_lbnl\_bias.py} \\
+        \texttt{i5\_reunanen\_skab.csv} & \texttt{14\_i5\_reunanen\_headtohead.py} \\
+        \texttt{tsb\_ad\_fullrun.csv} & \texttt{06\_tsb\_ad\_fullrun.py} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The full procedure---environment, data acquisition, per-artifact
+commands, and figure rendering---is documented in
+\texttt{publications/I7\_fault\_typing/REPRODUCE.md} at the same tag.

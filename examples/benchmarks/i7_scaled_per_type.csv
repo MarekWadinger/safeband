@@ -1,0 +1,5 @@
+type,recall,ci_lo,ci_hi,n
+bias,0.518,0.413,0.621,85
+drift,0.741,0.639,0.822,85
+accuracy_loss,0.659,0.553,0.751,85
+freezing,1.0,0.957,1.0,85

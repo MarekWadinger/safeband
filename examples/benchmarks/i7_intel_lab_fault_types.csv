@@ -1,0 +1,5 @@
+fault_type,count,frac
+freezing,578721,0.9316
+drift,31727,0.0511
+bias,10395,0.0167
+accuracy_loss,343,0.0006

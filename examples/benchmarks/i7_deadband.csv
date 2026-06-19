@@ -1,0 +1,4 @@
+suppress_scale,drift_slope_sigma,detect_rate,delay_median,magnitude_sigma_at_detection,n_seeds
+1.0,0.2,1.0,26.0,5.2,5
+5.0,0.2,1.0,88.0,17.6,5
+inf,0.2,0.0,,,5

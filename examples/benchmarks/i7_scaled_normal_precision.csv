@@ -1,0 +1,6 @@
+peer_label,count,frac
+normal,1234,0.9074
+drift,57,0.0419
+accuracy_loss,29,0.0213
+bias,24,0.0176
+freezing,16,0.0118

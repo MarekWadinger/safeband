@@ -6,6 +6,16 @@ anomalous and in which direction" — to classifying the *type* of
 sensor fault from the taxonomy bias / drift / loss of accuracy /
 freezing (IDEAS I7).
 
+The taxonomy itself is not new: bias / accuracy_loss (NOISE) / freezing
+(CONSTANT/stuck-at), extended with drift, is the canonical
+instrumentation-fault taxonomy of Sharma, Golubchik & Govindan (2010,
+ACM TOSN, doi:10.1145/1754414.1754419) and Ni et al. (2009). The
+contribution here is not the taxonomy but its *streaming, O(1)-memory*
+realization on the **conditional** residuals of a self-supervised
+detector — typing the fault on the same signal the detector already
+uses for localization, with no history buffers, so detection latency
+and per-signal attribution are the levers, not the label set.
+
 The classifier consumes, per step, the raw observation together with
 the per-signal conditional residuals exposed by
 ``ConditionalGaussianScorer.residuals_one`` and maintains
@@ -30,11 +40,16 @@ history buffers:
   ``cond_std -> 0`` blind spot).
 * **bias** — persistent constant-sign offset of the normalized
   conditional residual: the short-window mean exceeds
-  ``mean_threshold`` while the trend test stays quiet.
+  ``mean_threshold`` while the short-vs-long mean gap stays small.
 * **drift** — the short-window residual mean exceeds
-  ``mean_threshold`` *and* keeps moving away from the long-window
-  baseline (trend test): the deviation versus the peers keeps
-  growing.
+  ``mean_threshold`` *and* the signed gap between the short- and
+  long-window EWMA means exceeds ``trend_threshold``. This gap is a
+  *lagged-mean difference*, not a fitted slope: a still-growing
+  deviation keeps the short mean ahead of the slower long mean, whereas
+  a settled constant offset lets the long mean catch up and the gap
+  closes. The bias/drift boundary therefore depends on the
+  ``window``/``long_window`` ratio (the EWMA lag), which the sweep in
+  ``examples/07_fault_diagnosis_validation.py`` characterises.
 * **accuracy_loss** — variance shift: the short-window residual
   variance exceeds ``var_ratio`` times the long-window baseline
   variance while the mean offset stays near zero.
@@ -196,9 +211,11 @@ class SensorFaultClassifier:
         mean_threshold: Short-window |mean| of the normalized residual
             above which a mean-offset fault (bias or drift) is
             flagged.
-        trend_threshold: Gap between short- and long-window residual
-            means (signed away from zero) above which the offset is
-            classified as drift rather than bias.
+        trend_threshold: Signed gap between the short- and long-window
+            EWMA residual means (a lagged-mean difference, not a fitted
+            slope) above which the offset is classified as drift rather
+            than bias. The discriminating boundary scales with the
+            ``window``/``long_window`` lag.
         var_ratio: Short/long residual-variance ratio above which a
             near-zero-mean variance shift is flagged as accuracy loss.
         exclusive_attribution: Attribute a mean-offset fault only to

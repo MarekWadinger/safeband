@@ -80,6 +80,7 @@ line-length = 79
 namespace-packages = [
     "examples",
     "examples/models",
+    "publications/I7_fault_typing",
     "publications/ilustrate/pc2023",
     "scripts",
 ]

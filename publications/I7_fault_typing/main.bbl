@@ -1,0 +1,105 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\href}[2]{#2}
+\providecommand{\path}[1]{#1}
+\providecommand{\DOIprefix}{doi:}
+\providecommand{\ArXivprefix}{arXiv:}
+\providecommand{\URLprefix}{URL: }
+\providecommand{\Pubmedprefix}{pmid:}
+\providecommand{\doi}[1]{\href{http://dx.doi.org/#1}{\path{#1}}}
+\providecommand{\Pubmed}[1]{\href{pmid:#1}{\path{#1}}}
+\providecommand{\bibinfo}[2]{#2}
+\ifx\xfnm\relax \def\xfnm[#1]{\unskip,\space#1}\fi
+%Type = Misc
+\bibitem[{Bodik et~al.(2004)Bodik, Hong, Guestrin, Madden, Paskin and
+  Thibaux}]{IntelLab2004}
+\bibinfo{author}{Bodik, P.}, \bibinfo{author}{Hong, W.},
+  \bibinfo{author}{Guestrin, C.}, \bibinfo{author}{Madden, S.},
+  \bibinfo{author}{Paskin, M.}, \bibinfo{author}{Thibaux, R.},
+  \bibinfo{year}{2004}.
+\newblock \bibinfo{title}{Intel berkeley research lab sensor data}.
+\newblock
+  \bibinfo{howpublished}{\url{https://db.csail.mit.edu/labdata/labdata.html}}.
+%Type = Misc
+\bibitem[{Fleith(2023)}]{CATS2023}
+\bibinfo{author}{Fleith, P.}, \bibinfo{year}{2023}.
+\newblock \bibinfo{title}{Controlled anomalies time series (cats) dataset}.
+\newblock \DOIprefix\doi{10.5281/zenodo.8338435}. \bibinfo{note}{solenix
+  Engineering GmbH; CC-BY-4.0}.
+%Type = Article
+\bibitem[{Granderson et~al.(2023)Granderson, Lin, Chen et~al.}]{Granderson2023}
+\bibinfo{author}{Granderson, J.}, \bibinfo{author}{Lin, G.},
+  \bibinfo{author}{Chen, Y.}, et~al., \bibinfo{year}{2023}.
+\newblock \bibinfo{title}{A labeled dataset for building {HVAC} systems
+  operating in faulted and fault-free states}.
+\newblock \bibinfo{journal}{Scientific Data} \bibinfo{volume}{10}.
+\newblock \DOIprefix\doi{10.1038/s41597-023-02197-w}.
+%Type = Inproceedings
+\bibitem[{Lai et~al.(2021)Lai, Zha, Xu, Zhao, Wang and Hu}]{Lai2021}
+\bibinfo{author}{Lai, K.H.}, \bibinfo{author}{Zha, D.}, \bibinfo{author}{Xu,
+  J.}, \bibinfo{author}{Zhao, Y.}, \bibinfo{author}{Wang, G.},
+  \bibinfo{author}{Hu, X.}, \bibinfo{year}{2021}.
+\newblock \bibinfo{title}{Revisiting time series outlier detection: Definitions
+  and benchmarks}, in: \bibinfo{booktitle}{Advances in Neural Information
+  Processing Systems (NeurIPS) Datasets and Benchmarks Track}.
+\newblock \URLprefix \url{https://openreview.net/forum?id=r8IvOsnHchr}.
+%Type = Misc
+\bibitem[{Lin and Granderson(2019)}]{LBNL_FDD2019}
+\bibinfo{author}{Lin, G.}, \bibinfo{author}{Granderson, J.},
+  \bibinfo{year}{2019}.
+\newblock \bibinfo{title}{Data sets for evaluation of building fault detection
+  and diagnostics algorithms}.
+\newblock \DOIprefix\doi{10.25984/1824861}.
+%Type = Inproceedings
+\bibitem[{Liu and Paparrizos(2024)}]{Liu2024TSBAD}
+\bibinfo{author}{Liu, Q.}, \bibinfo{author}{Paparrizos, J.},
+  \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{The elephant in the room: Towards a reliable
+  time-series anomaly detection benchmark}, in: \bibinfo{booktitle}{Advances in
+  Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks
+  Track}.
+%Type = Article
+\bibitem[{Ni et~al.(2009)Ni, Ramanathan, Chehade, Balzano, Nair, Zahedi,
+  Kohler, Pottie, Hansen and Srivastava}]{Ni2009}
+\bibinfo{author}{Ni, K.}, \bibinfo{author}{Ramanathan, N.},
+  \bibinfo{author}{Chehade, M.N.H.}, \bibinfo{author}{Balzano, L.},
+  \bibinfo{author}{Nair, S.}, \bibinfo{author}{Zahedi, S.},
+  \bibinfo{author}{Kohler, E.}, \bibinfo{author}{Pottie, G.},
+  \bibinfo{author}{Hansen, M.}, \bibinfo{author}{Srivastava, M.},
+  \bibinfo{year}{2009}.
+\newblock \bibinfo{title}{Sensor network data fault types}.
+\newblock \bibinfo{journal}{ACM Transactions on Sensor Networks}
+  \bibinfo{volume}{5}, \bibinfo{pages}{1--29}.
+\newblock \DOIprefix\doi{10.1145/1525856.1525863}.
+%Type = Article
+\bibitem[{Reunanen et~al.(2020)Reunanen, R{\"a}ty, Jokinen, Hoyt and
+  Culler}]{Reunanen2020}
+\bibinfo{author}{Reunanen, N.}, \bibinfo{author}{R{\"a}ty, T.},
+  \bibinfo{author}{Jokinen, J.J.}, \bibinfo{author}{Hoyt, T.},
+  \bibinfo{author}{Culler, D.}, \bibinfo{year}{2020}.
+\newblock \bibinfo{title}{Unsupervised online detection and prediction of
+  outliers in streams of sensor data}.
+\newblock \bibinfo{journal}{International Journal of Data Science and
+  Analytics} \bibinfo{volume}{9}, \bibinfo{pages}{285--314}.
+\newblock \URLprefix \url{https://doi.org/10.1007/s41060-019-00191-3},
+  \DOIprefix\doi{10.1007/s41060-019-00191-3}.
+%Type = Article
+\bibitem[{Sharma et~al.(2010)Sharma, Golubchik and Govindan}]{Sharma2010}
+\bibinfo{author}{Sharma, A.B.}, \bibinfo{author}{Golubchik, L.},
+  \bibinfo{author}{Govindan, R.}, \bibinfo{year}{2010}.
+\newblock \bibinfo{title}{Sensor faults: Detection methods and prevalence in
+  real-world datasets}.
+\newblock \bibinfo{journal}{ACM Transactions on Sensor Networks}
+  \bibinfo{volume}{6}, \bibinfo{pages}{1--39}.
+\newblock \DOIprefix\doi{10.1145/1754414.1754419}.
+%Type = Inproceedings
+\bibitem[{Wadinger and Kvasnica(2023)}]{Wadinger2023}
+\bibinfo{author}{Wadinger, M.}, \bibinfo{author}{Kvasnica, M.},
+  \bibinfo{year}{2023}.
+\newblock \bibinfo{title}{Real-time outlier detection with dynamic process
+  limits}, in: \bibinfo{booktitle}{2023 24th International Conference on
+  Process Control (PC)}, pp. \bibinfo{pages}{138--143}.
+\newblock \DOIprefix\doi{10.1109/PC58330.2023.10217717}.
+
+\end{thebibliography}
