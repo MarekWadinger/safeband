@@ -1,3 +1,14 @@
+## 3.0.0 (2026-06-19)
+
+### BREAKING CHANGE
+
+- import path changes from 'functions.*' to 'safeband.*';
+distribution name changes from 'adaptive-interpretable-ad' to 'safeband'.
+
+### Feat
+
+- rename package to safeband (#117)
+
 ## 2.6.0 (2026-06-19)
 
 ### Feat
