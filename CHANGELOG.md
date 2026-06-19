@@ -1,3 +1,27 @@
+## 2.6.0 (2026-06-19)
+
+### Feat
+
+- integrate I6 TSB-AD univariate benchmark into the paper
+- make the TSB-AD full sweep crash-safe and resumable
+- Reunanen 2020 detection head-to-head on SKAB (I5)
+- real-bias validation on LBNL FDD quantifies the detection floor
+- Intel-Lab operating-point sweep cuts real-data FP 22%->7%
+- real-fault validation on Intel-Lab battery-depletion faults
+- I7 dead-band + freeze-quiescent ablations (R3/R5/R6)
+- regime-FP experiment confirms R2 and reframes Claim 2
+- freeze-latency experiment refutes the blind-spot claim
+- scaled CI-backed I7 validation (85 trials/type)
+
+### Fix
+
+- key TSB-AD score cache on tuned-param hash
+- silence sklearn precision warnings in joblib workers
+
+### Perf
+
+- parallelize the TSB-AD tuning objective across cores
+
 ## 2.5.2 (2026-06-17)
 
 ## 2.5.1 (2026-06-17)
