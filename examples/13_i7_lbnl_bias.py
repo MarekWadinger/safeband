@@ -166,9 +166,7 @@ def main() -> None:
     cs = cond_sigma(cache)
     # Imposed offsets are +/-1/2/4 C = 1.8/3.6/7.2 F; express in
     # conditional-sigma units, the scale the mean-threshold test sees.
-    logger.info(
-        "outdoor-air-temp conditional sigma (healthy, F): %.3f", cs
-    )
+    logger.info("outdoor-air-temp conditional sigma (healthy, F): %.3f", cs)
     logger.info(
         "imposed bias in conditional sigma: 1C=%.2f, 2C=%.2f, 4C=%.2f",
         1.8 / cs,
