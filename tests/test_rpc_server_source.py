@@ -10,13 +10,13 @@ from streamz import Stream
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
 import rpc_server
-from functions.typing_extras import (
+from rpc_server import RpcOutlierDetector
+from safeband.typing_extras import (
     KafkaClient,
     MQTTClient,
     NATSClient,
     PulsarClient,
 )
-from rpc_server import RpcOutlierDetector
 
 
 class TestGetSourcePulsar:

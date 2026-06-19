@@ -14,90 +14,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "adaptive-interpretable-ad"
-version = "2.6.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "cryptography" },
-    { name = "human-security" },
-    { name = "matplotlib" },
-    { name = "nats-py" },
-    { name = "paho-mqtt" },
-    { name = "pandas" },
-    { name = "pandas-stubs" },
-    { name = "plotly" },
-    { name = "pydantic" },
-    { name = "river", marker = "(implementation_version >= '3.11' and implementation_version < '3.13' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or sys_platform == 'darwin'" },
-    { name = "scipy" },
-    { name = "streamz" },
-    { name = "streamz-pulsar" },
-    { name = "types-paho-mqtt" },
-    { name = "typing-extensions" },
-]
-
-[package.dev-dependencies]
-build = [
-    { name = "setuptools" },
-    { name = "setuptools-rust" },
-    { name = "wheel" },
-]
-dev = [
-    { name = "commitizen" },
-    { name = "jupyter" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-html" },
-    { name = "ruff" },
-    { name = "ty" },
-]
-example = [
-    { name = "bayesian-optimization" },
-    { name = "numpy" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cryptography", specifier = ">=49.0.0" },
-    { name = "human-security", specifier = ">=1.0" },
-    { name = "matplotlib", specifier = "<4.0.0" },
-    { name = "nats-py", specifier = "<3.0.0" },
-    { name = "paho-mqtt", specifier = "<3.0.0" },
-    { name = "pandas", specifier = "<3.0.0" },
-    { name = "pandas-stubs", specifier = ">=2.3.2.250827" },
-    { name = "plotly", specifier = "<7.0.0" },
-    { name = "pydantic", specifier = ">=2,<3" },
-    { name = "river", marker = "(implementation_version >= '3.11' and implementation_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux') or sys_platform == 'darwin'", git = "https://github.com/MarekWadinger/river.git" },
-    { name = "river", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'", git = "https://github.com/MarekWadinger/river.git" },
-    { name = "scipy", specifier = ">=1.11" },
-    { name = "streamz", specifier = "<1.0.0" },
-    { name = "streamz-pulsar", specifier = ">=0.1.1" },
-    { name = "types-paho-mqtt", specifier = ">=1.6.0.20240321" },
-    { name = "typing-extensions", specifier = ">=4.12" },
-]
-
-[package.metadata.requires-dev]
-build = [
-    { name = "setuptools", specifier = ">=80.9.0" },
-    { name = "setuptools-rust", specifier = ">=1.12.0" },
-    { name = "wheel", specifier = ">=0.45.1" },
-]
-dev = [
-    { name = "commitizen", specifier = ">=4.16.3" },
-    { name = "jupyter", specifier = "<2.0.0" },
-    { name = "pre-commit", specifier = ">=4.6.0" },
-    { name = "pytest", specifier = ">=9.0.3" },
-    { name = "pytest-cov", specifier = ">=7.1.0" },
-    { name = "pytest-html", specifier = ">=4.2.0" },
-    { name = "ruff", specifier = ">=0.15.16" },
-    { name = "ty", specifier = ">=0.0.48" },
-]
-example = [
-    { name = "bayesian-optimization", specifier = ">=2.0.4,<3" },
-    { name = "numpy", specifier = ">=2.3.2" },
-]
-
-[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2407,6 +2323,90 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/74/0d/f2cd247ad32633a5c36e97141a2c21b11c6279f7957bc2ff360b1e08fddd/ruff-0.15.16-py3-none-win32.whl", hash = "sha256:580378f7bd4aa25f72e74aa54948a9622f142b1e509521dd10902e886681cc1e", size = 10735541, upload-time = "2026-06-04T16:32:30.145Z" },
     { url = "https://files.pythonhosted.org/packages/8b/9e/02e845ef151b1dee585e55c4739f8e1734ae1d9f1221dff65761c162208b/ruff-0.15.16-py3-none-win_amd64.whl", hash = "sha256:408256017284eddf98fff77b29aa4fb30f586042d535b2d9befc6512f400aaec", size = 11843403, upload-time = "2026-06-04T16:32:39.76Z" },
     { url = "https://files.pythonhosted.org/packages/15/19/016553f86f207450aebebc2b2b5088d086b901cc8186c02ac4284db3bd88/ruff-0.15.16-py3-none-win_arm64.whl", hash = "sha256:8cd61783afb39638a7133ef0d2dfb1e91277593962f81b5a8423eb0b888a6121", size = 11134555, upload-time = "2026-06-04T16:33:00.136Z" },
+]
+
+[[package]]
+name = "safeband"
+version = "2.6.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "cryptography" },
+    { name = "human-security" },
+    { name = "matplotlib" },
+    { name = "nats-py" },
+    { name = "paho-mqtt" },
+    { name = "pandas" },
+    { name = "pandas-stubs" },
+    { name = "plotly" },
+    { name = "pydantic" },
+    { name = "river", marker = "(implementation_version >= '3.11' and implementation_version < '3.13' and sys_platform == 'linux') or (platform_machine != 'aarch64' and sys_platform == 'linux') or sys_platform == 'darwin'" },
+    { name = "scipy" },
+    { name = "streamz" },
+    { name = "streamz-pulsar" },
+    { name = "types-paho-mqtt" },
+    { name = "typing-extensions" },
+]
+
+[package.dev-dependencies]
+build = [
+    { name = "setuptools" },
+    { name = "setuptools-rust" },
+    { name = "wheel" },
+]
+dev = [
+    { name = "commitizen" },
+    { name = "jupyter" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-html" },
+    { name = "ruff" },
+    { name = "ty" },
+]
+example = [
+    { name = "bayesian-optimization" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=49.0.0" },
+    { name = "human-security", specifier = ">=1.0" },
+    { name = "matplotlib", specifier = "<4.0.0" },
+    { name = "nats-py", specifier = "<3.0.0" },
+    { name = "paho-mqtt", specifier = "<3.0.0" },
+    { name = "pandas", specifier = "<3.0.0" },
+    { name = "pandas-stubs", specifier = ">=2.3.2.250827" },
+    { name = "plotly", specifier = "<7.0.0" },
+    { name = "pydantic", specifier = ">=2,<3" },
+    { name = "river", marker = "(implementation_version >= '3.11' and implementation_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux') or sys_platform == 'darwin'", git = "https://github.com/MarekWadinger/river.git" },
+    { name = "river", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'", git = "https://github.com/MarekWadinger/river.git" },
+    { name = "scipy", specifier = ">=1.11" },
+    { name = "streamz", specifier = "<1.0.0" },
+    { name = "streamz-pulsar", specifier = ">=0.1.1" },
+    { name = "types-paho-mqtt", specifier = ">=1.6.0.20240321" },
+    { name = "typing-extensions", specifier = ">=4.12" },
+]
+
+[package.metadata.requires-dev]
+build = [
+    { name = "setuptools", specifier = ">=80.9.0" },
+    { name = "setuptools-rust", specifier = ">=1.12.0" },
+    { name = "wheel", specifier = ">=0.45.1" },
+]
+dev = [
+    { name = "commitizen", specifier = ">=4.16.3" },
+    { name = "jupyter", specifier = "<2.0.0" },
+    { name = "pre-commit", specifier = ">=4.6.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "pytest-html", specifier = ">=4.2.0" },
+    { name = "ruff", specifier = ">=0.15.16" },
+    { name = "ty", specifier = ">=0.0.48" },
+]
+example = [
+    { name = "bayesian-optimization", specifier = ">=2.0.4,<3" },
+    { name = "numpy", specifier = ">=2.3.2" },
 ]
 
 [[package]]

@@ -16,9 +16,9 @@ import pandas as pd
 from river import utils
 
 sys.path.insert(1, str(Path.cwd().parent))
-from functions.anomaly import ConditionalGaussianScorer
-from functions.fault_diagnosis import SensorFaultClassifier
-from functions.proba import MultivariateGaussian
+from safeband.anomaly import ConditionalGaussianScorer
+from safeband.fault_diagnosis import SensorFaultClassifier
+from safeband.proba import MultivariateGaussian
 
 logger = logging.getLogger(__name__)
 
@@ -142,11 +142,11 @@ from bayes_opt.logger import JSONLogger  # noqa: E402
 from river import cluster, metrics  # noqa: E402
 from river.metrics import MacroF1  # noqa: E402
 
-from functions.compose import (  # noqa: E402
+from safeband.compose import (  # noqa: E402
     build_model,
     convert_to_nested_dict,
 )
-from functions.evaluate import (  # noqa: E402
+from safeband.evaluate import (  # noqa: E402
     batch_save_evaluate_metrics,
     build_fit_evaluate,
     progressive_val_predict,

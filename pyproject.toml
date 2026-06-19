@@ -1,5 +1,5 @@
 [project]
-name = "adaptive-interpretable-ad"
+name = "safeband"
 version = "2.6.0"
 description = "Online outlier detection service for industrial SCADA-based infrastructures for low-latency detection and change-point adaptation."
 readme = "README.md"
@@ -148,8 +148,8 @@ omit = [
     "dist_linux/*",
     "tests/*",
     # Plotting/evaluation helpers excluded from coverage
-    "functions/evaluate.py",
-    "functions/plot.py",
+    "safeband/evaluate.py",
+    "safeband/plot.py",
 ]
 exclude_also = [
     "def __repr__",

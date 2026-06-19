@@ -5,8 +5,8 @@ import math
 import numpy as np
 import pandas as pd
 
-from functions.evaluate import progressive_val_predict
-from functions.reunanen import ReunanenScorer
+from safeband.evaluate import progressive_val_predict
+from safeband.reunanen import ReunanenScorer
 
 EPS = 1e-6
 GRAD_ATOL = 1e-7

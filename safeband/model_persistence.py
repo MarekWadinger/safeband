@@ -27,8 +27,8 @@ from pathlib import Path
 
 import joblib
 
-from functions.anomaly import GaussianScorer
-from functions.utils import common_prefix
+from safeband.anomaly import GaussianScorer
+from safeband.utils import common_prefix
 
 logger = logging.getLogger(__name__)
 

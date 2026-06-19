@@ -12,9 +12,9 @@ from scipy.stats import norm
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
-from functions.anomaly import ConditionalGaussianScorer
-from functions.fault_diagnosis import FaultLabel, SensorFaultClassifier
-from functions.proba import MultivariateGaussian
+from safeband.anomaly import ConditionalGaussianScorer
+from safeband.fault_diagnosis import FaultLabel, SensorFaultClassifier
+from safeband.proba import MultivariateGaussian
 
 N_SIGNALS = 4
 SIGNALS = [f"s{i}" for i in range(N_SIGNALS)]

@@ -9,12 +9,12 @@ import pulsar
 from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from functions.encryption import (
+from safeband.encryption import (
     decode_data,
     encrypt_data,
     init_rsa_security,
 )
-from functions.streamz_tools import MapStream  # noqa: F401
+from safeband.streamz_tools import MapStream  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

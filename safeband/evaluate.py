@@ -12,8 +12,8 @@ import pandas as pd
 from river.compose import Pipeline
 from river.metrics.base import Metric, MultiClassMetric
 
-from functions.anomaly import GaussianScorer
-from functions.compose import build_model, convert_to_nested_dict
+from safeband.anomaly import GaussianScorer
+from safeband.compose import build_model, convert_to_nested_dict
 
 logger = logging.getLogger(__name__)
 

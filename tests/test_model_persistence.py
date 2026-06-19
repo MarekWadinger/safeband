@@ -8,8 +8,8 @@ from river import proba, utils
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
-from functions.anomaly import GaussianScorer
-from functions.model_persistence import load_model, save_model
+from safeband.anomaly import GaussianScorer
+from safeband.model_persistence import load_model, save_model
 
 
 def _make_model() -> GaussianScorer:

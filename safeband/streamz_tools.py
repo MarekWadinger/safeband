@@ -261,14 +261,14 @@ class to_mqtt(Sink):
     >>> out_msg = bytes(str(dt.datetime.utcnow()), encoding='utf-8')
     >>> mqtt_sink = to_mqtt(
     ...     Stream(), host="test.mosquitto.org",
-    ...     port=1883, topic='adaptive-interpretable-ad/test',
+    ...     port=1883, topic='safeband/test',
     ...     publish_kwargs={"retain":True})
     >>> mqtt_sink.update(out_msg)  # doctest: +SKIP
 
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
     >>> msg = subscribe.simple(hostname="test.mosquitto.org",  # doctest: +SKIP
-    ...                        topics="adaptive-interpretable-ad/test")
+    ...                        topics="safeband/test")
     >>> msg.payload == out_msg  # doctest: +SKIP
     True
 
@@ -283,7 +283,7 @@ class to_mqtt(Sink):
     Check the message
     >>> import paho.mqtt.subscribe as subscribe
     >>> msg = subscribe.simple(hostname="test.mosquitto.org",  # doctest: +SKIP
-    ...                        topics="adaptive-interpretable-ad/testanomaly")
+    ...                        topics="safeband/testanomaly")
     >>> int(msg.payload) == out_msg['anomaly']  # doctest: +SKIP
     True
 
@@ -563,7 +563,7 @@ class to_nats(Sink):
     >>> nats_sink = to_nats(
     ...     Stream(),
     ...     servers="nats://localhost:4222",
-    ...     topic="adaptive-interpretable-ad/test",
+    ...     topic="safeband/test",
     ... )
     >>> nats_sink.servers
     ['nats://localhost:4222']

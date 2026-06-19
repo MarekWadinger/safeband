@@ -17,8 +17,8 @@ from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
-import functions.streamz_tools as st
-from functions.streamz_tools import (
+import safeband.streamz_tools as st
+from safeband.streamz_tools import (
     NATSMessage,
     _filt,
     _func,

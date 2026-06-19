@@ -14,13 +14,13 @@ from river.utils import Rolling, TimeRolling
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
 
-from functions.anomaly import (
+from safeband.anomaly import (
     AdaptiveThresholdFilter,
     ConditionalGaussianScorer,
     GaussianScorer,
     TimeRollingBuffer,
 )
-from functions.proba import MultivariateGaussian
+from safeband.proba import MultivariateGaussian
 
 SAMPLES = [
     {"a": 0.1, "b": 0.6},

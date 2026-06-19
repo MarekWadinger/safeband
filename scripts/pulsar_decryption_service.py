@@ -11,12 +11,12 @@ from pulsar.schema import JsonSchema, Record, String
 from streamz import Stream
 
 sys.path.insert(1, str(Path(__file__).parent.parent))
-from functions.encryption import (
+from safeband.encryption import (
     decrypt_data,
     encode_data,
     init_rsa_security,
 )
-from functions.streamz_tools import MapStream  # noqa: F401
+from safeband.streamz_tools import MapStream  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

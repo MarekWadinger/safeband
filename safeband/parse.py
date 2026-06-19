@@ -14,7 +14,7 @@ from typing import IO, TYPE_CHECKING, Any
 
 from pandas import Timedelta
 
-from functions.typing_extras import (
+from safeband.typing_extras import (
     Config,
     FileClient,
     KafkaClient,

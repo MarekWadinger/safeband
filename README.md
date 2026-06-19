@@ -1,43 +1,55 @@
-# AID: Adaptable and Interpretable Framework for Anomaly Detection
+<p align="center">
+  <img src="docs/assets/logo.png" alt="safeband" width="200">
+</p>
+
+<h1 align="center">safeband</h1>
+
+<p align="center">
+  <strong>Stop babysitting static thresholds that go stale — get explainable operating limits that adapt themselves.</strong>
+</p>
+
+<p align="center">
+  <em>Online, interpretable anomaly detection for industrial sensor streams.<br/>Learns self-adjusting operating limits that track drift and sensor aging, isolates the root-cause signal, and explains every alarm — no labels, no retraining.</em>
+</p>
 
 <!-- markdownlint-disable MD013 -->
-[![Python application](https://github.com/MarekWadinger/adaptive-interpretable-ad/actions/workflows/python-app.yml/badge.svg)](https://github.com/MarekWadinger/adaptive-interpretable-ad/actions/workflows/python-app.yml)
-[![codecov](https://codecov.io/gh/MarekWadinger/adaptive-interpretable-ad/graph/badge.svg?token=BIS0A7CF1F)](https://codecov.io/gh/MarekWadinger/adaptive-interpretable-ad)
-[![DOI](https://zenodo.org/badge/DOI/10.1016/j.eswa.2024.123200.svg)](https://doi.org/10.1016/j.eswa.2024.123200)
+<p align="center">
+  <a href="https://github.com/MarekWadinger/safeband/actions/workflows/python-app.yml"><img src="https://github.com/MarekWadinger/safeband/actions/workflows/python-app.yml/badge.svg" alt="Python application"></a>
+  <a href="https://codecov.io/gh/MarekWadinger/safeband"><img src="https://codecov.io/gh/MarekWadinger/safeband/graph/badge.svg" alt="codecov"></a>
+  <a href="https://doi.org/10.1016/j.eswa.2024.123200"><img src="https://zenodo.org/badge/DOI/10.1016/j.eswa.2024.123200.svg" alt="DOI"></a>
+  <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+">
+</p>
 <!-- markdownlint-enable MD013 -->
 
-Online outlier detection service for industrial SCADA-based infrastructures for
-low-latency detection and change-point adaptation.
-The service provides dynamic operating limits based on changing environmental
-conditions and sensors aging. This implementation is built upon a robust
-foundation, leveraging the power of the open-source libraries
-**[river](https://github.com/online-ml/river)**,
-**[streamz](https://github.com/python-streamz/streamz)** and
-**[human_security](https://github.com/mdipierro/human_security)**, among the
-others. Make sure to check out their great work!
+---
 
-## 🤩 Highlights
+## Highlights
 
-* Interpretable anomaly detector with self-supervised adaptation
-* Demonstrates interpretability by providing dynamic operating limits
-* Leverages self-learning approach on streamed IoT data
-* Utilizes existing SCADA-based industrial infrastructure
-* Offers faster response time to incidents due to root cause isolation
+- **Interpretable by construction** — every alarm names the dynamic operating limit it crossed, not an opaque score.
+- **Self-adapting** — limits track environmental change and sensor aging online; no manual re-tuning, no batch retraining.
+- **Change-point aware** — detects regime shifts and re-bases the safe range instead of drowning in false alarms.
+- **Root-cause isolation** — built-in fault diagnosis points to the signal that drove an event.
+- **Streaming-native** — built on [`river`](https://github.com/online-ml/river) + [`streamz`](https://github.com/python-streamz/streamz): single-pass, constant-memory.
+- **SCADA-ready** — drops onto existing industrial infrastructure (MQTT / NATS / Pulsar ingest), secured with [`human_security`](https://github.com/mdipierro/human_security).
 
-[Image: Graphical Abstract](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/publications/ESwA2023/figures/ESwA23%20-%20Graphical%20Abstract%20-%20Latex%20font.pdf)
+## Overview
 
-[Image: Dynamic operating limits and detection on utility-scale battery temperature profile](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/publications/ESwA2023/figures/TERRA_thresh_4days.pdf)
+Online outlier detection for industrial SCADA-based infrastructures: low-latency detection with change-point adaptation. safeband provides dynamic operating limits that adapt to changing environmental conditions and sensor aging.
+
+[Image: Graphical Abstract](https://github.com/MarekWadinger/safeband/blob/main/publications/ESwA2023/figures/ESwA23%20-%20Graphical%20Abstract%20-%20Latex%20font.pdf)
+
+[Image: Dynamic operating limits and detection on utility-scale battery temperature profile](https://github.com/MarekWadinger/safeband/blob/main/publications/ESwA2023/figures/TERRA_thresh_4days.pdf)
 
 ## ⚡️ Quickstart
 
 Get your hand on the algorithm using following Jupyter notebooks and play
 around with open-source example data:
 
-0. [Case Study 0: Outlier Detection on Inverter Temperature](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/01_univariate_pc_2023.ipynb)
-1. [Case Study 1: Anomaly Detection on BESS Temperature](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/03_conditional_ae_2023.ipynb)
-2. [Case Study 2: Anomaly Detection on Battery Module Temperature](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/04_eco_pack_presov.ipynb)
-3. [Comparison Study: One-Class SVM and HalfSpace Trees on SKAB Dataset](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/comparison.ipynb)
-4. [Benchmark Study: AID on the TSB-AD benchmark (VUS-PR protocol)](https://github.com/MarekWadinger/adaptive-interpretable-ad/blob/main/examples/06_tsb_ad_benchmark.ipynb)
+0. [Case Study 0: Outlier Detection on Inverter Temperature](https://github.com/MarekWadinger/safeband/blob/main/examples/01_univariate_pc_2023.ipynb)
+1. [Case Study 1: Anomaly Detection on BESS Temperature](https://github.com/MarekWadinger/safeband/blob/main/examples/03_conditional_ae_2023.ipynb)
+2. [Case Study 2: Anomaly Detection on Battery Module Temperature](https://github.com/MarekWadinger/safeband/blob/main/examples/04_eco_pack_presov.ipynb)
+3. [Comparison Study: One-Class SVM and HalfSpace Trees on SKAB Dataset](https://github.com/MarekWadinger/safeband/blob/main/examples/comparison.ipynb)
+4. [Benchmark Study: AID on the TSB-AD benchmark (VUS-PR protocol)](https://github.com/MarekWadinger/safeband/blob/main/examples/06_tsb_ad_benchmark.ipynb)
 
 ## 🏃 Run the services
 
@@ -75,7 +87,7 @@ transports, messages can be signed and encrypted.
 
 **NOTE**: Messaging can be **signed** and **encrypted** for most of the
 services. If you find any related bugs, feel free to
-[open an issue](https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/new/choose).
+[open an issue](https://github.com/MarekWadinger/safeband/issues/new/choose).
 
 ### Example Service Usage: MQTT
 
@@ -196,7 +208,7 @@ Feel free to contribute in any way you like, we're always open to new ideas and
 approaches.
 
 * Feel welcome to
-[open an issue](https://github.com/MarekWadinger/adaptive-interpretable-ad/issues/new/choose)
+[open an issue](https://github.com/MarekWadinger/safeband/issues/new/choose)
 if you think you've spotted a bug or a performance issue.
 
 ## 💬 Citation

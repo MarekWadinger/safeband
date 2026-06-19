@@ -10,13 +10,13 @@ from typing import Any, cast
 import paho.mqtt.client as mqtt
 from human_security import HumanRSA
 
-from functions.encryption import (
+from safeband.encryption import (
     init_rsa_security,
     resolve_key_path,
     verify_and_decrypt_data,
 )
-from functions.parse import get_params
-from functions.typing_extras import FileClient, MQTTClient
+from safeband.parse import get_params
+from safeband.typing_extras import FileClient, MQTTClient
 
 logger = logging.getLogger(__name__)
 

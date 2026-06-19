@@ -10,9 +10,9 @@ import pandas as pd
 from river import utils
 
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
-from functions.anomaly import ConditionalGaussianScorer
-from functions.evaluate import progressive_val_predict
-from functions.proba import MultivariateGaussian
+from safeband.anomaly import ConditionalGaussianScorer
+from safeband.evaluate import progressive_val_predict
+from safeband.proba import MultivariateGaussian
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)

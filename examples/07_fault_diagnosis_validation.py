@@ -55,9 +55,9 @@ from river.utils import Rolling
 
 sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 
-from functions.anomaly import ConditionalGaussianScorer
-from functions.fault_diagnosis import FaultLabel, SensorFaultClassifier
-from functions.proba import MultivariateGaussian
+from safeband.anomaly import ConditionalGaussianScorer
+from safeband.fault_diagnosis import FaultLabel, SensorFaultClassifier
+from safeband.proba import MultivariateGaussian
 
 logger = logging.getLogger(__name__)
 
