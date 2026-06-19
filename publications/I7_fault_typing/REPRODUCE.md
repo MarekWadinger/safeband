@@ -5,7 +5,7 @@ committed code and data at the pinned git tag **`i7-fault-typing-v1`**.
 Nothing is transcribed by hand.
 
 ```bash
-REPO=adaptive-interpretable-ad
+REPO=safeband
 git clone https://github.com/MarekWadinger/$REPO.git
 cd $REPO
 git checkout i7-fault-typing-v1
