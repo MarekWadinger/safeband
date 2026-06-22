@@ -1,6 +1,9 @@
+<!-- markdownlint-disable MD033 -->
+<!-- markdownlint-disable MD041 -->
 <p align="center">
   <img src="docs/assets/logo.png" alt="safeband" width="200">
 </p>
+<!-- markdownlint-enable MD041 -->
 
 <h1 align="center">safeband</h1>
 
@@ -20,7 +23,7 @@
   <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+">
 </p>
 <!-- markdownlint-enable MD013 -->
-
+<!-- markdownlint-enable MD033 -->
 ---
 
 ## Highlights
@@ -56,11 +59,11 @@ around with open-source example data:
 Our framework is ready to face your challenges with diverse set of supported
 publish-subscribe services:
 
-* [**MQTT**](https://mqtt.org)
-* [**Apache Kafka**](https://kafka.apache.org)
-* [**Apache Pulsar**](https://pulsar.apache.org)
-* [**NATS**](https://nats.io)
-* Streamed [**DataFrame**](https://pandas.pydata.org)
+- [**MQTT**](https://mqtt.org)
+- [**Apache Kafka**](https://kafka.apache.org)
+- [**Apache Pulsar**](https://pulsar.apache.org)
+- [**NATS**](https://nats.io)
+- Streamed [**DataFrame**](https://pandas.pydata.org)
 
 [**NATS**](https://nats.io) is a first-class transport. Add a `[nats]`
 section pointing at your server(s) and run the service just like the
@@ -110,10 +113,10 @@ uv run python rpc_client.py -f example.ini -t "shellies/Shelly3EM-Main-Switchboa
 
 Note: You can modify the source data stream using attributes:
 
-* `[-f | --config-file]` with path to `config.ini`
+- `[-f | --config-file]` with path to `config.ini`
 (**NOTE**: first valid key value pair is used)
-* `[-t | --in-topics]` to define topic to subscribe to or column in csv file
-* `[-k | --key-path]` with path to ssh keys of sender and receiver
+- `[-t | --in-topics]` to define topic to subscribe to or column in csv file
+- `[-k | --key-path]` with path to ssh keys of sender and receiver
 (NOTE: if empty, the keys are created)
 
 To start consumer, run following command:
@@ -126,10 +129,10 @@ uv run python consumer.py -f example.ini -t "shellies/Shelly3EM-Main-Switchboard
 
 Note: You can modify the source data stream using attributes:
 
-* `[-f | --config-file]` with path to `config.ini`
+- `[-f | --config-file]` with path to `config.ini`
 (NOTE: first valid key value pair is used)
-* `[-t | --in-topics]` topic of MQTT or column of pd.DataFrame
-* `[-k | --key-path]` with path to ssh keys of sender and receiver
+- `[-t | --in-topics]` topic of MQTT or column of pd.DataFrame
+- `[-k | --key-path]` with path to ssh keys of sender and receiver
 (NOTE: if empty, the keys are created)
 
 Query service responds with printed messages as follows:
@@ -207,7 +210,7 @@ You can also use Docker Compose to manage the local services. Simply start the s
 Feel free to contribute in any way you like, we're always open to new ideas and
 approaches.
 
-* Feel welcome to
+- Feel welcome to
 [open an issue](https://github.com/MarekWadinger/safeband/issues/new/choose)
 if you think you've spotted a bug or a performance issue.
 
