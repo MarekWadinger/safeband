@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=80.9.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "safeband"
 version = "3.1.0"
@@ -32,7 +36,10 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-river = { git = "https://github.com/MarekWadinger/river.git" }
+river = { git = "https://github.com/MarekWadinger/river.git", rev = "ae465096573be2dd0a0f8c57e17b136f889efb8a" }
+
+[tool.setuptools.packages.find]
+include = ["safeband*"]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
