@@ -28,6 +28,7 @@ _PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
 NO_UPPER_CAP = {
     "cryptography",
     "human-security",
+    "joblib",
     "scipy",
     "typing-extensions",
     "pandas-stubs",

@@ -19,6 +19,7 @@ requires-python = ">=3.12"
 dependencies = [
     "cryptography>=50.0.1",
     "human-security>=1.0",
+    "joblib>=1.3",
     "matplotlib<4.0.0",
     "nats-py<3.0.0",
     "paho-mqtt>=2.0,<3.0.0",
